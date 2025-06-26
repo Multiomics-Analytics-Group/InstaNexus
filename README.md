@@ -34,7 +34,7 @@
 ## Workflow Diagram
 
 <p align="center">
-  <img src="images/workflow_diagram.png" width="700" alt="InstaNexus Workflow">
+  <img src="images/instanexus_workflow.png" width="900" alt="InstaNexus Workflow">
 </p>
 
 ---
