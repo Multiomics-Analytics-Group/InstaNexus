@@ -1,0 +1,7 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+antibodies,ma1heavy,greedy,comb_greedy_c0.92_ts10_mo3_mi0.9_mm12,74,0.828,96,0.483,23,0.462,0.963,0.94,0.74
+antibodies,ma1light,greedy,comb_greedy_c0.88_ts10_mo3_mi0.9_mm10,52,0.885,128,0.698,34,0.885,1.0,1.0,0.924
+antibodies,ma2heavy,greedy,comb_greedy_c0.86_ts10_mo3_mi0.8_mm14,86,0.796,81,0.383,20,0.346,0.968,0.948,0.696
+antibodies,ma2light,greedy,comb_greedy_c0.9_ts10_mo3_mi0.9_mm10,48,0.896,137,0.758,27,0.615,1.0,1.0,0.85
+antibodies,ma3heavy,greedy,comb_greedy_c0.9_ts10_mo3_mi0.6_mm12,77,0.82,99,0.503,24,0.5,0.931,0.888,0.726
+antibodies,ma3light,greedy,comb_greedy_c0.92_ts10_mo3_mi0.9_mm8,55,0.877,144,0.805,27,0.615,0.995,0.992,0.849

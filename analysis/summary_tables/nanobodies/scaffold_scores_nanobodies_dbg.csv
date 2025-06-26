@@ -1,0 +1,11 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+nanobodies,NB1,dbg,comb_dbg_c0.9_ks6_ts10_mo3_mi0.9_mm12,539,0.674,136,0.902,76,0.759,0.968,0.964,0.868
+nanobodies,NB10,dbg,comb_dbg_c0.9_ks6_ts5_mo3_mi0.9_mm14,261,0.842,148,0.992,91,0.949,0.975,0.972,0.954
+nanobodies,NB12,dbg,comb_dbg_c0.92_ks6_ts10_mo3_mi0.8_mm14,274,0.834,109,0.699,81,0.823,0.916,0.906,0.853
+nanobodies,NB13,dbg,comb_dbg_c0.88_ks6_ts5_mo4_mi0.9_mm12,270,0.837,103,0.654,84,0.861,0.968,0.964,0.889
+nanobodies,NB2,dbg,comb_dbg_c0.9_ks7_ts0_mo3_mi0.9_mm14,444,0.731,104,0.662,75,0.747,0.967,0.964,0.845
+nanobodies,NB3,dbg,comb_dbg_c0.92_ks7_ts5_mo3_mi0.9_mm14,175,0.894,149,1.0,95,1.0,0.969,0.966,0.972
+nanobodies,NB4,dbg,comb_dbg_c0.86_ks6_ts10_mo3_mi0.6_mm12,393,0.762,103,0.654,61,0.57,0.966,0.963,0.794
+nanobodies,NB5,dbg,comb_dbg_c0.9_ks6_ts5_mo3_mi0.8_mm14,164,0.901,101,0.639,58,0.532,0.968,0.965,0.796
+nanobodies,NB6,dbg,comb_dbg_c0.86_ks6_ts10_mo3_mi0.9_mm10,38,0.978,84,0.511,51,0.443,0.975,0.972,0.768
+nanobodies,NB8,dbg,comb_dbg_c0.92_ks7_ts5_mo3_mi0.9_mm10,260,0.843,93,0.579,69,0.671,0.968,0.965,0.826

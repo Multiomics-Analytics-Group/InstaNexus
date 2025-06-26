@@ -1,0 +1,7 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+antibodies,ma1heavy,dbg,comb_dbg_c0.9_ks7_ts10_mo3_mi0.9_mm10,52,0.969,103,0.654,61,0.57,0.963,0.959,0.813
+antibodies,ma1light,dbg,comb_dbg_c0.88_ks7_ts0_mo3_mi0.9_mm14,111,0.933,114,0.737,78,0.785,1.0,1.0,0.902
+antibodies,ma2heavy,dbg,comb_dbg_c0.86_ks6_ts5_mo3_mi0.9_mm14,67,0.96,115,0.744,56,0.506,0.946,0.94,0.792
+antibodies,ma2light,dbg,comb_dbg_c0.92_ks7_ts5_mo3_mi0.9_mm12,78,0.953,127,0.835,86,0.886,1.0,1.0,0.945
+antibodies,ma3heavy,dbg,comb_dbg_c0.88_ks6_ts0_mo3_mi0.8_mm14,55,0.967,92,0.571,58,0.532,0.896,0.885,0.756
+antibodies,ma3light,dbg,comb_dbg_c0.88_ks6_ts10_mo4_mi0.8_mm14,62,0.963,141,0.94,65,0.62,1.0,1.0,0.876

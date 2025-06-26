@@ -1,0 +1,2 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+bsa,bsa,dbg,comb_dbg_c0.86_ks6_ts0_mo3_mi0.9_mm12,293,0.823,79,0.474,40,0.304,0.916,0.907,0.674

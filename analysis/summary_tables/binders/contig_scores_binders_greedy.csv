@@ -1,0 +1,4 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+binders,BIND15,greedy,comb_greedy_c0.9_ts10_mo4_mi0.6_mm14,33,0.935,57,0.221,25,0.538,0.781,0.647,0.601
+binders,BIND16,greedy,comb_greedy_c0.88_ts0_mo3_mi0.6_mm12,59,0.867,42,0.121,16,0.192,0.896,0.832,0.572
+binders,BIND17,greedy,comb_greedy_c0.92_ts10_mo3_mi0.6_mm14,31,0.94,73,0.329,22,0.423,0.958,0.932,0.72

@@ -1,0 +1,11 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+nanobodies,NB1,greedy,comb_greedy_c0.9_ts10_mo4_mi0.9_mm10,35,0.868,74,0.336,30,0.146,0.968,0.956,0.642
+nanobodies,NB10,greedy,comb_greedy_c0.88_ts10_mo3_mi0.9_mm14,24,0.912,126,0.685,36,0.192,0.975,0.966,0.7
+nanobodies,NB12,greedy,comb_greedy_c0.88_ts0_mo3_mi0.9_mm10,28,0.896,93,0.463,30,0.146,0.968,0.956,0.658
+nanobodies,NB13,greedy,comb_greedy_c0.9_ts10_mo3_mi0.8_mm14,39,0.852,113,0.597,43,0.246,0.968,0.956,0.697
+nanobodies,NB2,greedy,comb_greedy_c0.86_ts10_mo4_mi0.9_mm14,27,0.9,97,0.49,38,0.208,0.947,0.929,0.666
+nanobodies,NB3,greedy,comb_greedy_c0.9_ts0_mo3_mi0.9_mm10,22,0.92,90,0.443,43,0.246,0.957,0.941,0.681
+nanobodies,NB4,greedy,comb_greedy_c0.86_ts10_mo4_mi0.9_mm12,18,0.936,77,0.356,46,0.269,0.966,0.954,0.687
+nanobodies,NB5,greedy,comb_greedy_c0.88_ts10_mo3_mi0.7_mm14,43,0.836,64,0.268,37,0.2,0.968,0.957,0.649
+nanobodies,NB6,greedy,comb_greedy_c0.88_ts0_mo4_mi0.9_mm10,39,0.852,94,0.47,30,0.146,0.975,0.965,0.659
+nanobodies,NB8,greedy,comb_greedy_c0.88_ts10_mo3_mi0.9_mm8,33,0.876,87,0.423,43,0.246,0.968,0.957,0.682

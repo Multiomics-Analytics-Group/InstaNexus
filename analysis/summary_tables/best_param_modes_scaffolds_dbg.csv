@@ -1,0 +1,6 @@
+category,conf_mode,size_threshold_mode,min_identity_mode,max_mismatches_mode,kmer_size_mode,min_overlap_mode
+antibodies,0.88,0,0.9,14,6,3
+binders,0.88,0,0.6,14,7,3
+bsa,0.86,0,0.9,12,6,3
+nanobodies,0.9,5,0.9,14,6,3
+policlonals,0.88,5,0.9,14,6,3

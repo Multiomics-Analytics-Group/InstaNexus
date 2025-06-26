@@ -1,0 +1,4 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+binders,BIND15,dbg,comb_dbg_c0.92_ks6_ts0_mo3_mi0.8_mm14,63,0.962,61,0.338,33,0.215,0.838,0.82,0.605
+binders,BIND16,dbg,comb_dbg_c0.9_ks7_ts5_mo3_mi0.6_mm14,51,0.97,47,0.233,26,0.127,0.877,0.864,0.59
+binders,BIND17,dbg,comb_dbg_c0.88_ks7_ts0_mo3_mi0.9_mm12,49,0.971,93,0.579,72,0.709,0.94,0.933,0.834

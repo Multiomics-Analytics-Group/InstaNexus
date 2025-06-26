@@ -1,0 +1,7 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+policlonals,pama1heavy,dbg,comb_dbg_c0.9_ks7_ts10_mo3_mi0.9_mm10,45,0.963,73,0.361,49,0.427,0.782,0.665,0.593
+policlonals,pama1light,dbg,comb_dbg_c0.88_ks7_ts0_mo3_mi0.9_mm14,15,0.991,72,0.353,31,0.187,0.949,0.921,0.651
+policlonals,pama2heavy,dbg,comb_dbg_c0.86_ks6_ts5_mo3_mi0.9_mm14,53,0.955,81,0.429,51,0.453,0.905,0.854,0.701
+policlonals,pama2light,dbg,comb_dbg_c0.92_ks7_ts5_mo3_mi0.9_mm12,25,0.981,84,0.454,54,0.493,1.0,1.0,0.792
+policlonals,pama3heavy,dbg,comb_dbg_c0.88_ks6_ts5_mo3_mi0.8_mm14,103,0.908,81,0.429,49,0.427,0.864,0.79,0.657
+policlonals,pama3light,dbg,comb_dbg_c0.88_ks6_ts10_mo4_mi0.8_mm14,129,0.884,129,0.832,89,0.96,0.893,0.835,0.877

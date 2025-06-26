@@ -1,0 +1,2 @@
+category,run,ass_method,source,total_sequences,total_sequences_scaled,max_length,max_length_scaled,N50,N50_scaled,coverage,coverage_scaled,composite_score
+bsa,bsa,greedy,comb_greedy_c0.88_ts10_mo3_mi0.6_mm14,160,0.603,65,0.275,20,0.346,0.933,0.891,0.637
