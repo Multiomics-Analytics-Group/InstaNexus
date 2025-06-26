@@ -45,11 +45,11 @@
 |----------------------------------|---------------------------------------------------------------------------------------|
 | `environment.yml`               | Conda environment definition with required dependencies                              |
 | `README.md`                     | Project documentation                                                                |
-| `bin/`                          | Custom scripts developed by Konstantinos                                             |
+| `src/`                          | Custom scripts to run the workflow                                             |
 | `notebooks/`                    | Jupyter notebooks for full or partial analyses                                       |
 | `fasta/`                        | FASTA files and known contaminants for filtering                                     |
 | `input/`                        | Example datasets: BSA, antibody, nanobody, and mini-binder samples                   |
-| `unittests/`                    | Unit test scripts for validating contig/scaffolding logic                            |
+| `unittests/`                    | Unit test scripts for validating steps                            |
 | `images/`                       | Folder containing logo (`logo.svg`) and workflow image (`workflow_diagram.png`)      |
 
 ---
