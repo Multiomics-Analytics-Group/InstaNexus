@@ -1,8 +1,7 @@
 <p align="center">
-  <img src="images/instanexus_logo.svg" width="200" alt="InstaNexus logo">
+  <img src="images/instanexus_logo.svg" width="600" alt="InstaNexus logo">
 </p>
 
-<h1 align="center">InstaNexus</h1>
 <p align="center"><em>A de novo peptide assembly workflow</em></p>
 
 <p align="center">
