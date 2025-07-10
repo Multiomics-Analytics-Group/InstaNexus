@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/instanexus_logo.pdf" width="600" alt="InstaNexus logo">
+  <img src="images/instanexus_logo.svg" width="600" alt="InstaNexus logo">
 </p>
 
 <p align="center"><em>A de novo peptide assembly workflow</em></p>
@@ -61,5 +61,5 @@ To clone and set up the environment:
 ```bash
 git clone https://github.com/your-username/instanexus.git
 cd instanexus
-conda create --name assembly --file environment.yml
-conda activate assembly
+conda create --file environment.yml
+conda activate instanexus
