@@ -9,13 +9,9 @@ def align_or_copy_fasta(fasta_file, output_file):
     sequences = list(SeqIO.parse(fasta_file, "fasta"))
     
     if len(sequences) == 1:
-        # If there's only one sequence, copy the file directly
         shutil.copy(fasta_file, output_file)
-        #print(f"Copied {fasta_file} to {output_file}")
     else:
-        # If there are multiple sequences, run clustalo
-        subprocess.run(["clustalo", "-i", fasta_file, "-o", output_file, "--outfmt", "fa", "--force"])
-        #print(f"Aligned {fasta_file} and saved to {output_file}")
+        subprocess.run(["clustalo", "-i", fasta_file, "-o", output_file, "--outfmt", "fa"])
 
 
 def process_alignment(input_folder):

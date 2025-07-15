@@ -285,3 +285,28 @@ def combine_seqs_into_scaffolds(contigs, min_overlap):
         combined_contigs.append(combined)
 
     return combined_contigs + contigs
+
+
+def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm=False):
+    prev = None
+    current = contigs
+
+    while prev != current:
+        prev = current
+        
+        current = combine_seqs_into_scaffolds(current, min_overlap)
+        current = list(set(current))
+        current = [s for s in current if len(s) > size_threshold]
+        current = sorted(current, key=len, reverse=True)
+
+        current = combine_seqs_into_scaffolds(current, min_overlap)
+        current = list(set(current))
+        current = [s for s in current if len(s) > size_threshold]
+        current = sorted(current, key=len, reverse=True)
+
+        current = merge_contigs(current)
+        current = list(set(current))
+        current = [s for s in current if len(s) > size_threshold]
+        current = sorted(current, key=len, reverse=True)
+
+    return current
