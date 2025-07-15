@@ -1,1 +1,9 @@
+# data 
+outputs/
 
+# files
+notebooks/fig*
+
+# ignore compiled python files
+*.pyc
+__pycache__/

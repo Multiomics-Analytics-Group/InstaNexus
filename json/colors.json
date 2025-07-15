@@ -1,0 +1,18 @@
+{
+  "antibodies": {
+    "contig": "#8dd3c7",
+    "scaffold": "#1b9e77"
+  },
+  "nanobodies": {
+    "contig": "#a6cee3",
+    "scaffold": "#1f78b4"
+  },
+  "binders": {
+    "contig": "#cab2d6",
+    "scaffold": "#6a3d9a"
+  },
+  "bsa": {
+    "contig": "#fdbb84",
+    "scaffold": "#e34a33"
+  }
+}
