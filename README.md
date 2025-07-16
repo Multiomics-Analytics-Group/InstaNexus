@@ -13,53 +13,119 @@
 ---
 
 ## Table of Contents
-- [About](#about)
+- [Abstract](#abstract)
+- [Features](#features)
 - [Workflow Diagram](#workflow-diagram)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
 - [Prerequisites and Installation](#prerequisites-and-installation)
-- [Command Line Usage](#command-line-usage)
-- [Authors](#authors)
-- [Acknowledgments](#acknowledgments)
 - [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [References](#references)
 
 ---
 
-## About
+## Abstract
 
-**InstaNexus** is a flexible and modular **de novo peptide assembly workflow** designed to reconstruct full protein sequences from mass spectrometry-derived peptides. It offers both **De Bruijn Graph (DBG)** and **Greedy** assembly modes, integrates confidence filtering, clustering, alignment and consensus generation.
+InstaNexus is a generalizable, end-to-end workflow for direct protein sequencing, tailored to reconstruct full-length protein therapeutics such as antibodies and nanobodies. It integrates AI-driven de novo peptide sequencing with optimized assembly and scoring strategies to maximize accuracy, coverage, and functional relevance.
+
+This pipeline enables robust reconstruction of critical protein regions, advancing applications in therapeutic discovery, immune profiling, and protein engineering.
+
+---
+
+## Features
+
+- 🧬 Supports De Bruijn Graph and Greedy-based assembly
+- ⚗️ Handles multiple protease digestions (Trypsin, LysC, GluC, etc.)
+- 🧹 Integrated contaminant removal and confidence filtering
+- 🧩 Clustering, alignment, and consensus sequence reconstruction
+- 🔗 Integrates with external tools:
+  - [MMseqs2](https://github.com/soedinglab/MMseqs2) for fast clustering
+  - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/) for high-quality alignment
+- 📊 Output-ready for downstream analysis and visualization
 
 ---
 
 ## Workflow Diagram
 
 <p align="center">
-  <img src="images/instanexus_workflow.png" width="900" alt="InstaNexus Workflow">
+  <img src="images/instanexus_panel.png" width="900" alt="InstaNexus Workflow">
 </p>
 
 ---
 
 ## Repository Structure
 
-| File / Folder                    | Description                                                                           |
-|----------------------------------|---------------------------------------------------------------------------------------|
-| `environment.yml`               | Conda environment definition with required dependencies                              |
-| `README.md`                     | Project documentation                                                                |
-| `src/`                          | Custom scripts to run the workflow                                             |
-| `notebooks/`                    | Jupyter notebooks for full or partial analyses                                       |
-| `fasta/`                        | FASTA files and known contaminants for filtering                                     |
-| `input/`                        | Example datasets: BSA, antibody, nanobody, and mini-binder samples                   |
-| `unittests/`                    | Unit test scripts for validating steps                            |
-| `images/`                       | Folder containing logo (`logo.svg`) and workflow image (`workflow_diagram.png`)      |
+| File / Folder       | Description                                                                  |
+|---------------------|------------------------------------------------------------------------------|
+| `environment.yml`   | Conda environment definition with required dependencies                      |
+| `README.md`         | Project documentation                                                        |
+| `src/`              | Core scripts to run the InstaNexus pipeline                                  |
+| `notebooks/`        | Jupyter notebooks for visualization and exploration                          |
+| `fasta/`            | Known contaminants and example FASTA sequences                               |
+| `json/`             | JSON metadata for peptide color coding and analysis                          |
+| `input/`            | Example datasets (e.g., BSA, antibody, nanobody)                             |
+| `images/`           | Logos and workflow diagrams (PNG, SVG, PDF)                                  |
 
 ---
 
 ## Getting Started
+
+Follow these steps to clone the repository and set up the environment using Conda:
+
+### 1. Clone the repository
 
 To clone and set up the environment:
 
 ```bash
 git clone https://github.com/your-username/instanexus.git
 cd instanexus
-conda create --file environment.yml
+```
+
+### 2. Create the conda environment
+```bash
+conda env create -f environment.yml
+```
+
+### 3. Activate the environment
+
+```bash
 conda activate instanexus
+```
+---
+
+## Prerequisites and Installation
+
+- Python 3.9+
+- [Conda](https://docs.conda.io/en/latest/)
+- [MMseqs2](https://github.com/soedinglab/MMseqs2)
+- [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
+
+Install MMseqs2 and Clustal Omega using your package manager or follow their official installation instructions.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## Acknowledgments
+
+InstaNexus was developed at **DTU Biosustain** and **DTU Bioengineering**.
+
+We are grateful to the **DTU Bioengineering Proteomics Core Facility** for maintenance and operation of mass spectrometry instrumentation.
+
+We also thank the **Informatics Platform at DTU Biosustain** for their support during the development and optimization of InstaNexus.
+
+Special thanks to the users and developers of:
+- [MMseqs2](https://github.com/soedinglab/MMseqs2)
+- [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
+
+---
+
+## References
+
+1. Hauser, M., et al. **MMseqs2: ultra fast and sensitive sequence searching**. *Nature Biotechnology* 35, 1026–1028 (2016). https://doi.org/10.1038/nbt.3988  
+2. Sievers, F., et al. **Fast, scalable generation of high-quality protein multiple sequence alignments using Clustal Omega**. *Molecular Systems Biology* 7, 539 (2011). https://doi.org/10.1038/msb.2011.75
