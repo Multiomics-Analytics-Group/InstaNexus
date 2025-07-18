@@ -17,8 +17,8 @@
 - [Features](#features)
 - [Workflow Diagram](#workflow-diagram)
 - [Repository Structure](#repository-structure)
-- [Getting Started](#getting-started)
 - [Prerequisites and Installation](#prerequisites-and-installation)
+- [Getting Started](#getting-started)
 - [Usage (Coming Soon)](#usage) 
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
@@ -70,6 +70,17 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 ---
 
+## Prerequisites and Installation
+
+- Python 3.9+
+- [Conda](https://docs.conda.io/en/latest/)
+- [MMseqs2](https://github.com/soedinglab/MMseqs2)
+- [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
+
+Install MMseqs2 and Clustal Omega using your package manager or follow their official installation instructions.
+
+---
+
 ## Getting Started
 
 Follow these steps to clone the repository and set up the environment using Conda:
@@ -93,17 +104,6 @@ conda env create -f environment.yml
 ```bash
 conda activate instanexus
 ```
----
-
-## Prerequisites and Installation
-
-- Python 3.9+
-- [Conda](https://docs.conda.io/en/latest/)
-- [MMseqs2](https://github.com/soedinglab/MMseqs2)
-- [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
-
-Install MMseqs2 and Clustal Omega using your package manager or follow their official installation instructions.
-
 ---
 
 ## Usage (Coming Soon)
