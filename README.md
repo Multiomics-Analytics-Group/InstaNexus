@@ -2,7 +2,7 @@
   <img src="images/instanexus_logo 2.svg" width="600" alt="InstaNexus logo">
 </p>
 
-<p align="center"><em>A de novo peptide assembly workflow</em></p>
+<p align="center"><em>A de novo protein sequencing workflow</em></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/environment-conda-blue" alt="Conda">
@@ -13,19 +13,20 @@
 ---
 
 ## Table of Contents
-- [Abstract](#abstract)
+- [Introduction](#introduction)
 - [Features](#features)
 - [Workflow Diagram](#workflow-diagram)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
 - [Prerequisites and Installation](#prerequisites-and-installation)
+- [Usage (Coming Soon)](#usage) 
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [References](#references)
 
 ---
 
-## Abstract
+## Introduction
 
 InstaNexus is a generalizable, end-to-end workflow for direct protein sequencing, tailored to reconstruct full-length protein therapeutics such as antibodies and nanobodies. It integrates AI-driven de novo peptide sequencing with optimized assembly and scoring strategies to maximize accuracy, coverage, and functional relevance.
 
@@ -102,6 +103,75 @@ conda activate instanexus
 - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
 
 Install MMseqs2 and Clustal Omega using your package manager or follow their official installation instructions.
+
+---
+
+## Usage (Coming Soon)
+
+> [!WARNING]
+> These features are currently under development and will be available soon.
+
+### 1. **Basic usage**
+
+This command displays the full list of arguments and options
+```bash
+python run.py --help
+```
+
+### 2. **Available parameters**
+
+```bash
+usage: run.py [-h] --mode {dbg,greedy} --input_csv INPUT_CSV --output_folder OUTPUT_FOLDER
+              [--contaminants CONTAMINANTS]
+              [--conf CONF]
+              [--size_threshold SIZE_THRESHOLD]
+              [--kmer_size KMER_SIZE]
+              [--min_overlap MIN_OVERLAP]
+              [--max_mismatches MAX_MISMATCHES]
+              [--min_identity MIN_IDENTITY]
+              [--protein_fasta PROTEIN_FASTA]
+```
+
+Run all steps for DBG or greedy assembly, clustering, alignment, consensus generation, and mapping
+
+```
+options:
+  -h, --help            show this help message and exit
+  --mode {dbg,greedy}   Mode to run the assembly: 'dbg' or 'greedy'
+  --input_csv INPUT_CSV
+                        Path to the input CSV file for assembly
+  --output_folder OUTPUT_FOLDER
+                        Path to the output folder for assembly and subsequent steps
+  --contaminants CONTAMINANTS
+                        Path to the contaminants fasta file to filter peptides, optional
+  --conf CONF           Confidence threshold
+  --size_threshold SIZE_THRESHOLD
+                        Size threshold for contigs and scaffolds
+  --kmer_size KMER_SIZE
+                        K-mer size for DBG assembly
+  --min_overlap MIN_OVERLAP
+                        Minimum overlap for greedy assembly
+  --protein_fasta PROTEIN_FASTA
+                        Path to the protein fasta file for mapping
+  --max_mismatches MAX_MISMATCHES
+                        Maximum number of mismatches allowed for mapping
+  --min_identity MIN_IDENTITY
+                        Minimum identity threshold for mapping
+```
+
+### 3a. **Example: DBG assembly**
+
+DBG assembly mode:
+```bash
+python run.py --mode dbg --input_csv ma3.csv --output_folder ma3_dbg --protein_fasta antibodies_normalized.fasta --contaminants contaminants.fasta --conf 0.95 --kmer_size 6 --min_overlap 10 --size_threshold 0 --max_mismatches 8 --min_identity 0.5 
+```
+
+### 3b. **Example: Greedy assembly**
+
+Greedy assembly mode:
+```bash
+python run.py --mode greedy --input_csv ma3.csv --output_folder ma3_dbg --protein_fasta antibodies_normalized.fasta --contaminants contaminants.fasta --conf 0.95 --min_overlap 3 --size_threshold 0 --max_mismatches 8 --min_identity 0.5
+```
 
 ---
 
