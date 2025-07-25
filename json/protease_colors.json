@@ -1,0 +1,12 @@
+{
+    "ProtK":       "#fccde5",
+    "Chymotrypsin":"#8dd3c7",
+    "Krakatoa":    "#bebada",
+    "Papain":      "#fdb462",
+    "GluC":        "#d9d9d9",
+    "Legumain":    "#ffffb3",
+    "LysC":        "#bc80bd",
+    "Trypsin":     "#80b1d3",
+    "Thermo":      "#b3de69",
+    "Elastase":    "#fb8072"
+}

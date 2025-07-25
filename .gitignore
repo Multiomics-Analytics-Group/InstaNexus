@@ -8,3 +8,4 @@ notebooks/fig*
 # ignore compiled python files
 *.pyc
 __pycache__/
+.DS_Store
