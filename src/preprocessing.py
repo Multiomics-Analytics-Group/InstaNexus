@@ -44,7 +44,7 @@ def create_subdirectories_outputs(folder):
     Args:
         folder (str): The path of the parent directory.
     """
-    subdirectories = ['preprocessing', 'contigs', 'scaffolds', 'consensus', 'logs', 'statistics']
+    subdirectories = ['contigs', 'scaffolds', 'statistics']
     for subdirectory in subdirectories:
         create_directory(f"{folder}/{subdirectory}")
 
