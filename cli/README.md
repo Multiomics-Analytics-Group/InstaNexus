@@ -1,1 +1,0 @@
-Command line interface (CLI) for InstaNexus, a tool for proteomics data analysis.

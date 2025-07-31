@@ -93,7 +93,7 @@ def main():
     logger.info("Starting data cleaning...")
     
     protein_norm = prep.normalize_sequence(protein)
-    df = pd.read_csv(f"../input/{run}.csv")
+    df = pd.read_csv(f"../inputs/{run}.csv")
     df['protease'] = df['experiment_name'].apply(lambda name: prep.extract_protease(name, proteases))
     df = prep.clean_dataframe(df)
     df['cleaned_preds'] = df['preds'].apply(prep.remove_modifications)
@@ -108,46 +108,27 @@ def main():
 
     # Assembly
     kmers = dbg.get_kmers(final_psms, kmer_size=kmer_size)
-    
     edges = dbg.get_debruijn_edges_from_kmers(kmers)
-    
     assembled_contigs = dbg.assemble_contigs(edges)
-    
     assembled_contigs = sorted(assembled_contigs, key=len, reverse=True)
-    
     assembled_contigs = list(set(assembled_contigs))
-    
     assembled_contigs = [seq for seq in assembled_contigs if len(seq) > size_threshold]
-    
     assembled_contigs = sorted(assembled_contigs, key=len, reverse=True)
-
     records = [Bio.SeqRecord.SeqRecord(Bio.Seq.Seq(contig), id=f"contig_{idx+1}",
                                     description=f"length: {len(contig)}") for idx,
                                     contig in enumerate(assembled_contigs)]
-    
     Bio.SeqIO.write(records, f"{combination_folder_out}/contigs/{ass_method}_contig_{conf}_{run}.fasta", "fasta")
-
     mapped_contigs = map.process_protein_contigs_scaffold(assembled_contigs, protein_norm, max_mismatches, min_identity)
-    
     df_contigs = map.create_dataframe_from_mapped_sequences(data = mapped_contigs)
-    
     comp_stat.compute_assembly_statistics(df = df_contigs, sequence_type='contigs', output_folder = f'{combination_folder_out}/statistics',
                                           reference = protein_norm)
-
     assembled_scaffolds = dbg.create_scaffolds(assembled_contigs, min_overlap)
-
     assembled_scaffolds = list(set(assembled_scaffolds))
-    
     assembled_scaffolds = sorted(assembled_scaffolds, key=len, reverse=True)
-    
     assembled_scaffolds = [scaffold for scaffold in assembled_scaffolds if len(scaffold) > size_threshold]
-
     assembled_scaffolds = dbg.merge_sequences(assembled_scaffolds)
-    
     assembled_scaffolds = list(set(assembled_scaffolds))
-    
     assembled_scaffolds = sorted(assembled_scaffolds, key=len, reverse=True)
-    
     assembled_scaffolds = [scaffold for scaffold in assembled_scaffolds if len(scaffold) > size_threshold]
 
     records = []
@@ -156,7 +137,6 @@ def main():
         records.append(record)
 
     Bio.SeqIO.write(records, f"{combination_folder_out}/scaffolds/{ass_method}_scaffold_{conf}_{run}.fasta", "fasta")
-
     mapped_scaffolds = map.process_protein_contigs_scaffold(assembled_contigs = assembled_scaffolds,
                                                             target_protein = protein_norm,
                                                             max_mismatches = max_mismatches,
@@ -164,7 +144,6 @@ def main():
                                                             )
     
     df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(data = mapped_scaffolds)
-    
     comp_stat.compute_assembly_statistics(df = df_scaffolds_mapped, sequence_type='scaffolds',
                                           output_folder = f"{combination_folder_out}/statistics",
                                           reference = protein_norm)
