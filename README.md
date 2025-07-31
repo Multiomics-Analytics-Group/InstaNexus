@@ -77,7 +77,9 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 - [MMseqs2](https://github.com/soedinglab/MMseqs2)
 - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
 
-Install MMseqs2 and Clustal Omega using your package manager or follow their official installation instructions.
+> [!IMPORTANT]
+> MMseqs2 and Clustal Omega are available through Conda, but compatibility depends on your system architecture.
+> - 🔍 [Clustal Omega on Anaconda.org](https://anaconda.org/search?q=clustalo)   
 
 ---
 
