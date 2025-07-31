@@ -77,17 +77,9 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 - [MMseqs2](https://github.com/soedinglab/MMseqs2)
 - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
 
-Install MMseqs2 and Clustal Omega using your package manager or follow their official installation instructions.
-
 > [!IMPORTANT]
-> **macOS ARM (Apple Silicon) note:**  
-> The `clustalo` package is not currently available via `conda` for the `osx-arm64` architecture. Attempting to install it using `conda` may result in a `PackagesNotFoundError`.
-
-Install Clustal Omega via [Homebrew](https://brew.sh/):
-
-```bash
-brew install clustal-omega
-```
+> MMseqs2 and Clustal Omega are available through Conda, but compatibility depends on your system architecture.
+> - 🔍 [Clustal Omega on Anaconda.org](https://anaconda.org/search?q=clustalo)   
 
 ---
 
