@@ -79,6 +79,16 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 Install MMseqs2 and Clustal Omega using your package manager or follow their official installation instructions.
 
+> [!IMPORTANT]
+> **macOS ARM (Apple Silicon) note:**  
+> The `clustalo` package is not currently available via `conda` for the `osx-arm64` architecture. Attempting to install it using `conda` may result in a `PackagesNotFoundError`.
+
+Install Clustal Omega via [Homebrew](https://brew.sh/):
+
+```bash
+brew install clustal-omega
+```
+
 ---
 
 ## Getting Started
