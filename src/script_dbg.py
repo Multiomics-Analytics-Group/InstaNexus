@@ -11,7 +11,7 @@ r""" Full assembly script for proteins.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 31 Jul 2025
+__date__ = 06 Aug 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -77,8 +77,8 @@ def main():
     kmer_size = 7
     min_overlap = 3
     min_identity = 0.8
-    max_mismatches = 10
-    size_threshold = 10
+    max_mismatches = 20
+    size_threshold = 20
 
     logger.info("Parameters loaded.")
 
@@ -147,6 +147,44 @@ def main():
     comp_stat.compute_assembly_statistics(df = df_scaffolds_mapped, sequence_type='scaffolds',
                                           output_folder = f"{combination_folder_out}/statistics",
                                           reference = protein_norm)
+    
+    # Clustering
+    scaffolds_folder_out = f"{combination_folder_out}/scaffolds"
+    clus.cluster_fasta_files(input_folder = scaffolds_folder_out)
+
+    cluster_tsv_folder = os.path.join(scaffolds_folder_out, "cluster")
+    output_base_folder = os.path.join(scaffolds_folder_out, "cluster_fasta")
+
+    for fasta_file in os.listdir(scaffolds_folder_out):
+        if fasta_file.endswith('.fasta'):
+            fasta_path = os.path.join(scaffolds_folder_out, fasta_file)
+            clus.process_fasta_and_clusters(fasta_path, cluster_tsv_folder, output_base_folder)
+    
+    # Alignment
+    cluster_fasta_folder = os.path.join(scaffolds_folder_out, "cluster_fasta") 
+    align_folder = os.path.join(scaffolds_folder_out, "align")
+    prep.create_directory(align_folder)
+
+    for cluster_folder in os.listdir(cluster_fasta_folder): 
+        cluster_folder_path = os.path.join(cluster_fasta_folder, cluster_folder) 
+        if os.path.isdir(cluster_folder_path): 
+            
+            output_cluster_folder = os.path.join(align_folder, cluster_folder) 
+            os.makedirs(output_cluster_folder, exist_ok=True) 
+                
+            for fasta_file in os.listdir(cluster_folder_path): 
+                if fasta_file.endswith('.fasta'): 
+                    fasta_file_path = os.path.join(cluster_folder_path, fasta_file)
+                    base_filename = os.path.splitext(fasta_file)[0] 
+                    output_file = os.path.join(output_cluster_folder, f"{base_filename}_out.afa")
+                        
+                    align.align_or_copy_fasta(fasta_file_path, output_file)
+
+    logger.info("All alignment tasks completed.")
+
+    # Consensus
+    consensus_folder = os.path.join(scaffolds_folder_out, "consensus")
+    cons.process_alignment_files(align_folder, consensus_folder)
 
 if __name__ == "__main__":
     main()

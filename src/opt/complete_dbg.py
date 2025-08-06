@@ -21,14 +21,14 @@ __status__ = Dev
 # !pip install --upgrade nbformat # to avoid plotly error
 
 # my modules
-import greedy_method as greedy
-import dbg
-import mapping as map
-import consensus as cons
-import alignment as align
-import clustering as clus
-import preprocessing as prep
-import compute_statistics as comp_stat
+from src import greedy_method as greedy
+from src import dbg
+from src import mapping as map
+from src import consensus as cons
+from src import alignment as align
+from src import clustering as clus
+from src import preprocessing as prep
+from src import compute_statistics as comp_stat
 
 # import libraries
 from tqdm import tqdm

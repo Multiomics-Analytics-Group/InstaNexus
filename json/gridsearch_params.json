@@ -1,0 +1,17 @@
+{
+  "dbg": {
+    "kmer_size": [6, 7],
+    "min_overlap": [3, 4],
+    "size_threshold": [0, 5, 10],
+    "max_mismatches": [8, 10, 12, 14],
+    "min_identity": [0.6, 0.7, 0.8, 0.9],
+    "conf": [0.86, 0.88, 0.90, 0.92]
+  },
+  "greedy": {
+    "min_overlap": [3, 4],
+    "size_threshold": [0, 5, 10],
+    "max_mismatches": [8, 10, 12, 14],
+    "min_identity": [0.6, 0.7, 0.8, 0.9],
+    "conf": [0.86, 0.88, 0.90, 0.92]
+  }
+}

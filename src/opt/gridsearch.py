@@ -8,10 +8,10 @@ r""" Hyperparameter optimization script for assembly analysis.
 | |__| |  | |   | |__| |
 |_____/   |_|   |______|
 
-__authors__ = Marco Reverenna
+__authors__ = Marco Reverenna and Pasquale D. Colaianni
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 22 Jun 2025
+__date__ = 06 Aug 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -19,36 +19,25 @@ __status__ = Dev
 
 # import libraries
 import os
+import json
 import logging
 import itertools
+
 from tqdm import tqdm
-from complete_dbg import run_pipeline_dbg
-#from complete_greedy import run_pipeline_greedy
+from src.opt.complete_dbg import run_pipeline_dbg
+from src.opt.complete_greedy import run_pipeline_greedy
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # Define the parameter grid and set values to test
 
-parameter_grid_dbg = {
-       "kmer_size": [6, 7],
-       "min_overlap": [3, 4],
-       "size_threshold": [0, 5, 10],
-       "max_mismatches": [8, 10, 12, 14],
-       "min_identity": [0.6, 0.7, 0.8, 0.9],
-       "conf": [0.86, 0.88, 0.90, 0.92]
-       }
+with open("../../json/gridsearch_params.json") as f:
+    all_grids = json.load(f)
 
+method = "dbg"  # Change to "greedy" for greedy method
 
-# parameter_grid_greedy = {
-#       "min_overlap": [3, 4],
-#       "size_threshold": [0, 5, 10],
-#       "max_mismatches": [8, 10, 12, 14], 
-#       "min_identity": [0.6, 0.7, 0.8, 0.9],
-#       "conf": [0.86, 0.88, 0.90, 0.92]
-#       }
+selected_grid = all_grids[method]
 
-
-keys, values = zip(*parameter_grid_dbg.items())
-#keys, values = zip(*parameter_grid_dbg.items())
+keys, values = zip(*selected_grid.items())
 
 combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 total_combinations = len(combinations)
@@ -73,7 +62,11 @@ def run_analysis(params, iteration):
     """Wrapper function to run the main analysis with error handling."""
     try:
         logging.info(f"[ITER {iteration}] Starting with parameters: {params}")
-        run_pipeline_dbg(**params)
+        logging.info(f"Grid search started using method '{method}'.")
+        if method == "dbg":
+            run_pipeline_dbg(**params)
+        elif method == "greedy":
+            run_pipeline_greedy(**params)
         logging.info(f"[ITER {iteration}] Completed successfully.")
     except Exception as e:
         logging.error(f"[ITER {iteration}] Failed with parameters {params}: {str(e)}")
