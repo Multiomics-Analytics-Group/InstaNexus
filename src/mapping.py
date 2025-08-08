@@ -369,7 +369,7 @@ def mapping_substitutions(mapped_sequences, prot_seq, title,
         os.makedirs(output_folder, exist_ok=True)
         fig.write_image(os.path.join(output_folder, output_file), scale=2)
 
-    fig.show()
+    # fig.show()
 
 
 def mapping_psms_protease_associated(mapped_sequences, prot_seq, labels, palette, title, output_folder, output_file):
@@ -458,4 +458,4 @@ def mapping_psms_protease_associated(mapped_sequences, prot_seq, labels, palette
     )
     
     fig.write_image(f"{output_folder}/{output_file}", scale=2)
-    fig.show()
+    # fig.show()

@@ -259,7 +259,7 @@ def plot_protease_distribution(protease_counts, folder_figures):
 
     # Export the figure in SVG vector format
     fig.write_image(f"{folder_figures}/proteases_distribution.svg")
-    fig.show()
+    # fig.show()
 
 
 def missing_values_barplot(run, dataframe, folder):
@@ -336,7 +336,7 @@ def missing_values_barplot(run, dataframe, folder):
     )
     
     fig.write_image(f"{folder}/{run}_missing_value_bar.svg")
-    fig.show()
+    # fig.show()
 
 
 def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=False):
@@ -405,7 +405,7 @@ def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=Fals
     ))
     
     fig.write_image(f"{folder}/{run}_confidence_distribution_range_mapped_unmapped.svg")
-    fig.show()
+    # fig.show()
 
 
 def fdr_ratio_mapped_unmapped(run, df, folder):
@@ -517,7 +517,7 @@ def fdr_ratio_mapped_unmapped(run, df, folder):
     )
 
     fig.write_image(f"{folder}/{run}_fdr_ratio_mapped_unmapped.svg")
-    fig.show()
+    # fig.show()
 
 
 
@@ -647,7 +647,7 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
 
 
     fig.write_image(f"{folder}/{run}_relative_mapped_unmapped_distribution.svg")
-    fig.show()
+    # fig.show()
 
 
 def plot_map_distribution(run, df, reference, folder, threshold, title=False):
@@ -718,4 +718,4 @@ def plot_map_distribution(run, df, reference, folder, threshold, title=False):
     )
 
     fig.write_image(f"{folder}/{run}_psms_mapped_unmapped_distribution.svg")
-    fig.show()
+    # fig.show()

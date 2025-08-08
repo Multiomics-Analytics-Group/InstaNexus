@@ -22,7 +22,6 @@ from collections import defaultdict
 from itertools import combinations
 from tqdm import tqdm
 import pandas as pd
-import networkx as nx
 
 
 def get_kmers(seqs, kmer_size):
