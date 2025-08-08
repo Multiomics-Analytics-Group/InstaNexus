@@ -19,7 +19,6 @@
 - [Repository Structure](#repository-structure)
 - [Prerequisites and Installation](#prerequisites-and-installation)
 - [Getting Started](#getting-started)
-- [Usage (Coming Soon)](#usage) 
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [References](#references)
@@ -59,20 +58,21 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 | File / Folder       | Description                                                                  |
 |---------------------|------------------------------------------------------------------------------|
-| `environment.yml`   | Conda environment definition with required dependencies                      |
+| `environment.linux.yml`        | Conda environment definition with required dependencies for linux |
+| `environment.osx-arm64.yaml`   | Conda environment definition with required dependencies for OS    |
 | `README.md`         | Project documentation                                                        |
-| `src/`              | Core scripts to run the InstaNexus pipeline                                  |
-| `notebooks/`        | Jupyter notebooks for visualization and exploration                          |
+| `examples/`         |                                                                              |
 | `fasta/`            | Known contaminants and example FASTA sequences                               |
-| `json/`             | JSON metadata for peptide color coding and analysis                          |
-| `input/`            | Example datasets (e.g., BSA, antibody, nanobody)                             |
 | `images/`           | Logos and workflow diagrams (PNG, SVG, PDF)                                  |
+| `inputs/`           | Example datasets (e.g., BSA, antibody, nanobody)                             |
+| `json/`             | JSON metadata for peptide color coding and analysis                          |
+| `notebooks/`        | Jupyter notebooks for visualization and exploration                          |
+| `src/`              | Core scripts to run the InstaNexus pipeline                                  |
 
 ---
 
 ## Prerequisites and Installation
 
-- Python 3.9+
 - [Conda](https://docs.conda.io/en/latest/)
 - [MMseqs2](https://github.com/soedinglab/MMseqs2)
 - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
@@ -97,82 +97,23 @@ cd instanexus
 ```
 
 ### 2. Create the conda environment
+
+Create instanexus conda environment for linux
+
 ```bash
-conda env create -f environment.yml
+conda env create -f environment.linux.yml
+```
+
+Create instanexus conda environment for OS
+
+```bash
+conda env create -f environment.osx-arm64.yaml
 ```
 
 ### 3. Activate the environment
 
 ```bash
 conda activate instanexus
-```
----
-
-## Usage (Coming Soon)
-
-> [!WARNING]
-> These features are currently under development and will be available soon.
-
-### 1. **Basic usage**
-
-This command displays the full list of arguments and options
-```bash
-python run.py --help
-```
-
-### 2. **Available parameters**
-
-```bash
-usage: run.py [-h] --mode {dbg,greedy} --input_csv INPUT_CSV --output_folder OUTPUT_FOLDER
-              [--contaminants CONTAMINANTS]
-              [--conf CONF]
-              [--size_threshold SIZE_THRESHOLD]
-              [--kmer_size KMER_SIZE]
-              [--min_overlap MIN_OVERLAP]
-              [--max_mismatches MAX_MISMATCHES]
-              [--min_identity MIN_IDENTITY]
-              [--protein_fasta PROTEIN_FASTA]
-```
-
-Run all steps for DBG or greedy assembly, clustering, alignment, consensus generation, and mapping
-
-```
-options:
-  -h, --help            show this help message and exit
-  --mode {dbg,greedy}   Mode to run the assembly: 'dbg' or 'greedy'
-  --input_csv INPUT_CSV
-                        Path to the input CSV file for assembly
-  --output_folder OUTPUT_FOLDER
-                        Path to the output folder for assembly and subsequent steps
-  --contaminants CONTAMINANTS
-                        Path to the contaminants fasta file to filter peptides, optional
-  --conf CONF           Confidence threshold
-  --size_threshold SIZE_THRESHOLD
-                        Size threshold for contigs and scaffolds
-  --kmer_size KMER_SIZE
-                        K-mer size for DBG assembly
-  --min_overlap MIN_OVERLAP
-                        Minimum overlap for greedy assembly
-  --protein_fasta PROTEIN_FASTA
-                        Path to the protein fasta file for mapping
-  --max_mismatches MAX_MISMATCHES
-                        Maximum number of mismatches allowed for mapping
-  --min_identity MIN_IDENTITY
-                        Minimum identity threshold for mapping
-```
-
-### 3a. **Example: DBG assembly**
-
-DBG assembly mode:
-```bash
-python run.py --mode dbg --input_csv ma3.csv --output_folder ma3_dbg --protein_fasta antibodies_normalized.fasta --contaminants contaminants.fasta --conf 0.95 --kmer_size 6 --min_overlap 10 --size_threshold 0 --max_mismatches 8 --min_identity 0.5 
-```
-
-### 3b. **Example: Greedy assembly**
-
-Greedy assembly mode:
-```bash
-python run.py --mode greedy --input_csv ma3.csv --output_folder ma3_dbg --protein_fasta antibodies_normalized.fasta --contaminants contaminants.fasta --conf 0.95 --min_overlap 3 --size_threshold 0 --max_mismatches 8 --min_identity 0.5
 ```
 
 ---
