@@ -95,42 +95,40 @@ def find_peptide_overlaps(peptides, min_overlap):
 
 
 def assemble_contigs(peptides, min_overlap):
-    """Assemble contigs from a list of peptides using a greedy approach."""
-
-    assembled_contigs = peptides[:] # copy the list of peptides
+    assembled_contigs = peptides[:]  # copy
     iteration = 0
-    
-    while True: # loop until no more overlaps are found
-        iteration += 1
-        #print(f"Iteration {iteration}:")
 
-        overlaps = find_peptide_overlaps(assembled_contigs, min_overlap) # find overlaps between contigs
-        
-        if not overlaps: # if no overlaps are found,
+    while True:
+        iteration += 1
+        overlaps = find_peptide_overlaps(assembled_contigs, min_overlap)
+
+        if not overlaps:
             break
-        new_contigs = set() # store new contigs
-        used_indices = set() # store indices of used contigs
-        
-        for i, overlaps_list in tqdm(overlaps.items(), desc="Processing overlaps"):
+
+        new_contigs = []
+        used_indices = set()
+
+        # Process overlaps deterministically
+        for i in sorted(overlaps.keys()):  # ensure deterministic order
             if i in used_indices:
                 continue
-            best_match = max(overlaps_list, key=lambda x: x[1], default=None)
+
+            # Sort overlaps_list deterministically: prioritize longer overlap, then lower index
+            overlaps_list = sorted(overlaps[i], key=lambda x: (-x[1], x[0]))
+            best_match = overlaps_list[0] if overlaps_list else None
+
             if best_match:
                 j, overlap_len = best_match
                 if j not in used_indices:
                     new_contig = assembled_contigs[i] + assembled_contigs[j][overlap_len:]
-                    new_contigs.add(new_contig)
+                    new_contigs.append(new_contig)
                     used_indices.update([i, j])
-        
-        # add contigs that were not merged
-        remaining_contigs = [contig for idx, contig in enumerate(assembled_contigs) if idx not in used_indices] 
-        # remaining_contigs are peptides which are not merged with any other peptide
-        
-        # update assembled contigs
-        assembled_contigs = list(new_contigs) + remaining_contigs
-        
+
+        # Add unused peptides
+        remaining_contigs = [contig for idx, contig in enumerate(assembled_contigs) if idx not in used_indices]
+        assembled_contigs = new_contigs + remaining_contigs
+
         if len(new_contigs) == 0:
-            #print(f"No more overlaps found after {iteration} iterations. Assembly complete.")
             break
 
     return assembled_contigs
