@@ -31,7 +31,6 @@ dependencies:
   - tqdm=4.67.1
   - libidn2=2.3.4
   - libunistring=0.9.10
-  - clustalo=1.2.4
   - matplotlib-base
   - seaborn=0.13.2
   - plotly=6.2.0
