@@ -1,6 +1,7 @@
 # data 
 outputs/
 figures/
+logs/
 
 # files
 notebooks/fig*

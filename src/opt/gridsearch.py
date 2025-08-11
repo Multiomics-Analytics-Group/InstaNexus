@@ -23,17 +23,25 @@ import json
 import logging
 import itertools
 
+from pathlib import Path
 from tqdm import tqdm
-from src.opt.complete_dbg import run_pipeline_dbg
-from src.opt.complete_greedy import run_pipeline_greedy
+
+from src.opt.opt_dbg import run_pipeline_dbg
+from src.opt.opt_greedy import run_pipeline_greedy
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
 
 # Define the parameter grid and set values to test
 
-with open("../../json/gridsearch_params.json") as f:
+# with open("../../json/gridsearch_params.json") as f:
+#     all_grids = json.load(f)
+
+with open(BASE_DIR / "json" / "gridsearch_params.json") as f:
     all_grids = json.load(f)
 
-method = "dbg"  # Change to "greedy" for greedy method
+method = "greedy"  # Change to "greedy" for greedy method
 
 selected_grid = all_grids[method]
 
