@@ -19,6 +19,7 @@
 - [Repository Structure](#repository-structure)
 - [Prerequisites and Installation](#prerequisites-and-installation)
 - [Getting Started](#getting-started)
+- [Hyperparameter Optimization](#hyperparameter-optimization)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [References](#references)
@@ -117,6 +118,23 @@ conda activate instanexus
 ```
 
 ---
+
+## Hyperparameter Optimization
+
+To launch the hyperparameter grid search, run the following command from the project root (the folder containing ```src/``` and ```json/```):
+
+```bash
+python -m src.opt.gridsearch
+```
+**Adjusting Parameters**
+
+Grid search parameters for both the De Bruijn graph (dbg) and Greedy (greedy) assembly methods are defined in:
+
+```bash
+json/gridsearch_params.json
+```
+
+To test more (or fewer) combinations, edit the arrays for each parameter in this file.
 
 ## License
 
