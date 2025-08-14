@@ -11,7 +11,7 @@ r""" Full assembly script for proteins.
 __authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
 __copyright__ = Copyright 2024-2025
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 16 Jun 2025
+__date__ = 13 Aug 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
