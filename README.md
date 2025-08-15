@@ -23,6 +23,7 @@
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 - [References](#references)
+- [Citation](#citation)
 
 ---
 
@@ -160,3 +161,12 @@ Special thanks to the users and developers of:
 
 1. Hauser, M., et al. **MMseqs2: ultra fast and sensitive sequence searching**. *Nature Biotechnology* 35, 1026–1028 (2016). https://doi.org/10.1038/nbt.3988  
 2. Sievers, F., et al. **Fast, scalable generation of high-quality protein multiple sequence alignments using Clustal Omega**. *Molecular Systems Biology* 7, 539 (2011). https://doi.org/10.1038/msb.2011.75
+3. Eloff, K., Kalogeropoulos, K., Mabona, A., Morell, O., Catzel, R., Rivera-de-Torre, E., ... & Jenkins, T. P. (2025). **InstaNovo enables diffusion-powered de novo peptide sequencing in large-scale proteomics experiments.** Nature Machine Intelligence, 1-15.
+
+---
+
+## Citation
+
+If you find this project useful in your research or work, please cite it as:
+
+Reverenna M., Nielsen M. W., Wolff D. S., Lytra E., Colaianni P. D., Ljungars A., Laustsen A. H., Schoof E. M., Van Goey J., Jenkins T. P., Lukassen M. V., Santos A., Kalogeropoulos K. (2025). *Generalizable direct protein sequencing with InstaNexus* [Preprint]. bioRxiv. https://doi.org/10.1101/2025.07.25.666861
