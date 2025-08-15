@@ -1,0 +1,15 @@
+{
+    "ass_method": "dbg",
+    "conf": 0.86,
+    "kmer_size": 6,
+    "min_overlap": 3,
+    "min_identity": 0.9,
+    "max_mismatches": 12,
+    "size_threshold": 0,
+    "reference_length": 607,
+    "total_sequences": 107,
+    "average_length": 19.934579439252335,
+    "min_length": 7,
+    "max_length": 32,
+    "coverage": 0.8039538714991763
+}

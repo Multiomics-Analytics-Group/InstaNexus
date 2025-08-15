@@ -1,1 +1,1 @@
-explain dbg and greedy
+In these notebooks we provide examples for greedy and DBG methods, with and without plots.
