@@ -8,3 +8,19 @@ logs/
 __pycache__/
 .DS_Store
 environment.yml
+
+# files
+inputs/BIND15.csv
+inputs/BIND16.csv
+inputs/ma2.csv
+inputs/ma3.csv
+inputs/NB1.csv
+inputs/NB2.csv
+inputs/NB3.csv
+inputs/NB4.csv
+inputs/NB5.csv
+inputs/NB8.csv
+inputs/NB12.csv
+inputs/NB13.csv
+inputs/pa.csv
+inputs/pb.csv
