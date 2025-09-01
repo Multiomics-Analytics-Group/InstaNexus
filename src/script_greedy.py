@@ -87,26 +87,19 @@ def main():
 
     logger.info("Starting protein assembly pipeline.")
 
-    # Set parameters for the assembly process
-    # protein = 'MKWVTFISLLLLFSSAYSRGVFRRDTHKSEIAHRFKDLGEEHFKGLVLIAFSQYLQQCPFDEHVKLVNELTEFAKTCVADESHAGCEKSLHTLFGDELCKVASLRETYGDMADCCEKQEPERNECFLSHKDDSPDLPKLKPDPNTLCDEFKADEKKFWGKYLYEIARRHPYFYAPELLYYANKYNGVFQECCQAEDKGACLLPKIETMREKVLASSARQRLRCASIQKFGERALKAWSVARLSQKFPKAEFVEVTKLVTDLTKVHKECCHGDLLECADDRADLAKYICDNQDTISSKLKECCDKPLLEKSHCIAEVEKDAIPENLPPLTADFAEDKDVCKNYQEAKDAFLGSFLYEYSRRHPEYAVSVLLRLAKEYEATLEECCAKDDPHACYSTVFDKLKHLVDEPQNLIKQNCDQFEKLGEYGFQNALIVRYTRKVPQVSTPTLVEVSRSLGKVGTRCCTKPESERMPCTEDYLSLILNRLCVLHEKTPVSEKVTKCCTESLVNRRPCFSALTPDETYVPKAFDEKLFTFHADICTLPDTEKQIKKQTALVELLKHKPKATEEQLKTVMENFVAFVDKCCAADDKEACFAVEGPKLVVSTQTALA'
-    # proteases = ['Chymotrypsin', 'Legumain', 'Krakatoa', 'Elastase', 'Trypsin', 'Papain', 'Thermo', 'ProtK', 'GluC', 'LysC']
-    # ass_method = 'greedy'
-    # run = "bsa"
-    # chain = ''
-
-    run = "NB1"
+    run = "BIND17"
 
     meta = get_sample_metadata(run, chain = "")
     protein = meta["protein"]
     chain = meta["chain"]
     proteases = meta["proteases"]
-    
+
     ass_method = 'greedy'
 
-    conf = 0.9
-    min_overlap = 4
-    min_identity = 0.9
-    max_mismatches = 10
+    conf = 0.92
+    min_overlap = 3
+    min_identity = 0.6
+    max_mismatches = 14
     size_threshold = 10
 
     logger.info("Parameters loaded.")

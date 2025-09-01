@@ -36,6 +36,7 @@ from tempfile import mkdtemp
 from itertools import combinations
 from collections import defaultdict, Counter
 from Bio import SeqIO
+from pathlib import Path
 
 import sys
 import os
@@ -61,24 +62,47 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+BASE_DIR = Path(__file__).resolve().parents[1] 
+JSON_DIR = BASE_DIR / "json"
+INPUT_DIR = BASE_DIR / "inputs"
+FASTA_DIR = BASE_DIR / "fasta"
+OUTPUTS_DIR = BASE_DIR / "outputs"
+
+def get_sample_metadata(run, chain="", json_path= JSON_DIR / "sample_metadata.json"):
+    with open(json_path, "r") as f:
+        all_meta = json.load(f)
+
+    if run not in all_meta:
+        raise ValueError(f"Run '{run}' not found in metadata.")
+
+    entries = all_meta[run]
+
+    for entry in entries:
+        if entry["chain"] == chain:
+            return entry
+
+    raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 def main():
     """Main function to run the assembly script."""
     
     logger.info("Starting protein assembly pipeline.")
 
-    # Set parameters for the assembly process
-    protein = 'MKWVTFISLLLLFSSAYSRGVFRRDTHKSEIAHRFKDLGEEHFKGLVLIAFSQYLQQCPFDEHVKLVNELTEFAKTCVADESHAGCEKSLHTLFGDELCKVASLRETYGDMADCCEKQEPERNECFLSHKDDSPDLPKLKPDPNTLCDEFKADEKKFWGKYLYEIARRHPYFYAPELLYYANKYNGVFQECCQAEDKGACLLPKIETMREKVLASSARQRLRCASIQKFGERALKAWSVARLSQKFPKAEFVEVTKLVTDLTKVHKECCHGDLLECADDRADLAKYICDNQDTISSKLKECCDKPLLEKSHCIAEVEKDAIPENLPPLTADFAEDKDVCKNYQEAKDAFLGSFLYEYSRRHPEYAVSVLLRLAKEYEATLEECCAKDDPHACYSTVFDKLKHLVDEPQNLIKQNCDQFEKLGEYGFQNALIVRYTRKVPQVSTPTLVEVSRSLGKVGTRCCTKPESERMPCTEDYLSLILNRLCVLHEKTPVSEKVTKCCTESLVNRRPCFSALTPDETYVPKAFDEKLFTFHADICTLPDTEKQIKKQTALVELLKHKPKATEEQLKTVMENFVAFVDKCCAADDKEACFAVEGPKLVVSTQTALA'
-    proteases = ['Chymotrypsin', 'Legumain', 'Krakatoa', 'Elastase', 'Trypsin', 'Papain', 'Thermo', 'ProtK', 'GluC', 'LysC']
+    run = "ma3"
+
+    meta = get_sample_metadata(run, chain = "light")
+    protein = meta["protein"]
+    chain = meta["chain"]
+    proteases = meta["proteases"]
+
     ass_method = 'dbg'
-    run = "bsa"
-    chain = ''
-    conf = 0.8
-    kmer_size = 7
-    min_overlap = 3
+
+    conf = 0.88
+    kmer_size = 6
+    size_threshold = 10
+    min_overlap = 4
     min_identity = 0.8
-    max_mismatches = 20
-    size_threshold = 20
+    max_mismatches = 14
 
     logger.info("Parameters loaded.")
 
