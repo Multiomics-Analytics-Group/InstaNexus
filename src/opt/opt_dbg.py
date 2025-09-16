@@ -20,42 +20,42 @@ __status__ = Dev
 # !pip install kaleido # to export plotly figures as png
 # !pip install --upgrade nbformat # to avoid plotly error
 
-# my modules
-from src import greedy_method as greedy
-from src import dbg
-from src import mapping as map
-from src import consensus as cons
-from src import alignment as align
-from src import clustering as clus
-from src import preprocessing as prep
-from src import compute_statistics as comp_stat
+import importlib
+import json
+import logging
+import os
+import re
+import shutil
+import statistics
+import subprocess
+import sys
+from collections import Counter, defaultdict
+from itertools import combinations
+from pathlib import Path
+from tempfile import mkdtemp
+
+import Bio
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import seaborn as sns
+from Bio import SeqIO
 
 # import libraries
 from tqdm import tqdm
-from tempfile import mkdtemp
-from itertools import combinations
-from collections import defaultdict, Counter
-from pathlib import Path
-from Bio import SeqIO
 
-import sys
-import os
-import json
-import re
-import Bio
-import shutil
-import logging
-import importlib
-import statistics
-import subprocess
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import networkx as nx
-import plotly.express as px
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-
+# my modules
+from src import alignment as align
+from src import clustering as clus
+from src import compute_statistics as comp_stat
+from src import consensus as cons
+from src import dbg
+from src import greedy_method as greedy
+from src import mapping as map
+from src import preprocessing as prep
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 JSON_DIR = BASE_DIR / "json"

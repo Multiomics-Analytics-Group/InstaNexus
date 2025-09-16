@@ -20,40 +20,42 @@ __status__ = Dev
 # !pip install kaleido # to export plotly figures as png
 # !pip install --upgrade nbformat # to avoid plotly error
 
-# my modules
-import greedy_method as greedy
-import mapping as map
-import consensus as cons
-import alignment as align
-import clustering as clus
-import preprocessing as prep
-import compute_statistics as comp_stat
+import importlib
+import json
+import logging
+import os
+import re
+import shutil
+import statistics
+import subprocess
+import sys
+from collections import Counter, defaultdict
+from itertools import combinations
+from pathlib import Path
+from tempfile import mkdtemp
+
+import Bio
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import seaborn as sns
+from Bio import SeqIO
 
 # import libraries
 from tqdm import tqdm
-from tempfile import mkdtemp
-from itertools import combinations
-from collections import defaultdict, Counter
-from Bio import SeqIO
-from pathlib import Path
 
-import sys
-import os
-import json
-import re
-import Bio
-import shutil
-import logging
-import importlib
-import statistics
-import subprocess
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import networkx as nx
-import plotly.express as px
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
+import alignment as align
+import clustering as clus
+import compute_statistics as comp_stat
+import consensus as cons
+
+# my modules
+import greedy_method as greedy
+import mapping as map
+import preprocessing as prep
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"

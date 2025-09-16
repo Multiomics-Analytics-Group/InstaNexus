@@ -1,12 +1,13 @@
-import sys
 import os
+import sys
 
 script_dir = os.getcwd()  # get the current working directory
 sys.path.append(os.path.join(script_dir, "../src"))
 
 import unittest
-import scaffolding
 from collections import defaultdict
+
+import scaffolding
 
 
 class TestOverlap(unittest.TestCase):

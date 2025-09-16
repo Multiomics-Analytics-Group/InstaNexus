@@ -17,14 +17,14 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import Bio
-from itertools import combinations
 from collections import defaultdict
-import numpy as np
-from tqdm import tqdm
+from itertools import combinations
+
+import Bio
 import Bio.Seq
 import Bio.SeqRecord
-
+import numpy as np
+from tqdm import tqdm
 
 # def find_overlaps_greedy(peptides, min_overlap):
 #     overlaps = defaultdict(list) # dict to store overlaps

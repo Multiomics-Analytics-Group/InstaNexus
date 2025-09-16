@@ -17,20 +17,21 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import os
 import json
+import os
 import re
 import statistics
-import pandas as pd
-import Bio.SeqIO
 from collections import Counter
-import matplotlib.pyplot as plt
-import seaborn as sns
+
+import Bio.SeqIO
 import logomaker
-from tqdm import tqdm
-from Bio import SeqIO
+import matplotlib.pyplot as plt
+import pandas as pd
 import plotly.express as px
 import plotly.io as pio
+import seaborn as sns
+from Bio import SeqIO
+from tqdm import tqdm
 
 
 def generate_pssm(aligned_records):

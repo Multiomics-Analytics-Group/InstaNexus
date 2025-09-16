@@ -17,15 +17,16 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
+import logging
 import os
+
 import Bio.SeqIO
+import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import pandas as pd
+import plotly.graph_objects as go
 import seaborn as sns
 from tqdm import tqdm
-import matplotlib.patches as patches
-import plotly.graph_objects as go
-import logging
-import pandas as pd
 
 
 def map_to_protein(seq, protein, max_mismatches, min_identity):

@@ -20,9 +20,10 @@ __status__ = Dev
 # import libraries
 from collections import defaultdict
 from itertools import combinations
-from tqdm import tqdm
-import pandas as pd
+
 import networkx as nx
+import pandas as pd
+from tqdm import tqdm
 
 
 def get_kmers(seqs, kmer_size):

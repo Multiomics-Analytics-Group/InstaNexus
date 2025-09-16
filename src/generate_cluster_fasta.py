@@ -1,7 +1,8 @@
-import os
 import argparse
-import pandas as pd
+import os
+
 import Bio.SeqIO
+import pandas as pd
 from tqdm import tqdm
 
 

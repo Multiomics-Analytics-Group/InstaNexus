@@ -19,8 +19,9 @@ __status__ = Dev
 
 # import libraries
 from collections import defaultdict
-from tqdm import tqdm
 from itertools import combinations
+
+from tqdm import tqdm
 
 
 def find_overlaps(contigs, min_overlap):

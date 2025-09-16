@@ -1,6 +1,7 @@
 import unittest
-import greedy_method
 from collections import defaultdict
+
+import greedy_method
 
 
 class TestOverlap(

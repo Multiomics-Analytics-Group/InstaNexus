@@ -17,11 +17,12 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import os
 import json
+import os
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 def compute_assembly_statistics(df, sequence_type, output_folder, reference, **params):

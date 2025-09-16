@@ -20,11 +20,12 @@ __status__ = Dev
 # import libraries
 import os
 import re
+
 import numpy as np
 import pandas as pd
-from Bio import SeqIO
 import plotly.express as px
 import plotly.graph_objects as go
+from Bio import SeqIO
 
 
 # Define and create the necessary directories only if they don't exist

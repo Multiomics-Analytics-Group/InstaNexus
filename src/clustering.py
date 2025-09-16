@@ -17,14 +17,15 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import os
-import subprocess
-import shutil
-from tempfile import mkdtemp
-import pandas as pd
-import Bio.SeqIO
-from tqdm import tqdm
 import logging
+import os
+import shutil
+import subprocess
+from tempfile import mkdtemp
+
+import Bio.SeqIO
+import pandas as pd
+from tqdm import tqdm
 
 
 def cluster_fasta_files(input_folder):
