@@ -17,7 +17,6 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import logging
 import os
 import shutil
 import subprocess

@@ -396,7 +396,7 @@ def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=Fals
     fig.update_traces(xbins=dict(start=0, end=1, size=0.01))
 
     title_text = (
-        f"Distribution of mapped and unmapped sequences by confidence" if title else ""
+        "Distribution of mapped and unmapped sequences by confidence" if title else ""
     )
 
     fig.update_layout(

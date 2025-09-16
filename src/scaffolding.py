@@ -18,7 +18,6 @@ __status__ = Dev
 """
 
 # import libraries
-from collections import defaultdict
 from itertools import combinations
 
 from tqdm import tqdm

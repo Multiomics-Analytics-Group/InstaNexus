@@ -54,7 +54,7 @@ total_combinations = len(combinations)
 os.makedirs("logs", exist_ok=True)
 
 # Set up logging
-handlers = [logging.FileHandler(f"logs/grid_search.log"), logging.StreamHandler()]
+handlers = [logging.FileHandler("logs/grid_search.log"), logging.StreamHandler()]
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",

@@ -20,9 +20,6 @@ __status__ = Dev
 import json
 import os
 
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
 
 
 def compute_assembly_statistics(df, sequence_type, output_folder, reference, **params):

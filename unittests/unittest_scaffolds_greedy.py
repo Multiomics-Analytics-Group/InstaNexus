@@ -5,7 +5,6 @@ script_dir = os.getcwd()  # get the current working directory
 sys.path.append(os.path.join(script_dir, "../src"))
 
 import unittest
-from collections import defaultdict
 
 import scaffolding
 

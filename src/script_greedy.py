@@ -20,32 +20,15 @@ __status__ = Dev
 # !pip install kaleido # to export plotly figures as png
 # !pip install --upgrade nbformat # to avoid plotly error
 
-import importlib
 import json
 import logging
 import os
-import re
-import shutil
-import statistics
-import subprocess
-import sys
-from collections import Counter, defaultdict
-from itertools import combinations
 from pathlib import Path
-from tempfile import mkdtemp
 
 import Bio
-import matplotlib.pyplot as plt
-import networkx as nx
-import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import seaborn as sns
-from Bio import SeqIO
 
 # import libraries
-from tqdm import tqdm
 
 import alignment as align
 import clustering as clus
