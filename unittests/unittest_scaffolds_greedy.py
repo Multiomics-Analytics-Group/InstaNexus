@@ -2,11 +2,12 @@ import sys
 import os
 
 script_dir = os.getcwd()  # get the current working directory
-sys.path.append(os.path.join(script_dir, '../src'))
+sys.path.append(os.path.join(script_dir, "../src"))
 
 import unittest
 import scaffolding
 from collections import defaultdict
+
 
 class TestOverlap(unittest.TestCase):
 
@@ -20,20 +21,23 @@ class TestOverlap(unittest.TestCase):
 
     def test_overlap_three_contigs(self):
         list1 = ["ABCD", "CDEF", "EFGH"]
-        self.assertEqual(scaffolding.find_overlaps(list1, 2), [("ABCD", "CDEF", 2),
-                                                               ("CDEF", "EFGH", 2)])
-        
+        self.assertEqual(
+            scaffolding.find_overlaps(list1, 2),
+            [("ABCD", "CDEF", 2), ("CDEF", "EFGH", 2)],
+        )
+
+
 class TestFilterContainedSequences(unittest.TestCase):
 
     def no_sequence_contained(self):
         list1 = ["ABCDEFGHI", "LMNO"]
-        self.assertEqual(scaffolding.filter_contained_sequences(list1), ["ABCDEFGHI", "LMNO"])
-
-if __name__ == '__main__':
-    #unittest.main() # this will run all the tests
-
-    #unittest.main(defaultTest='TestOverlap.test_no_overlap') 
-    unittest.main(defaultTest='TestFilterContainedSequences.no_sequence_contained')
+        self.assertEqual(
+            scaffolding.filter_contained_sequences(list1), ["ABCDEFGHI", "LMNO"]
+        )
 
 
+if __name__ == "__main__":
+    # unittest.main() # this will run all the tests
 
+    # unittest.main(defaultTest='TestOverlap.test_no_overlap')
+    unittest.main(defaultTest="TestFilterContainedSequences.no_sequence_contained")

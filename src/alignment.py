@@ -7,11 +7,13 @@ from Bio import SeqIO
 def align_or_copy_fasta(fasta_file, output_file):
 
     sequences = list(SeqIO.parse(fasta_file, "fasta"))
-    
+
     if len(sequences) == 1:
         shutil.copy(fasta_file, output_file)
     else:
-        subprocess.run(["clustalo", "-i", fasta_file, "-o", output_file, "--outfmt", "fa"])
+        subprocess.run(
+            ["clustalo", "-i", fasta_file, "-o", output_file, "--outfmt", "fa"]
+        )
 
 
 def process_alignment(input_folder):
@@ -32,14 +34,16 @@ def process_alignment(input_folder):
             # Create a corresponding folder in the align folder
             output_cluster_folder = os.path.join(align_folder, cluster_folder)
             os.makedirs(output_cluster_folder, exist_ok=True)
-            
+
             # Iterate over all fasta files in the cluster folder
             for fasta_file in os.listdir(cluster_folder_path):
-                if fasta_file.endswith('.fasta'):
+                if fasta_file.endswith(".fasta"):
                     fasta_file_path = os.path.join(cluster_folder_path, fasta_file)
                     base_filename = os.path.splitext(fasta_file)[0]
-                    output_file = os.path.join(output_cluster_folder, f"{base_filename}_out.afa")
-                    
+                    output_file = os.path.join(
+                        output_cluster_folder, f"{base_filename}_out.afa"
+                    )
+
                     align_or_copy_fasta(fasta_file_path, output_file)
 
     print("All alignment tasks completed.")
