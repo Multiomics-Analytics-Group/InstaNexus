@@ -20,6 +20,7 @@ __status__ = Dev
 # !pip install kaleido # to export plotly figures as png
 # !pip install --upgrade nbformat # to avoid plotly error
 
+import argparse
 import json
 import logging
 import os
@@ -27,8 +28,6 @@ from pathlib import Path
 
 import Bio
 import pandas as pd
-
-# import libraries
 
 import alignment as align
 import clustering as clus
@@ -40,6 +39,11 @@ import dbg
 import mapping as map
 import preprocessing as prep
 
+# import libraries
+
+parser = argparse.ArgumentParser(description="Protein Assembly Script")
+parser.add_argument("--input_csv", type=str, help="Input file")
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
@@ -47,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 JSON_DIR = BASE_DIR / "json"
-INPUT_DIR = BASE_DIR / "inputs"
+# INPUT_DIR = BASE_DIR / "inputs"
 FASTA_DIR = BASE_DIR / "fasta"
 OUTPUTS_DIR = BASE_DIR / "outputs"
 
@@ -68,12 +72,12 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def main():
+def main(input_csv):
     """Main function to run the assembly script."""
 
     logger.info("Starting protein assembly pipeline.")
 
-    run = "ma3"
+    run = input_csv
 
     meta = get_sample_metadata(run, chain="light")
     protein = meta["protein"]
@@ -241,4 +245,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = parser.parse_args()
+    input_csv = args.input_csv
+    main(input_csv)
