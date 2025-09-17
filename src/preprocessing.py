@@ -87,6 +87,7 @@ def normalize_sequence(sequence):
 def remove_modifications(psm_column):
     """
     Remove any content within parentheses, including the parentheses, from a given string.
+    Remove UNIPROT modifications and normalize I to L.
 
     Parameters:
     - psm_column (str): The string containing modifications in parentheses (e.g., "A(ox)BC(mod)D"). If the value is null, it returns None.
@@ -96,9 +97,11 @@ def remove_modifications(psm_column):
     """
 
     if pd.notnull(psm_column):
-        return re.sub(
+        ret = re.sub(
             r"\(.*?\)", "", psm_column
         )  # Replace any content in parentheses with an empty string
+        ret = normalise(ret)
+        return ret
     return None
 
 
