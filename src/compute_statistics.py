@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-""" Calculates and saves statistics.
- _____  _______  _    _ 
+"""Calculates and saves statistics.
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |
@@ -19,7 +19,6 @@ __status__ = Dev
 
 import json
 import os
-
 
 
 def compute_assembly_statistics(df, sequence_type, output_folder, reference, **params):

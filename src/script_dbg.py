@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-r""" Full assembly script for proteins.
- _____  _______  _    _ 
+r"""Full assembly script for proteins.
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-r""" Hyperparameter optimization script for assembly analysis.
+r"""Hyperparameter optimization script for assembly analysis.
  _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
