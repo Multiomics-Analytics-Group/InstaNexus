@@ -594,22 +594,22 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
         }
     )
 
-    intersection_x = None
-    for i in range(1, len(hist_df)):
-        mapped_prev, unmapped_prev = hist_df.iloc[i - 1][["Mapped", "Unmapped"]]
-        mapped_curr, unmapped_curr = hist_df.iloc[i][["Mapped", "Unmapped"]]
+    # intersection_x = None
+    # for i in range(1, len(hist_df)):
+    #     mapped_prev, unmapped_prev = hist_df.iloc[i - 1][["Mapped", "Unmapped"]]
+    #     mapped_curr, unmapped_curr = hist_df.iloc[i][["Mapped", "Unmapped"]]
 
-        if mapped_prev < unmapped_prev and mapped_curr >= unmapped_curr:
-            x0 = hist_df.iloc[i - 1]["confidence"]
-            x1 = hist_df.iloc[i]["confidence"]
+    #     if mapped_prev < unmapped_prev and mapped_curr >= unmapped_curr:
+    #         x0 = hist_df.iloc[i - 1]["confidence"]
+    #         x1 = hist_df.iloc[i]["confidence"]
 
-            y_diff_prev = mapped_prev - unmapped_prev
-            y_diff_curr = mapped_curr - unmapped_curr
+    #         y_diff_prev = mapped_prev - unmapped_prev
+    #         y_diff_curr = mapped_curr - unmapped_curr
 
-            intersection_x = x0 + (x1 - x0) * (-y_diff_prev) / (
-                y_diff_curr - y_diff_prev
-            )
-            break
+    #         intersection_x = x0 + (x1 - x0) * (-y_diff_prev) / (
+    #             y_diff_curr - y_diff_prev
+    #         )
+    #         break
 
     fig = px.line(
         hist_df,
