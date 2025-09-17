@@ -45,6 +45,8 @@ repo_folder = Path(__file__).resolve().parents[1]
 
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
 parser.add_argument("--input_csv", type=str, help="Input file")
+parser.add_argument("--folder_outputs", type=str, help="Outputs folder")
+parser.add_argument("--training", action="store_true", help="Training mode")
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
@@ -74,17 +76,20 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def main(input_csv):
+def main(input_csv:str, folder_outputs:str='outputs', training:bool=False):
+        
     """Main function to run the assembly script."""
+
+    input_csv = Path(input_csv)
 
     logger.info("Starting protein assembly pipeline.")
 
-    run = input_csv
-
-    meta = get_sample_metadata(run, chain="light")
-    protein = meta["protein"]
-    chain = meta["chain"]
-    proteases = meta["proteases"]
+    run = input_csv.stem
+    if training:
+        meta = get_sample_metadata(run, chain="light")
+        protein = meta["protein"]
+        chain = meta["chain"]
+        proteases = meta["proteases"]
 
     ass_method = "dbg"
 
@@ -96,9 +101,10 @@ def main(input_csv):
     max_mismatches = 14
 
     logger.info("Parameters loaded.")
+    
+    folder_outputs = Path(folder_outputs) / run
+    folder_outputs.mkdir(parents=True, exist_ok=True)
 
-    folder_outputs = f"../outputs/{run}{chain}"
-    prep.create_directory(folder_outputs)
     combination_folder_out = os.path.join(
         folder_outputs,
         f"comb_{ass_method}_c{conf}_ks{kmer_size}_ts{size_threshold}_mo{min_overlap}_mi{min_identity}_mm{max_mismatches}",
@@ -109,12 +115,13 @@ def main(input_csv):
 
     # Data cleaning
     logger.info("Starting data cleaning...")
-
-    protein_norm = prep.normalize_sequence(protein)
-    df = pd.read_csv(f"../inputs/{run}.csv")
-    df["protease"] = df["experiment_name"].apply(
-        lambda name: prep.extract_protease(name, proteases)
-    )
+    if training:
+        protein_norm = prep.normalize_sequence(protein)
+    df = pd.read_csv(input_csv)
+    if training:
+        df["protease"] = df["experiment_name"].apply(
+            lambda name: prep.extract_protease(name, proteases)
+        )
     df = prep.clean_dataframe(df)
     df["cleaned_preds"] = df["preds"].apply(prep.remove_modifications)
     cleaned_psms = df["cleaned_preds"].tolist()
@@ -122,9 +129,10 @@ def main(input_csv):
         cleaned_psms, run, repo_folder / "fasta/contaminants.fasta"
     )
     df = df[df["cleaned_preds"].isin(filtered_psms)]
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: "True" if x in protein_norm else "False"
-    )
+    if training:
+        df["mapped"] = df["cleaned_preds"].apply(
+            lambda x: "True" if x in protein_norm else "False"
+        )
     df = df[df["conf"] > conf]
     df.reset_index(drop=True, inplace=True)
     final_psms = df["cleaned_preds"].tolist()
@@ -151,16 +159,17 @@ def main(input_csv):
         f"{combination_folder_out}/contigs/{ass_method}_contig_{conf}_{run}.fasta",
         "fasta",
     )
-    mapped_contigs = map.process_protein_contigs_scaffold(
-        assembled_contigs, protein_norm, max_mismatches, min_identity
-    )
-    df_contigs = map.create_dataframe_from_mapped_sequences(data=mapped_contigs)
-    comp_stat.compute_assembly_statistics(
-        df=df_contigs,
-        sequence_type="contigs",
-        output_folder=f"{combination_folder_out}/statistics",
-        reference=protein_norm,
-    )
+    if training:
+        mapped_contigs = map.process_protein_contigs_scaffold(
+            assembled_contigs, protein_norm, max_mismatches, min_identity
+        )
+        df_contigs = map.create_dataframe_from_mapped_sequences(data=mapped_contigs)
+        comp_stat.compute_assembly_statistics(
+            df=df_contigs,
+            sequence_type="contigs",
+            output_folder=f"{combination_folder_out}/statistics",
+            reference=protein_norm,
+        )
     assembled_scaffolds = dbg.create_scaffolds(assembled_contigs, min_overlap)
     assembled_scaffolds = list(set(assembled_scaffolds))
     assembled_scaffolds = sorted(assembled_scaffolds, key=len, reverse=True)
@@ -186,22 +195,23 @@ def main(input_csv):
         f"{combination_folder_out}/scaffolds/{ass_method}_scaffold_{conf}_{run}.fasta",
         "fasta",
     )
-    mapped_scaffolds = map.process_protein_contigs_scaffold(
-        assembled_contigs=assembled_scaffolds,
-        target_protein=protein_norm,
-        max_mismatches=max_mismatches,
-        min_identity=min_identity,
-    )
+    if training:
+        mapped_scaffolds = map.process_protein_contigs_scaffold(
+            assembled_contigs=assembled_scaffolds,
+            target_protein=protein_norm,
+            max_mismatches=max_mismatches,
+            min_identity=min_identity,
+        )
 
-    df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
-        data=mapped_scaffolds
-    )
-    comp_stat.compute_assembly_statistics(
-        df=df_scaffolds_mapped,
-        sequence_type="scaffolds",
-        output_folder=f"{combination_folder_out}/statistics",
-        reference=protein_norm,
-    )
+        df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
+            data=mapped_scaffolds
+        )
+        comp_stat.compute_assembly_statistics(
+            df=df_scaffolds_mapped,
+            sequence_type="scaffolds",
+            output_folder=f"{combination_folder_out}/statistics",
+            reference=protein_norm,
+        )
 
     # Clustering
     scaffolds_folder_out = f"{combination_folder_out}/scaffolds"
@@ -245,8 +255,6 @@ def main(input_csv):
     consensus_folder = os.path.join(scaffolds_folder_out, "consensus")
     cons.process_alignment_files(align_folder, consensus_folder)
 
-
 if __name__ == "__main__":
     args = parser.parse_args()
-    input_csv = args.input_csv
-    main(input_csv)
+    main(args.input_csv, args.folder_outputs, args.training)
