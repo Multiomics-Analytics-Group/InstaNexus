@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-r""" Full assembly script for proteins.
- _____  _______  _    _ 
+r"""Full assembly script for proteins.
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |
@@ -29,6 +29,7 @@ from pathlib import Path
 import Bio
 import pandas as pd
 
+# import libraries
 import alignment as align
 import clustering as clus
 import compute_statistics as comp_stat
@@ -40,8 +41,6 @@ import mapping as map
 import preprocessing as prep
 
 repo_folder = Path(__file__).resolve().parents[1]
-
-# import libraries
 
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
 parser.add_argument("--input_csv", type=str, help="Input file")
@@ -56,8 +55,8 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parents[1]
 JSON_DIR = BASE_DIR / "json"
 # INPUT_DIR = BASE_DIR / "inputs"
-FASTA_DIR = BASE_DIR / "fasta"
-OUTPUTS_DIR = BASE_DIR / "outputs"
+# FASTA_DIR = BASE_DIR / "fasta"
+# OUTPUTS_DIR = BASE_DIR / "outputs"
 
 
 def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.json"):
@@ -76,8 +75,7 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def main(input_csv:str, folder_outputs:str='outputs', training:bool=False):
-        
+def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False):
     """Main function to run the assembly script."""
 
     input_csv = Path(input_csv)
@@ -101,13 +99,13 @@ def main(input_csv:str, folder_outputs:str='outputs', training:bool=False):
     max_mismatches = 14
 
     logger.info("Parameters loaded.")
-    
+
     folder_outputs = Path(folder_outputs) / run
     folder_outputs.mkdir(parents=True, exist_ok=True)
 
-    combination_folder_out = os.path.join(
-        folder_outputs,
-        f"comb_{ass_method}_c{conf}_ks{kmer_size}_ts{size_threshold}_mo{min_overlap}_mi{min_identity}_mm{max_mismatches}",
+    combination_folder_out = (
+        folder_outputs
+        / f"comb_{ass_method}_c{conf}_ks{kmer_size}_ts{size_threshold}_mo{min_overlap}_mi{min_identity}_mm{max_mismatches}"
     )
     prep.create_subdirectories_outputs(combination_folder_out)
 
