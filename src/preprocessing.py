@@ -67,9 +67,11 @@ def create_subdirectories_figures(folder):
     for subdirectory in subdirectories:
         create_directory(f"{folder}/{subdirectory}")
 
+
 def normalise(string):
     string = string.replace("UNIMOD", "").replace("I", "L")
-    return ''.join(re.findall(r'[A-Z]', string))
+    return "".join(re.findall(r"[A-Z]", string))
+
 
 def normalize_sequence(sequence):
     """

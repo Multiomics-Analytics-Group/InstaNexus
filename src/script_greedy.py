@@ -44,7 +44,9 @@ repo_folder = Path(__file__).resolve().parents[1]
 
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
 parser.add_argument("--input_csv", type=str, help="Input file")
-parser.add_argument("--folder_outputs", default="outputs", type=str, help="Outputs folder")
+parser.add_argument(
+    "--folder_outputs", default="outputs", type=str, help="Outputs folder"
+)
 parser.add_argument("--training", action="store_true", help="Training mode")
 
 logging.basicConfig(
