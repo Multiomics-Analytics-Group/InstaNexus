@@ -45,7 +45,7 @@ repo_folder = Path(__file__).resolve().parents[1]
 
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
 parser.add_argument("--input_csv", type=str, help="Input file")
-parser.add_argument("--folder_outputs", type=str, help="Outputs folder")
+parser.add_argument("--folder_outputs",default='outputs',  type=str, help="Outputs folder")
 parser.add_argument("--training", action="store_true", help="Training mode")
 
 logging.basicConfig(
@@ -255,6 +255,12 @@ def main(input_csv:str, folder_outputs:str='outputs', training:bool=False):
     consensus_folder = os.path.join(scaffolds_folder_out, "consensus")
     cons.process_alignment_files(align_folder, consensus_folder)
 
+
 if __name__ == "__main__":
     args = parser.parse_args()
-    main(args.input_csv, args.folder_outputs, args.training)
+    main(
+        input_csv=args.input_csv,
+        folder_outputs=args.folder_outputs,
+        training=args.training,
+    )
+ 
