@@ -39,6 +39,8 @@ import dbg
 import mapping as map
 import preprocessing as prep
 
+repo_folder = Path(__file__).resolve().parents[1]
+
 # import libraries
 
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
@@ -117,7 +119,7 @@ def main(input_csv):
     df["cleaned_preds"] = df["preds"].apply(prep.remove_modifications)
     cleaned_psms = df["cleaned_preds"].tolist()
     filtered_psms = prep.filter_contaminants(
-        cleaned_psms, run, "../fasta/contaminants.fasta"
+        cleaned_psms, run, repo_folder / "fasta/contaminants.fasta"
     )
     df = df[df["cleaned_preds"].isin(filtered_psms)]
     df["mapped"] = df["cleaned_preds"].apply(
