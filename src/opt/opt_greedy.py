@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-r""" Full assembly script for proteins.
- _____  _______  _    _ 
+r"""Full assembly script for proteins.
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |
@@ -27,8 +27,6 @@ from pathlib import Path
 
 import Bio
 import pandas as pd
-
-# import libraries
 
 # my modules
 from src import compute_statistics as comp_stat

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-r""" Greedy assembly script.
- _____  _______  _    _ 
+r"""Greedy assembly script.
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |
