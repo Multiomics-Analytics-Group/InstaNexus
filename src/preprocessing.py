@@ -68,11 +68,6 @@ def create_subdirectories_figures(folder):
         create_directory(f"{folder}/{subdirectory}")
 
 
-def normalise(string):
-    string = string.replace("UNIMOD", "").replace("I", "L")
-    return "".join(re.findall(r"[A-Z]", string))
-
-
 def normalize_sequence(sequence):
     """
     Normalize the given amino acid sequence by replacing all occurrences of 'I' with 'L'.
@@ -89,7 +84,7 @@ def normalize_sequence(sequence):
 def remove_modifications(psm_column):
     """
     Remove any content within parentheses, including the parentheses, from a given string.
-    Remove UNIPROT modifications and normalize I to L.
+    Remove UNIMOD modifications and normalize I to L.
 
     Parameters:
     - psm_column (str): The string containing modifications in parentheses (e.g., "A(ox)BC(mod)D"). If the value is null, it returns None.
@@ -102,9 +97,23 @@ def remove_modifications(psm_column):
         ret = re.sub(
             r"\(.*?\)", "", psm_column
         )  # Replace any content in parentheses with an empty string
-        ret = normalise(ret)
+        ret = re.sub(r"\[.*?\]", "", ret)  # replace UNIMOD modifications in square brackets
+        ret = normalize_sequence(ret)
         return ret
     return None
+
+# ! needs to move once it is a package
+def test_remove_modifications():
+    assert remove_modifications("A(ox)BC(mod)D") == "ABCD"
+    assert remove_modifications("A[UNIMOD:21]BC[UNIMOD:35]D") == "ABCD"
+    assert remove_modifications("A(ox)[UNIMOD:21]BC(mod)[UNIMOD:35]D") == "ABCD"
+    assert remove_modifications(None) is None
+    assert remove_modifications("ACD") == "ACD"
+    assert remove_modifications("A(I)BCD") == "ABCD"
+    assert remove_modifications("A(ox)B(I)C(mod)D") == "ABCD"
+    assert remove_modifications("A(ox)[UNIMOD:21]B(I)C(mod)[UNIMOD:35]D") == "ABCD"
+    assert remove_modifications("AI BCD") == "AL BCD"
+    assert remove_modifications("A(ox)I B(mod)CD") == "AL BCD"
 
 
 def clean_dataframe(df):
