@@ -88,7 +88,7 @@ def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False
     if training:
         meta = get_sample_metadata(run, chain="")
         protein = meta["protein"]
-        #chain = meta["chain"]
+        # chain = meta["chain"]
         proteases = meta["proteases"]
 
     ass_method = "greedy"

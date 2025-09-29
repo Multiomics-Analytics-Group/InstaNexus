@@ -97,10 +97,13 @@ def remove_modifications(psm_column):
         ret = re.sub(
             r"\(.*?\)", "", psm_column
         )  # Replace any content in parentheses with an empty string
-        ret = re.sub(r"\[.*?\]", "", ret)  # replace UNIMOD modifications in square brackets
+        ret = re.sub(
+            r"\[.*?\]", "", ret
+        )  # replace UNIMOD modifications in square brackets
         ret = normalize_sequence(ret)
         return ret
     return None
+
 
 # ! needs to move once it is a package
 def test_remove_modifications():
