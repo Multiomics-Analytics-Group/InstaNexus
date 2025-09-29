@@ -20,6 +20,7 @@ __status__ = Dev
 # !pip install kaleido # to export plotly figures as png
 # !pip install --upgrade nbformat # to avoid plotly error
 
+import argparse
 import json
 import logging
 import os
@@ -29,7 +30,6 @@ import Bio
 import pandas as pd
 
 # import libraries
-
 import alignment as align
 import clustering as clus
 import compute_statistics as comp_stat
@@ -40,6 +40,15 @@ import greedy_method as greedy
 import mapping as map
 import preprocessing as prep
 
+repo_folder = Path(__file__).resolve().parents[1]
+
+parser = argparse.ArgumentParser(description="Protein Assembly Script")
+parser.add_argument("--input_csv", type=str, help="Input file")
+parser.add_argument(
+    "--folder_outputs", default="outputs", type=str, help="Outputs folder"
+)
+parser.add_argument("--training", action="store_true", help="Training mode")
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
@@ -47,9 +56,9 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 JSON_DIR = BASE_DIR / "json"
-INPUT_DIR = BASE_DIR / "inputs"
-FASTA_DIR = BASE_DIR / "fasta"
-OUTPUTS_DIR = BASE_DIR / "outputs"
+# INPUT_DIR = BASE_DIR / "inputs"
+# FASTA_DIR = BASE_DIR / "fasta"
+# OUTPUTS_DIR = BASE_DIR / "outputs"
 
 
 def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.json"):
@@ -68,17 +77,19 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def main():
+def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False):
     """Main function to run the assembly script."""
+
+    input_csv = Path(input_csv)
 
     logger.info("Starting protein assembly pipeline.")
 
-    run = "BIND17"
-
-    meta = get_sample_metadata(run, chain="")
-    protein = meta["protein"]
-    chain = meta["chain"]
-    proteases = meta["proteases"]
+    run = input_csv.stem
+    if training:
+        meta = get_sample_metadata(run, chain="")
+        protein = meta["protein"]
+        # chain = meta["chain"]
+        proteases = meta["proteases"]
 
     ass_method = "greedy"
 
@@ -90,11 +101,12 @@ def main():
 
     logger.info("Parameters loaded.")
 
-    folder_outputs = f"../outputs/{run}{chain}"
-    prep.create_directory(folder_outputs)
-    combination_folder_out = os.path.join(
-        folder_outputs,
-        f"comb_{ass_method}_c{conf}_ts{size_threshold}_mo{min_overlap}_mi{min_identity}_mm{max_mismatches}",
+    folder_outputs = Path(folder_outputs) / run
+    folder_outputs.mkdir(parents=True, exist_ok=True)
+
+    combination_folder_out = (
+        folder_outputs
+        / f"comb_{ass_method}_c{conf}_ts{size_threshold}_mo{min_overlap}_mi{min_identity}_mm{max_mismatches}"
     )
     prep.create_subdirectories_outputs(combination_folder_out)
 
@@ -102,22 +114,24 @@ def main():
 
     # Data cleaning
     logger.info("Starting data cleaning...")
-
-    protein_norm = prep.normalize_sequence(protein)
-    df = pd.read_csv(f"../inputs/{run}.csv")
-    df["protease"] = df["experiment_name"].apply(
-        lambda name: prep.extract_protease(name, proteases)
-    )
+    if training:
+        protein_norm = prep.normalize_sequence(protein)
+    df = pd.read_csv(input_csv)
+    if training:
+        df["protease"] = df["experiment_name"].apply(
+            lambda name: prep.extract_protease(name, proteases)
+        )
     df = prep.clean_dataframe(df)
     df["cleaned_preds"] = df["preds"].apply(prep.remove_modifications)
     cleaned_psms = df["cleaned_preds"].tolist()
     filtered_psms = prep.filter_contaminants(
-        cleaned_psms, run, "../fasta/contaminants.fasta"
+        cleaned_psms, run, repo_folder / "fasta/contaminants.fasta"
     )
     df = df[df["cleaned_preds"].isin(filtered_psms)]
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: "True" if x in protein_norm else "False"
-    )
+    if training:
+        df["mapped"] = df["cleaned_preds"].apply(
+            lambda x: "True" if x in protein_norm else "False"
+        )
     df = df[df["conf"] > conf]
     df.reset_index(drop=True, inplace=True)
     final_psms = df["cleaned_preds"].tolist()
@@ -144,16 +158,17 @@ def main():
         f"{combination_folder_out}/contigs/{ass_method}_contig_{conf}_{run}.fasta",
         "fasta",
     )
-    mapped_contigs = map.process_protein_contigs_scaffold(
-        assembled_contigs, protein_norm, max_mismatches, min_identity
-    )
-    df_contigs = map.create_dataframe_from_mapped_sequences(data=mapped_contigs)
-    comp_stat.compute_assembly_statistics(
-        df=df_contigs,
-        sequence_type="contigs",
-        output_folder=f"{combination_folder_out}/statistics",
-        reference=protein_norm,
-    )
+    if training:
+        mapped_contigs = map.process_protein_contigs_scaffold(
+            assembled_contigs, protein_norm, max_mismatches, min_identity
+        )
+        df_contigs = map.create_dataframe_from_mapped_sequences(data=mapped_contigs)
+        comp_stat.compute_assembly_statistics(
+            df=df_contigs,
+            sequence_type="contigs",
+            output_folder=f"{combination_folder_out}/statistics",
+            reference=protein_norm,
+        )
 
     assembled_scaffolds = greedy.combine_seqs_into_scaffolds(
         assembled_contigs, min_overlap
@@ -190,22 +205,23 @@ def main():
         f"{combination_folder_out}/scaffolds/{ass_method}_scaffold_{conf}_{run}.fasta",
         "fasta",
     )
-    mapped_scaffolds = map.process_protein_contigs_scaffold(
-        assembled_contigs=assembled_scaffolds,
-        target_protein=protein_norm,
-        max_mismatches=max_mismatches,
-        min_identity=min_identity,
-    )
+    if training:
+        mapped_scaffolds = map.process_protein_contigs_scaffold(
+            assembled_contigs=assembled_scaffolds,
+            target_protein=protein_norm,
+            max_mismatches=max_mismatches,
+            min_identity=min_identity,
+        )
 
-    df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
-        data=mapped_scaffolds
-    )
-    comp_stat.compute_assembly_statistics(
-        df=df_scaffolds_mapped,
-        sequence_type="scaffolds",
-        output_folder=f"{combination_folder_out}/statistics",
-        reference=protein_norm,
-    )
+        df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
+            data=mapped_scaffolds
+        )
+        comp_stat.compute_assembly_statistics(
+            df=df_scaffolds_mapped,
+            sequence_type="scaffolds",
+            output_folder=f"{combination_folder_out}/statistics",
+            reference=protein_norm,
+        )
 
     # Clustering
     scaffolds_folder_out = f"{combination_folder_out}/scaffolds"
@@ -251,4 +267,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = parser.parse_args()
+    main(
+        input_csv=args.input_csv,
+        folder_outputs=args.folder_outputs,
+        training=args.training,
+    )

@@ -84,6 +84,7 @@ def normalize_sequence(sequence):
 def remove_modifications(psm_column):
     """
     Remove any content within parentheses, including the parentheses, from a given string.
+    Remove UNIMOD modifications and normalize I to L.
 
     Parameters:
     - psm_column (str): The string containing modifications in parentheses (e.g., "A(ox)BC(mod)D"). If the value is null, it returns None.
@@ -93,10 +94,29 @@ def remove_modifications(psm_column):
     """
 
     if pd.notnull(psm_column):
-        return re.sub(
+        ret = re.sub(
             r"\(.*?\)", "", psm_column
         )  # Replace any content in parentheses with an empty string
+        ret = re.sub(
+            r"\[.*?\]", "", ret
+        )  # replace UNIMOD modifications in square brackets
+        ret = normalize_sequence(ret)
+        return ret
     return None
+
+
+# ! needs to move once it is a package
+def test_remove_modifications():
+    assert remove_modifications("A(ox)BC(mod)D") == "ABCD"
+    assert remove_modifications("A[UNIMOD:21]BC[UNIMOD:35]D") == "ABCD"
+    assert remove_modifications("A(ox)[UNIMOD:21]BC(mod)[UNIMOD:35]D") == "ABCD"
+    assert remove_modifications(None) is None
+    assert remove_modifications("ACD") == "ACD"
+    assert remove_modifications("A(I)BCD") == "ABCD"
+    assert remove_modifications("A(ox)B(I)C(mod)D") == "ABCD"
+    assert remove_modifications("A(ox)[UNIMOD:21]B(I)C(mod)[UNIMOD:35]D") == "ABCD"
+    assert remove_modifications("AI BCD") == "AL BCD"
+    assert remove_modifications("A(ox)I B(mod)CD") == "AL BCD"
 
 
 def clean_dataframe(df):
