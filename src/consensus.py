@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-r""" 
- _____  _______  _    _ 
+r"""
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |
@@ -17,21 +17,21 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import os
 import json
+import os
 import re
 import statistics
-import pandas as pd
-import Bio.SeqIO
 from collections import Counter
-import matplotlib.pyplot as plt
-import seaborn as sns
+
+import Bio.SeqIO
 import logomaker
-from tqdm import tqdm
-from Bio import SeqIO
+import matplotlib.pyplot as plt
+import pandas as pd
 import plotly.express as px
 import plotly.io as pio
-
+import seaborn as sns
+from Bio import SeqIO
+from tqdm import tqdm
 
 
 def generate_pssm(aligned_records):
@@ -39,64 +39,62 @@ def generate_pssm(aligned_records):
     at each position across all sequences, resulting in a matrix where each position has the relative frequency of each amino acid.
     """
     pssm = {}
-    
+
     for record in aligned_records:
         for i, aa in enumerate(record.seq):
             if i not in pssm:
                 pssm[i] = Counter()
-            if aa != '-':
+            if aa != "-":
                 pssm[i][aa] += 1
-    
+
     for i in pssm:
         total = sum(pssm[i].values())
         for aa in pssm[i]:
             pssm[i][aa] /= total
-    
+
     pssm_df = pd.DataFrame(pssm).fillna(0).T
     pssm_df.index = pssm_df.index + 1
     pssm_df = pssm_df.sort_index(axis=1)
-    
+
     return pssm_df
 
 
-
 def generate_consensus(pssm_df, threshold=0.6):
-    """ Generate a consensus sequence from a Position-Specific Scoring Matrix (PSSM) DataFrame. 
+    """Generate a consensus sequence from a Position-Specific Scoring Matrix (PSSM) DataFrame.
     It determine the most frequent amino acid at each position. If the highest frequency at a position exceeds the given threshold, that amino acid is added
     to the consensus sequence. Otherwise, a gap ('-') is added to indicate lack of consensus at that position.
     """
-    
+
     consensus = ""
-    
+
     for i in pssm_df.index:
         # Check if the highest frequency at this position is above the threshold
         if pssm_df.loc[i].max() > threshold:
             # If so, add the amino acid with the highest frequency to the consensus
             consensus += pssm_df.loc[i].idxmax()
         else:
-            consensus += '-'
-    
+            consensus += "-"
+
     return consensus
 
 
-
 def plot_heatmap(pssm_df, output_file):
-    """ Plots a heatmap of the given PSSM DataFrame and saves it to the specified output file.
-    """
+    """Plots a heatmap of the given PSSM DataFrame and saves it to the specified output file."""
     # Set a maximum width for the figure to prevent excessively large images
     max_fig_width = 50  # Maximum width in inches
     fig_width = min(len(pssm_df) / 1.5, max_fig_width)
 
     plt.figure(figsize=(fig_width, 8))
-    cmap = sns.cubehelix_palette(start=2, rot=0, dark=.15, light=.85, reverse=True, as_cmap=True)
-    sns.heatmap(pssm_df.T, cmap=cmap, cbar=False, linewidths=0.1, linecolor='white')
+    cmap = sns.cubehelix_palette(
+        start=2, rot=0, dark=0.15, light=0.85, reverse=True, as_cmap=True
+    )
+    sns.heatmap(pssm_df.T, cmap=cmap, cbar=False, linewidths=0.1, linecolor="white")
     plt.yticks(rotation=0, fontsize=15)
     plt.xticks(fontsize=15)
     plt.tight_layout()
     plt.savefig(output_file)
     plt.close()
-    #plt.show()
-
+    # plt.show()
 
 
 def plot_heatmap2(pssm_df, output_file):
@@ -108,9 +106,9 @@ def plot_heatmap2(pssm_df, output_file):
 
     fig = px.imshow(
         df_t,
-        color_continuous_scale='Reds',
-        aspect='auto',
-        labels={'x': 'Position', 'y': ' Amino acid', 'color': 'Frequency'}
+        color_continuous_scale="Reds",
+        aspect="auto",
+        labels={"x": "Position", "y": " Amino acid", "color": "Frequency"},
     )
 
     fig.update_layout(
@@ -118,20 +116,15 @@ def plot_heatmap2(pssm_df, output_file):
         xaxis_title="Position",
         yaxis_title=" Amino acid",
         margin=dict(l=40, r=40, t=40, b=40),
-        coloraxis_colorbar=dict(title='Frequency')
+        coloraxis_colorbar=dict(title="Frequency"),
     )
 
     # Show every 5th position on the x-axis
     x_tickvals = list(range(0, df_t.shape[1], 5))
-    fig.update_xaxes(
-        tickmode='array',
-        tickvals=x_tickvals,
-        tickangle=0
-    )
+    fig.update_xaxes(tickmode="array", tickvals=x_tickvals, tickangle=0)
 
     fig.update_yaxes(autorange="reversed")  # To match seaborn orientation
     pio.write_image(fig, output_file, format="svg", width=1200, height=400, scale=2)
-
 
 
 def plot_logo(pssm_df, title, output_file):
@@ -148,8 +141,8 @@ def plot_logo(pssm_df, title, output_file):
         stack_order="big_on_top",
         center_values=False,
         flip_below=False,
-        fade_below=.5,
-        shade_below=.5,
+        fade_below=0.5,
+        shade_below=0.5,
         fade_probabilities=False,
         vpad=0.05,
         vsep=0.0,
@@ -164,7 +157,7 @@ def plot_logo(pssm_df, title, output_file):
     logo.ax.set_title(title, fontsize=20)
     plt.tight_layout()
     plt.savefig(output_file)
-    #plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -210,17 +203,17 @@ def plot_logo2(pssm_df, output_file):
     plt.close()
 
 
-
 def process_alignment_files(align_folder, consensus_folder):
-    """ Process alignment files in the specified folder and generate consensus sequences, heatmaps, and logos"
-    """
+    """Process alignment files in the specified folder and generate consensus sequences, heatmaps, and logos" """
     for align_subfolder in os.listdir(align_folder):
         align_subfolder_path = os.path.join(align_folder, align_subfolder)
         print(f"Processing {align_subfolder_path}")
         if os.path.isdir(align_subfolder_path):
             # Create subfolders for consensus, heatmap, and logo
             consensus_subfolder = os.path.join(consensus_folder, align_subfolder)
-            consensus_fasta_folder = os.path.join(consensus_subfolder, "consensus_fasta")
+            consensus_fasta_folder = os.path.join(
+                consensus_subfolder, "consensus_fasta"
+            )
             heatmap_folder = os.path.join(consensus_subfolder, "heatmap")
             logo_folder = os.path.join(consensus_subfolder, "logo")
             os.makedirs(consensus_fasta_folder, exist_ok=True)
@@ -228,7 +221,7 @@ def process_alignment_files(align_folder, consensus_folder):
             os.makedirs(logo_folder, exist_ok=True)
 
             for alignment_file in tqdm(os.listdir(align_subfolder_path)):
-                if alignment_file.endswith('.afa'):
+                if alignment_file.endswith(".afa"):
                     alignment_path = os.path.join(align_subfolder_path, alignment_file)
                     base_filename = os.path.splitext(alignment_file)[0]
 
@@ -240,16 +233,20 @@ def process_alignment_files(align_folder, consensus_folder):
                     consensus_record = Bio.SeqRecord.SeqRecord(
                         Bio.Seq.Seq(consensus_sequence),
                         id=base_filename,
-                        description="Consensus sequence"
+                        description="Consensus sequence",
                     )
-                    consensus_fasta_path = os.path.join(consensus_fasta_folder, f"{base_filename}_consensus.fasta")
+                    consensus_fasta_path = os.path.join(
+                        consensus_fasta_folder, f"{base_filename}_consensus.fasta"
+                    )
                     Bio.SeqIO.write([consensus_record], consensus_fasta_path, "fasta")
 
-                    heatmap_path = os.path.join(heatmap_folder, f"{base_filename}_heatmap.svg")
+                    heatmap_path = os.path.join(
+                        heatmap_folder, f"{base_filename}_heatmap.svg"
+                    )
                     plot_heatmap2(pssm_df, heatmap_path)
 
                     logo_path = os.path.join(logo_folder, f"{base_filename}_logo.svg")
-                    #plot_logo(pssm_df, base_filename, logo_path)
+                    # plot_logo(pssm_df, base_filename, logo_path)
                     plot_logo2(pssm_df, logo_path)
 
 
@@ -261,7 +258,9 @@ def generate_consensus_stats(consensus_base_folder):
             consensus_fasta_path = os.path.join(cluster_path, "consensus_fasta")
 
             if os.path.isdir(consensus_fasta_path):
-                fasta_files = [f for f in os.listdir(consensus_fasta_path) if f.endswith('.fasta')]
+                fasta_files = [
+                    f for f in os.listdir(consensus_fasta_path) if f.endswith(".fasta")
+                ]
                 n_fasta_files = len(fasta_files)
 
                 lengths = []
@@ -278,12 +277,16 @@ def generate_consensus_stats(consensus_base_folder):
                     if "-" not in seq:
                         sequences_without_gaps += 1
                     else:
-                        gap_lengths = [len(g.group()) for g in re.finditer(r'-+', seq)]
+                        gap_lengths = [len(g.group()) for g in re.finditer(r"-+", seq)]
                         gap_lengths_all.extend(gap_lengths)
 
                 longest_gap = max(gap_lengths_all) if gap_lengths_all else 0
                 shortest_gap = min(gap_lengths_all) if gap_lengths_all else 0
-                percent_no_gaps = (sequences_without_gaps / n_fasta_files * 100) if n_fasta_files > 0 else 0
+                percent_no_gaps = (
+                    (sequences_without_gaps / n_fasta_files * 100)
+                    if n_fasta_files > 0
+                    else 0
+                )
                 max_length = max(lengths) if lengths else 0
                 min_length = min(lengths) if lengths else 0
                 avg_length = statistics.mean(lengths) if lengths else 0
@@ -295,14 +298,14 @@ def generate_consensus_stats(consensus_base_folder):
                     "percent_without_gaps": round(percent_no_gaps, 2),
                     "max_consensus_length": max_length,
                     "min_consensus_length": min_length,
-                    "avg_consensus_length": round(avg_length, 2)
+                    "avg_consensus_length": round(avg_length, 2),
                 }
 
                 stats_folder = os.path.join(cluster_path, "consensus_stats")
                 os.makedirs(stats_folder, exist_ok=True)
 
                 stats_path = os.path.join(stats_folder, "stats.json")
-                with open(stats_path, 'w') as f:
+                with open(stats_path, "w") as f:
                     json.dump(stats, f, indent=4)
 
                 print(f"Stats saved in: {stats_path}")
@@ -321,7 +324,7 @@ def load_all_consensus_sequences(consensus_base_folder):
             for filename in os.listdir(consensus_fasta_folder):
                 if filename.endswith((".fasta", ".fa")):
                     filepath = os.path.join(consensus_fasta_folder, filename)
-                    
+
                     try:
                         for record in SeqIO.parse(filepath, "fasta"):
                             sequences.append(str(record.seq))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 r"""
- _____  _______  _    _ 
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |
@@ -18,10 +18,12 @@ __status__ = Dev
 """
 
 import os
+
 import pandas as pd
 
-
-base_directory = "/home/marcor/works/assembly/outputs/ma1/light"  # Change this to your actual path
+base_directory = (
+    "/home/marcor/works/assembly/outputs/ma1/light"  # Change this to your actual path
+)
 
 merged_data = []
 
@@ -31,20 +33,20 @@ missing_folders = []
 for folder in os.listdir(base_directory):
     folder_path = os.path.join(base_directory, folder)
     statistics_path = os.path.join(folder_path, "statistics")
-    
+
     if os.path.isdir(statistics_path):
         contigs_file = os.path.join(statistics_path, "contigs_stats_default.tsv")
         scaffolds_file = os.path.join(statistics_path, "scaffolds_stats_default.tsv")
-        
+
         if os.path.exists(contigs_file) and os.path.exists(scaffolds_file):
             # Read both files
             df_contigs = pd.read_csv(contigs_file, sep="\t")
             df_scaffolds = pd.read_csv(scaffolds_file, sep="\t")
-            
+
             # Add a column indicating the source folder
             df_contigs["Source_Folder"] = folder
             df_scaffolds["Source_Folder"] = folder
-            
+
             # Append to the merged list
             merged_data.append(df_contigs)
             merged_data.append(df_scaffolds)
@@ -54,7 +56,9 @@ for folder in os.listdir(base_directory):
 
 if merged_data:
     final_df = pd.concat(merged_data, ignore_index=True)
-    final_df.to_csv(os.path.join(base_directory, "merged_statistics.tsv"), sep="\t", index=False)
+    final_df.to_csv(
+        os.path.join(base_directory, "merged_statistics.tsv"), sep="\t", index=False
+    )
     print("Merged DataFrame saved as 'merged_statistics.tsv'.")
 else:
     print("No valid statistics files found.")

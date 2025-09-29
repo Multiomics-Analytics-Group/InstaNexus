@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-r""" Hyperparameter optimization script for assembly analysis.
+r"""Hyperparameter optimization script for assembly analysis.
  _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
@@ -17,18 +17,19 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-# import libraries
-import os
+import itertools
 import json
 import logging
-import itertools
 
+# import libraries
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
+
 from tqdm import tqdm
 
 from src.opt.opt_dbg import run_pipeline_dbg
 from src.opt.opt_greedy import run_pipeline_greedy
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
@@ -53,18 +54,18 @@ total_combinations = len(combinations)
 os.makedirs("logs", exist_ok=True)
 
 # Set up logging
-handlers = [
-    logging.FileHandler(f"logs/grid_search.log"),
-    logging.StreamHandler()
-]
+handlers = [logging.FileHandler("logs/grid_search.log"), logging.StreamHandler()]
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=handlers
+    handlers=handlers,
 )
 
-logging.info(f"Starting hyperparameter optimization with {total_combinations} combinations.")
+logging.info(
+    f"Starting hyperparameter optimization with {total_combinations} combinations."
+)
 print(f"Total combinations: {total_combinations}")
+
 
 def run_analysis(params, iteration):
     """Wrapper function to run the main analysis with error handling."""
@@ -92,6 +93,7 @@ def grid_search_parallel():
             pass
 
     logging.info("Hyperparameter optimization completed.")
+
 
 if __name__ == "__main__":
     grid_search_parallel()

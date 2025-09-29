@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 r"""
- _____  _______  _    _ 
+ _____  _______  _    _
 |  __ \|__   __|| |  | |
 | |  | |  | |   | |  | |
 | |  | |  | |   | |  | |
@@ -18,19 +18,18 @@ __status__ = Dev
 """
 
 # import libraries
-from collections import defaultdict
-from tqdm import tqdm
 from itertools import combinations
+
+from tqdm import tqdm
 
 
 def find_overlaps(contigs, min_overlap):
-
     """
     Find overlaps between pairs of contigs based on specified minimum overlap.
 
     This function takes a list of contigs and identifies overlapping
-    regions between pairs of contigs where the overlap is at least `min_overlap` 
-    nucleotides. For each pair of contigs that overlap, it records the contigs and 
+    regions between pairs of contigs where the overlap is at least `min_overlap`
+    nucleotides. For each pair of contigs that overlap, it records the contigs and
     the length of the overlap.
 
     Parameters:
@@ -52,17 +51,23 @@ def find_overlaps(contigs, min_overlap):
     ```
     """
     overlaps = []
-    total_pairs = sum(1 for _ in combinations(contigs, 2))  # Calculate total number of pairs
+    total_pairs = sum(
+        1 for _ in combinations(contigs, 2)
+    )  # Calculate total number of pairs
 
     with tqdm(total=total_pairs, desc="Finding overlaps") as pbar:
-        for a, b in combinations(contigs, 2): # combinations() generates all pairs of contigs
-            for i in range(min_overlap, min(len(a), len(b)) + 1): # Check overlaps of different lengths
+        for a, b in combinations(
+            contigs, 2
+        ):  # combinations() generates all pairs of contigs
+            for i in range(
+                min_overlap, min(len(a), len(b)) + 1
+            ):  # Check overlaps of different lengths
                 if a[-i:] == b[:i]:
                     overlaps.append((a, b, i))
                 if b[-i:] == a[:i]:
                     overlaps.append((b, a, i))
             pbar.update(1)  # Update progress bar after each pair is processed
-    
+
     return overlaps
 
 
@@ -85,7 +90,7 @@ def find_overlaps(contigs, min_overlap):
 #     """
 
 #     merged = set(sequences)  # Use a set to handle unique sequences
-    
+
 #     # Compare each sequence with every other to remove redundant contained sequences
 #     for seq in tqdm(sequences, desc="Filtering contained sequences"):
 #         for other_seq in sequences:
@@ -99,12 +104,11 @@ def find_overlaps(contigs, min_overlap):
 
 
 def create_scaffolds(contigs, min_overlap):
-
     """
     Create scaffolds from a list of contigs by merging overlapping sequences.
 
-    This function finds overlaps between contigs based on a specified minimum overlap 
-    and merges them to form longer sequences (scaffolds). Overlapping regions are 
+    This function finds overlaps between contigs based on a specified minimum overlap
+    and merges them to form longer sequences (scaffolds). Overlapping regions are
     combined, and the resulting merged contigs are added to the final list of scaffolds.
 
     Parameters:
@@ -126,31 +130,32 @@ def create_scaffolds(contigs, min_overlap):
 def filter_and_sort_scaffolds(scaffolds, size_threshold):
     """
     Filters and sorts a list of scaffolds.
-    
+
     Parameters:
     - scaffolds (list of str): List of scaffolds (sequences).
     - size_threshold (int): Minimum length of scaffolds to keep.
-    
+
     Returns:
     - list of str: Filtered and sorted scaffolds.
     """
     # Remove duplicates
     scaffolds = list(set(scaffolds))
-    
+
     # Filter scaffolds based on size threshold
-    filtered_scaffolds = [contig for contig in scaffolds if len(contig) > size_threshold]
-    
+    filtered_scaffolds = [
+        contig for contig in scaffolds if len(contig) > size_threshold
+    ]
+
     # Sort scaffolds by length in descending order
     return sorted(filtered_scaffolds, key=len, reverse=True)
-
 
 
 def find_best_overlap(seq1, seq2, min_overlap):
     """
     Identifies the longest overlap between two sequences, seq1 and seq2, with a minimum required overlap.
 
-    This function goes through seq2 to find any substring of length `min_overlap` or more 
-    that overlaps with a portion of seq1. It returns the length of the best overlap found, 
+    This function goes through seq2 to find any substring of length `min_overlap` or more
+    that overlaps with a portion of seq1. It returns the length of the best overlap found,
     along with the starting indices of the overlap in both sequences.
 
     Parameters:
@@ -165,17 +170,16 @@ def find_best_overlap(seq1, seq2, min_overlap):
         - best_overlap_index2 (int): Starting index of the overlap in seq2. If no overlap, returns -1.
     """
 
-    
     best_overlap_len = 0  # Length of the longest overlap found
     best_overlap_index = -1  # Starting index of the best overlap in seq1
     best_overlap_index2 = -1  # Starting index of the best overlap in seq2
 
     # Iterate through possible starting positions in seq2 for an overlap
     for i in range(len(seq2) - min_overlap + 1):
-        
+
         # Find the starting index in seq1 where a potential overlap with seq2[i:i+min_overlap] begins
-        ind = seq1.find(seq2[i:i+min_overlap])
-        
+        ind = seq1.find(seq2[i : i + min_overlap])
+
         # Check if this substring exists in seq1
         if ind != -1:
             overlap_len = min_overlap  # Start with the minimum overlap length
@@ -200,41 +204,56 @@ def find_best_overlap(seq1, seq2, min_overlap):
 # dbg makes mistakes in ends
 # min_overlap in this case is the minimum length required between two sequences to be considered overlapping
 
+
 def recombine_sequences(sequences, min_overlap):
-    """ Recombine a list of contigs (sequences) by identifying overlapping regions and generating 
+    """Recombine a list of contigs (sequences) by identifying overlapping regions and generating
     new recombined sequences from these overlaps.
 
-    This function goes through all pairs of contigs and attempts to find overlaps of at least 
-    `min_overlap` length. If an overlap is found, the overlapping region is retained, while 
+    This function goes through all pairs of contigs and attempts to find overlaps of at least
+    `min_overlap` length. If an overlap is found, the overlapping region is retained, while
     the non-overlapping ends are recombined to create new sequence variations.
     """
-    
+
     recombined_sequences = []  # List to store original and recombined sequences
 
     # Iterate over all unique pairs of contigs to check for possible overlaps
     for seq1, seq2 in tqdm(combinations(sequences, 2), desc="Recombining contigs"):
-        
+
         # Find the best overlap between seq1 and seq2
-        overlap_len, overlap_index1, overlap_index2 = find_best_overlap(seq1, seq2, min_overlap)
-        
+        overlap_len, overlap_index1, overlap_index2 = find_best_overlap(
+            seq1, seq2, min_overlap
+        )
+
         # Add the original sequences to the list of recombined sequences
         recombined_sequences.append(seq1)
         recombined_sequences.append(seq2)
-        
+
         # If an overlap was found, proceed with recombination
         if overlap_len != -1:
             # Extract the overlapping segment from seq1 based on the indices
-            overlap = seq1[overlap_index1:overlap_index1 + overlap_len]
-            
+            overlap = seq1[overlap_index1 : overlap_index1 + overlap_len]
+
             # Split the sequences into overlapping and non-overlapping regions
-            nterm_seq1 = seq1[:overlap_index1]        # N-terminal (start) of seq1 before overlap
-            nterm_seq2 = seq2[:overlap_index2]        # N-terminal (start) of seq2 before overlap
-            cterm_seq1 = seq1[overlap_index1 + overlap_len:]  # C-terminal (end) of seq1 after overlap
-            cterm_seq2 = seq2[overlap_index2 + overlap_len:]  # C-terminal (end) of seq2 after overlap
+            nterm_seq1 = seq1[
+                :overlap_index1
+            ]  # N-terminal (start) of seq1 before overlap
+            nterm_seq2 = seq2[
+                :overlap_index2
+            ]  # N-terminal (start) of seq2 before overlap
+            cterm_seq1 = seq1[
+                overlap_index1 + overlap_len :
+            ]  # C-terminal (end) of seq1 after overlap
+            cterm_seq2 = seq2[
+                overlap_index2 + overlap_len :
+            ]  # C-terminal (end) of seq2 after overlap
 
             # Create new recombined sequences using the non-overlapping ends and the stable overlap
-            recombined_sequences.append(nterm_seq1 + overlap + cterm_seq2)  # Seq1 start + overlap + Seq2 end
-            recombined_sequences.append(nterm_seq2 + overlap + cterm_seq1)  # Seq2 start + overlap + Seq1 end
+            recombined_sequences.append(
+                nterm_seq1 + overlap + cterm_seq2
+            )  # Seq1 start + overlap + Seq2 end
+            recombined_sequences.append(
+                nterm_seq2 + overlap + cterm_seq1
+            )  # Seq2 start + overlap + Seq1 end
 
     # Return the list of recombined sequences
     return recombined_sequences
