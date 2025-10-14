@@ -20,6 +20,7 @@ dependencies:
   - mmseqs2
   - sbl::clustalomega
   - gawk
+  - black
   - wget
   - pip
   - pip:
