@@ -45,9 +45,16 @@ repo_folder = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
 parser.add_argument("--input_csv", type=str, help="Input file")
 parser.add_argument(
+    "--chain",
+    type=str,
+    choices=["light", "heavy"],
+    default="",
+    help="Specify chain type if applicable (light or heavy). Leave empty if not applicable.",
+)
+parser.add_argument(
     "--folder_outputs", default="outputs", type=str, help="Outputs folder"
 )
-parser.add_argument("--training", action="store_true", help="Training mode")
+parser.add_argument("--reference", action="store_true", help="Enable reference-based mode (use protein reference and compute statistics)")
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
@@ -70,6 +77,10 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
 
     entries = all_meta[run]
 
+    if not chain:
+        # If no chain is specified, return the first entry
+        return entries[0]
+
     for entry in entries:
         if entry["chain"] == chain:
             return entry
@@ -77,7 +88,7 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False):
+def main(input_csv: str, chain: str = "", folder_outputs: str = "outputs", reference: bool = False):
     """Main function to run the assembly script."""
 
     input_csv = Path(input_csv)
@@ -85,10 +96,14 @@ def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False
     logger.info("Starting protein assembly pipeline.")
 
     run = input_csv.stem
-    if training:
-        meta = get_sample_metadata(run, chain="light")
+    
+    if chain:
+        meta = get_sample_metadata(run, chain=chain)
+    else:
+            meta = get_sample_metadata(run)
+    
+    if reference:
         protein = meta["protein"]
-        # chain = meta["chain"]
         proteases = meta["proteases"]
 
     ass_method = "dbg"
@@ -115,11 +130,11 @@ def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False
 
     # Data cleaning
     logger.info("Starting data cleaning...")
-    if training:
+    if reference:
         protein_norm = prep.normalize_sequence(protein)
     df = pd.read_csv(input_csv)
-    if training:
-        df["protease"] = df["experiment_name"].apply(
+    
+    df["protease"] = df["experiment_name"].apply(
             lambda name: prep.extract_protease(name, proteases)
         )
     df = prep.clean_dataframe(df)
@@ -129,7 +144,8 @@ def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False
         cleaned_psms, run, repo_folder / "fasta/contaminants.fasta"
     )
     df = df[df["cleaned_preds"].isin(filtered_psms)]
-    if training:
+    
+    if reference:
         df["mapped"] = df["cleaned_preds"].apply(
             lambda x: "True" if x in protein_norm else "False"
         )
@@ -159,7 +175,7 @@ def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False
         f"{combination_folder_out}/contigs/{ass_method}_contig_{conf}_{run}.fasta",
         "fasta",
     )
-    if training:
+    if reference:
         mapped_contigs = map.process_protein_contigs_scaffold(
             assembled_contigs, protein_norm, max_mismatches, min_identity
         )
@@ -195,7 +211,7 @@ def main(input_csv: str, folder_outputs: str = "outputs", training: bool = False
         f"{combination_folder_out}/scaffolds/{ass_method}_scaffold_{conf}_{run}.fasta",
         "fasta",
     )
-    if training:
+    if reference:
         mapped_scaffolds = map.process_protein_contigs_scaffold(
             assembled_contigs=assembled_scaffolds,
             target_protein=protein_norm,
@@ -260,6 +276,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(
         input_csv=args.input_csv,
+        chain=args.chain,  # optional argument
         folder_outputs=args.folder_outputs,
-        training=args.training,
+        reference=args.reference,
     )
