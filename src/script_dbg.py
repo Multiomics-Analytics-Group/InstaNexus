@@ -54,7 +54,11 @@ parser.add_argument(
 parser.add_argument(
     "--folder_outputs", default="outputs", type=str, help="Outputs folder"
 )
-parser.add_argument("--reference", action="store_true", help="Enable reference-based mode (use protein reference and compute statistics)")
+parser.add_argument(
+    "--reference",
+    action="store_true",
+    help="Enable reference-based mode (use protein reference and compute statistics)",
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
@@ -88,7 +92,12 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def main(input_csv: str, chain: str = "", folder_outputs: str = "outputs", reference: bool = False):
+def main(
+    input_csv: str,
+    chain: str = "",
+    folder_outputs: str = "outputs",
+    reference: bool = False,
+):
     """Main function to run the assembly script."""
 
     input_csv = Path(input_csv)
@@ -96,12 +105,12 @@ def main(input_csv: str, chain: str = "", folder_outputs: str = "outputs", refer
     logger.info("Starting protein assembly pipeline.")
 
     run = input_csv.stem
-    
+
     if chain:
         meta = get_sample_metadata(run, chain=chain)
     else:
-            meta = get_sample_metadata(run)
-    
+        meta = get_sample_metadata(run)
+
     if reference:
         protein = meta["protein"]
         proteases = meta["proteases"]
@@ -133,10 +142,10 @@ def main(input_csv: str, chain: str = "", folder_outputs: str = "outputs", refer
     if reference:
         protein_norm = prep.normalize_sequence(protein)
     df = pd.read_csv(input_csv)
-    
+
     df["protease"] = df["experiment_name"].apply(
-            lambda name: prep.extract_protease(name, proteases)
-        )
+        lambda name: prep.extract_protease(name, proteases)
+    )
     df = prep.clean_dataframe(df)
     df["cleaned_preds"] = df["preds"].apply(prep.remove_modifications)
     cleaned_psms = df["cleaned_preds"].tolist()
@@ -144,7 +153,7 @@ def main(input_csv: str, chain: str = "", folder_outputs: str = "outputs", refer
         cleaned_psms, run, repo_folder / "fasta/contaminants.fasta"
     )
     df = df[df["cleaned_preds"].isin(filtered_psms)]
-    
+
     if reference:
         df["mapped"] = df["cleaned_preds"].apply(
             lambda x: "True" if x in protein_norm else "False"
@@ -162,6 +171,7 @@ def main(input_csv: str, chain: str = "", folder_outputs: str = "outputs", refer
     assembled_contigs = list(set(assembled_contigs))
     assembled_contigs = [seq for seq in assembled_contigs if len(seq) > size_threshold]
     assembled_contigs = sorted(assembled_contigs, key=len, reverse=True)
+
     records = [
         Bio.SeqRecord.SeqRecord(
             Bio.Seq.Seq(contig),

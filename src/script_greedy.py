@@ -88,7 +88,12 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def main(input_csv: str, chain: str = "", folder_outputs: str = "outputs", reference: bool = False):
+def main(
+    input_csv: str,
+    chain: str = "",
+    folder_outputs: str = "outputs",
+    reference: bool = False,
+):
     """Main function to run the assembly script."""
 
     input_csv = Path(input_csv)
