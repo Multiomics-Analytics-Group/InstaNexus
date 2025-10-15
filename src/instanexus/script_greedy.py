@@ -11,7 +11,7 @@ r"""Full assembly script for proteins.
 __authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
 __copyright__ = Copyright 2024-2025
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 16 Jun 2025
+__date__ = 15 Oct 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -30,17 +30,15 @@ import Bio
 import pandas as pd
 
 # import libraries
-import alignment as align
-import clustering as clus
-import compute_statistics as comp_stat
-import consensus as cons
-import greedy_method as greedy
+from . import alignment as align
+from . import clustering as clus
+from . import compute_statistics as comp_stat
+from . import consensus as cons
+from . import greedy_method as greedy
+from . import mapping as map
+from . import preprocessing as prep
 
-# my modules
-import mapping as map
-import preprocessing as prep
-
-repo_folder = Path(__file__).resolve().parents[1]
+repo_folder = Path(__file__).resolve().parents[2]
 
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
 parser.add_argument("--input_csv", type=str, help="Input file")
@@ -54,7 +52,11 @@ parser.add_argument(
 parser.add_argument(
     "--folder_outputs", default="outputs", type=str, help="Outputs folder"
 )
-parser.add_argument("--reference", action="store_true", help="reference mode")
+parser.add_argument(
+    "--reference",
+    action="store_true",
+    help="Enable reference-based mode (use protein reference and compute statistics)",
+    )
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
@@ -137,8 +139,8 @@ def main(
     if reference:
         protein_norm = prep.normalize_sequence(protein)
     df = pd.read_csv(input_csv)
-    if reference:
-        df["protease"] = df["experiment_name"].apply(
+
+    df["protease"] = df["experiment_name"].apply(
             lambda name: prep.extract_protease(name, proteases)
         )
     df = prep.clean_dataframe(df)
@@ -148,6 +150,7 @@ def main(
         cleaned_psms, run, repo_folder / "fasta/contaminants.fasta"
     )
     df = df[df["cleaned_preds"].isin(filtered_psms)]
+    
     if reference:
         df["mapped"] = df["cleaned_preds"].apply(
             lambda x: "True" if x in protein_norm else "False"
@@ -286,11 +289,15 @@ def main(
     cons.process_alignment_files(align_folder, consensus_folder)
 
 
-if __name__ == "__main__":
+def cli():
+    """Command-line interface entry point for dbg."""
     args = parser.parse_args()
     main(
         input_csv=args.input_csv,
-        chain=args.chain,  # optional argument
+        chain=args.chain,
         folder_outputs=args.folder_outputs,
         reference=args.reference,
     )
+
+if __name__ == "__main__":
+    cli()

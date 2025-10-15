@@ -11,7 +11,7 @@ r"""Full assembly script for proteins.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 06 Aug 2025
+__date__ = 15 Oct 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -30,17 +30,15 @@ import Bio
 import pandas as pd
 
 # import libraries
-import alignment as align
-import clustering as clus
-import compute_statistics as comp_stat
-import consensus as cons
-import dbg
+from . import alignment as align
+from . import clustering as clus
+from . import compute_statistics as comp_stat
+from . import consensus as cons
+from . import dbg
+from . import mapping as map
+from . import preprocessing as prep
 
-# my modules
-import mapping as map
-import preprocessing as prep
-
-repo_folder = Path(__file__).resolve().parents[1]
+repo_folder = Path(__file__).resolve().parents[2]
 
 parser = argparse.ArgumentParser(description="Protein Assembly Script")
 parser.add_argument("--input_csv", type=str, help="Input file")
@@ -65,7 +63,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+BASE_DIR = Path(__file__).resolve().parents[2]
 JSON_DIR = BASE_DIR / "json"
 # INPUT_DIR = BASE_DIR / "inputs"
 # FASTA_DIR = BASE_DIR / "fasta"
@@ -282,11 +280,15 @@ def main(
     cons.process_alignment_files(align_folder, consensus_folder)
 
 
-if __name__ == "__main__":
+def cli():
+    """Command-line interface entry point for dbg."""
     args = parser.parse_args()
     main(
         input_csv=args.input_csv,
-        chain=args.chain,  # optional argument
+        chain=args.chain,
         folder_outputs=args.folder_outputs,
         reference=args.reference,
     )
+
+if __name__ == "__main__":
+    cli()
