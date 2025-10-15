@@ -1,2 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/instanexus"]
+
+[project]
+name = "instanexus"
+version = "0.1.0"
+description = "End-to-end workflow for de novo protein sequencing based on InstaNovo"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+
+authors = [
+  { name = "Marco Reverenna", email = "marcor@dtu.dk" }
+]
+
+dependencies = [
+  "biopython>=1.85",
+  "pandas>=2.3.1",
+  "tqdm>=4.67.1",
+  "seaborn>=0.13.2",
+  "matplotlib>=3.8.0",
+  "plotly>=6.2.0",
+  "logomaker>=0.8",
+  "networkx>=3.3",
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+
+[project.urls]
+Homepage = "https://github.com/tuo-utente/instanexus"
+Issues = "https://github.com/tuo-utente/instanexus/issues"
+
+[project.scripts]
+instanexus = "instanexus.__main__:main"
+[tool.hatch.build.targets.wheel]
+packages = ["src/instanexus"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
 [tool.isort]
 profile = "black"
