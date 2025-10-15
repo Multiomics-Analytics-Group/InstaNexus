@@ -17,8 +17,8 @@
 - [Features](#features)
 - [Workflow Diagram](#workflow-diagram)
 - [Repository Structure](#repository-structure)
-- [Prerequisites and Installation](#prerequisites-and-installation)
-- [Getting Started](#getting-started)
+- [Installation](#installation)
+- [Command-Line Usage](#command-line-usage)
 - [Hyperparameter Optimization](#hyperparameter-optimization)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
@@ -58,22 +58,26 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 ## Repository Structure
 
-| File / Folder       | Description                                                                  |
-|---------------------|------------------------------------------------------------------------------|
-| `environment.linux.yml`        | Conda environment definition with required dependencies for linux |
-| `environment.osx-arm64.yaml`   | Conda environment definition with required dependencies for OS    |
-| `README.md`         | Project documentation                                                        |
-| `examples/`         |                                                                              |
-| `fasta/`            | Known contaminants and example FASTA sequences                               |
-| `images/`           | Logos and workflow diagrams (PNG, SVG, PDF)                                  |
-| `inputs/`           | Example datasets (e.g., BSA, antibody, nanobody)                             |
-| `json/`             | JSON metadata for peptide color coding and analysis                          |
-| `notebooks/`        | Jupyter notebooks for visualization and exploration                          |
-| `src/`              | Core scripts to run the InstaNexus pipeline                                  |
+
+| Folder / File | Description |
+|----------------|-------------|
+| `environment.linux.yml` | Conda environment for Linux systems |
+| `environment.osx-arm64.yaml` | Conda environment for macOS (Apple Silicon) |
+| `src/instanexus/` | Core InstaNexus package (modules + CLI) |
+| `src/instanexus/__main__.py` | Entry point for CLI (`instanexus` command) |
+| `src/instanexus/script_dbg.py` | De Bruijn Graph-based assembly |
+| `src/instanexus/script_greedy.py` | Greedy-based peptide assembly |
+| `src/opt/` | Grid search and optimization workflows |
+| `fasta/` | FASTA reference and contaminant sequences |
+| `inputs/` | Example input CSV files |
+| `json/` | Metadata and parameter configuration files |
+| `notebooks/` | Jupyter notebooks for analysis and visualization |
+| `images/` | Logos and workflow figures |
+| `outputs/` | Generated results (created during execution) |
 
 ---
 
-## Prerequisites and Installation
+## Installation
 
 - [Conda](https://docs.conda.io/en/latest/)
 - [MMseqs2](https://github.com/soedinglab/MMseqs2)
@@ -94,29 +98,67 @@ Follow these steps to clone the repository and set up the environment using Cond
 To clone and set up the environment:
 
 ```bash
-git clone https://github.com/your-username/instanexus.git
+git clone git@github.com:Multiomics-Analytics-Group/InstaNexus.git
 cd instanexus
 ```
 
-### 2. Create the conda environment
+### 2. Create and activate the Conda environment
 
-Create instanexus conda environment for linux
+Create instanexus conda environment for linux.
 
 ```bash
 conda env create -f environment.linux.yml
 ```
 
-Create instanexus conda environment for OS
+Create instanexus conda environment for OS.
 
 ```bash
 conda env create -f environment.osx-arm64.yaml
 ```
 
-### 3. Activate the environment
+Activate:
 
 ```bash
 conda activate instanexus
 ```
+
+---
+
+### 3. Install InstaNexus as a local package
+
+```
+pip install -e .
+```
+
+Then verify the CLI installation:
+
+```
+instanexus --version
+```
+
+---
+
+## Command-line usage
+
+After activating the environment, you can run InstaNexus directly from the terminal:
+```bash
+instanexus --help
+```
+
+### Run De Bruijn graph assembly
+
+```
+instanexus dbg --input_csv inputs/sample.csv --chain light --folder_outputs outputs --reference
+```
+
+### Run greedy assembly
+
+```
+instanexus greedy --input_csv inputs/sample.csv --folder_outputs outputs
+```
+
+
+
 
 ---
 
