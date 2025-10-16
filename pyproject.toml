@@ -10,12 +10,15 @@ name = "instanexus"
 version = "0.1.0"
 description = "End-to-end workflow for de novo protein sequencing based on InstaNovo"
 readme = "README.md"
-requires-python = ">=3.8"
+readme-content-type = "text/markdown"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 
 authors = [
   { name = "Marco Reverenna", email = "marcor@dtu.dk" }
 ]
+
+keywords = ["proteomics", "bioinformatics", "protein sequencing", "de novo", "assembly", "mass spectrometry"]
 
 dependencies = [
   "biopython>=1.85",
@@ -35,13 +38,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/tuo-utente/instanexus"
-Issues = "https://github.com/tuo-utente/instanexus/issues"
+Homepage = "https://github.com/Multiomics-Analytics-Group/InstaNexus"
+Issues = "https://github.com/Multiomics-Analytics-Group/InstaNexus/issues"
 
 [project.scripts]
 instanexus = "instanexus.__main__:main"
-[tool.hatch.build.targets.wheel]
-packages = ["src/instanexus"]
 
 [tool.black]
 line-length = 88
@@ -49,3 +50,7 @@ target-version = ['py311']
 
 [tool.isort]
 profile = "black"
+
+authors = [
+  { name = "Marco Reverenna", email = "marcor@dtu.dk" }
+]
