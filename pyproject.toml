@@ -14,6 +14,9 @@ readme-content-type = "text/markdown"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 authors = [
   { name = "Marco Reverenna", email = "marcor@dtu.dk" }
 ]
