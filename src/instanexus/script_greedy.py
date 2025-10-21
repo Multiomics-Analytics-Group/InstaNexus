@@ -25,6 +25,8 @@ import json
 import logging
 import os
 from pathlib import Path
+from datetime import datetime
+
 
 import Bio
 import pandas as pd
@@ -63,7 +65,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+BASE_DIR = Path(__file__).resolve().parents[2]
 JSON_DIR = BASE_DIR / "json"
 # INPUT_DIR = BASE_DIR / "inputs"
 # FASTA_DIR = BASE_DIR / "fasta"
@@ -109,9 +111,10 @@ def main(
     else:
         meta = get_sample_metadata(run)
 
+    proteases = meta["proteases"]
+
     if reference:
         protein = meta["protein"]
-        proteases = meta["proteases"]
 
     ass_method = "greedy"
 
@@ -178,7 +181,7 @@ def main(
     ]
     Bio.SeqIO.write(
         records,
-        f"{combination_folder_out}/contigs/{ass_method}_contig_{conf}_{run}.fasta",
+        f"{combination_folder_out}/contigs/contigs.fasta",
         "fasta",
     )
     if reference:
@@ -225,7 +228,7 @@ def main(
 
     Bio.SeqIO.write(
         records,
-        f"{combination_folder_out}/scaffolds/{ass_method}_scaffold_{conf}_{run}.fasta",
+        f"{combination_folder_out}/scaffolds/scaffolds.fasta",
         "fasta",
     )
     if reference:
@@ -246,47 +249,40 @@ def main(
             reference=protein_norm,
         )
 
-    # Clustering
-    scaffolds_folder_out = f"{combination_folder_out}/scaffolds"
-    clus.cluster_fasta_files(input_folder=scaffolds_folder_out)
+    logger.info("Starting clustering, alignment, and consensus steps.")
+    run_id = f"{ass_method}_{conf}_{run}"
+    scaffolds_folder_out = Path(f"{combination_folder_out}/scaffolds")
+    clustering_out = scaffolds_folder_out / "clustering"
+    alignment_out = scaffolds_folder_out / "alignment"
+    consensus_out = scaffolds_folder_out / "consensus"
 
-    cluster_tsv_folder = os.path.join(scaffolds_folder_out, "cluster")
-    output_base_folder = os.path.join(scaffolds_folder_out, "cluster_fasta")
+    clustering_out.mkdir(parents=True, exist_ok=True)
+    alignment_out.mkdir(parents=True, exist_ok=True)
+    consensus_out.mkdir(parents=True, exist_ok=True)
 
-    for fasta_file in os.listdir(scaffolds_folder_out):
-        if fasta_file.endswith(".fasta"):
-            fasta_path = os.path.join(scaffolds_folder_out, fasta_file)
-            clus.process_fasta_and_clusters(
-                fasta_path, cluster_tsv_folder, output_base_folder
-            )
+    logger.info("Running clustering...")
+    clus.cluster_fasta_files(input_folder=str(scaffolds_folder_out))
 
-    # Alignment
-    cluster_fasta_folder = os.path.join(scaffolds_folder_out, "cluster_fasta")
-    align_folder = os.path.join(scaffolds_folder_out, "align")
-    prep.create_directory(align_folder)
+    fasta_input = scaffolds_folder_out / f"scaffolds.fasta"
+    cluster_tsv_folder = clustering_out / run_id
+    
+    clus.process_fasta_and_clusters(
+        fasta_file=str(fasta_input),
+        input_folder=str(scaffolds_folder_out),
+        )
 
-    for cluster_folder in os.listdir(cluster_fasta_folder):
-        cluster_folder_path = os.path.join(cluster_fasta_folder, cluster_folder)
-        if os.path.isdir(cluster_folder_path):
+    logger.info("Running alignment...")
+    align.process_alignment(input_folder=str(scaffolds_folder_out))
 
-            output_cluster_folder = os.path.join(align_folder, cluster_folder)
-            os.makedirs(output_cluster_folder, exist_ok=True)
+    logger.info("Running consensus generation...")
+    cons.process_alignment_files(
+        align_folder=str(alignment_out),
+        output_folder=str(consensus_out),
+        run_id=run_id,
+    )
 
-            for fasta_file in os.listdir(cluster_folder_path):
-                if fasta_file.endswith(".fasta"):
-                    fasta_file_path = os.path.join(cluster_folder_path, fasta_file)
-                    base_filename = os.path.splitext(fasta_file)[0]
-                    output_file = os.path.join(
-                        output_cluster_folder, f"{base_filename}_out.afa"
-                    )
+    logger.info(f"Pipeline completed successfully for {run_id} at {datetime.now()}")
 
-                    align.align_or_copy_fasta(fasta_file_path, output_file)
-
-    logger.info("All alignment tasks completed.")
-
-    # Consensus
-    consensus_folder = os.path.join(scaffolds_folder_out, "consensus")
-    cons.process_alignment_files(align_folder, consensus_folder)
 
 
 def cli():

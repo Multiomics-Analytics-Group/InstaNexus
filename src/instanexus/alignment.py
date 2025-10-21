@@ -1,50 +1,58 @@
+#!/usr/bin/env python
+
+r"""
+ _____  _______  _    _
+|  __ \|__   __|| |  | |
+| |  | |  | |   | |  | |
+| |  | |  | |   | |  | |
+| |__| |  | |   | |__| |
+|_____/   |_|   |______|
+
+__authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
+__copyright__ = Copyright 2025-2026
+__research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
+__date__ = 21 Oct 2025
+__maintainer__ = Marco Reverenna
+__email__ = marcor@dtu.dk
+__status__ = Dev
+"""
+
 import os
 import shutil
 import subprocess
-
 from Bio import SeqIO
+from pathlib import Path
 
 
 def align_or_copy_fasta(fasta_file, output_file):
-
     sequences = list(SeqIO.parse(fasta_file, "fasta"))
-
     if len(sequences) == 1:
         shutil.copy(fasta_file, output_file)
     else:
         subprocess.run(
-            ["clustalo", "-i", fasta_file, "-o", output_file, "--outfmt", "fa"]
+            ["clustalo", "-i", fasta_file, "-o", output_file, "--outfmt", "fa"],
+            check=True,
         )
 
 
-def process_alignment(input_folder):
+def process_alignment(input_folder: str):
     """
-    Process all fasta files in the cluster_fasta folder, align them if necessary,
-    and save the results in the align folder.
+    Align all FASTA files in clustering/cluster_fasta and save results in alignment/.
     """
-    cluster_fasta_folder = os.path.join(input_folder, "cluster_fasta")
-    align_folder = os.path.join(input_folder, "align")
+    clustering_dir = Path(input_folder) / "clustering"
+    cluster_fasta_folder = clustering_dir / "cluster_fasta"
+    alignment_folder = Path(input_folder) / "alignment"
+    alignment_folder.mkdir(parents=True, exist_ok=True)
 
-    # Create the align folder if it does not exist
-    os.makedirs(align_folder, exist_ok=True)
+    if not cluster_fasta_folder.exists():
+        raise FileNotFoundError(f"Cluster FASTA folder not found: {cluster_fasta_folder}")
 
-    # Iterate over all folders in the cluster fasta folder
-    for cluster_folder in os.listdir(cluster_fasta_folder):
-        cluster_folder_path = os.path.join(cluster_fasta_folder, cluster_folder)
-        if os.path.isdir(cluster_folder_path):
-            # Create a corresponding folder in the align folder
-            output_cluster_folder = os.path.join(align_folder, cluster_folder)
-            os.makedirs(output_cluster_folder, exist_ok=True)
-
-            # Iterate over all fasta files in the cluster folder
-            for fasta_file in os.listdir(cluster_folder_path):
-                if fasta_file.endswith(".fasta"):
-                    fasta_file_path = os.path.join(cluster_folder_path, fasta_file)
-                    base_filename = os.path.splitext(fasta_file)[0]
-                    output_file = os.path.join(
-                        output_cluster_folder, f"{base_filename}_out.afa"
-                    )
-
-                    align_or_copy_fasta(fasta_file_path, output_file)
+    for fasta_file in sorted(os.listdir(cluster_fasta_folder)):
+        if not fasta_file.endswith(".fasta"):
+            continue
+        fasta_path = cluster_fasta_folder / fasta_file
+        output_path = alignment_folder / fasta_file.replace(".fasta", "_out.afa")
+        align_or_copy_fasta(fasta_path, output_path)
 
     print("All alignment tasks completed.")
+

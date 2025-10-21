@@ -11,7 +11,7 @@ r"""
 __authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
 __copyright__ = Copyright 2024-2025
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 21 Mar 2025
+__date__ = 21 Oct 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -21,85 +21,86 @@ import os
 import shutil
 import subprocess
 from tempfile import mkdtemp
-
-import Bio.SeqIO
+from pathlib import Path
+from Bio import SeqIO
 import pandas as pd
 from tqdm import tqdm
 
 
-def cluster_fasta_files(input_folder):
+def cluster_fasta_files(input_folder: str):
+    clustering_dir = Path(input_folder) / "clustering"
+    cluster_fasta_dir = clustering_dir / "cluster_fasta"
+    clustering_dir.mkdir(parents=True, exist_ok=True)
+    cluster_fasta_dir.mkdir(exist_ok=True)
 
-    cluster_folder = os.path.join(input_folder, "cluster")
-    os.makedirs(cluster_folder, exist_ok=True)
+    temp_dir = mkdtemp(prefix="mmseqs-")
 
-    temp_dir = mkdtemp(prefix="mmseqs-")  # create a temporary directory for mmseqs
+    for fasta_file in sorted(os.listdir(input_folder)):
+        if not fasta_file.endswith(".fasta"):
+            continue
 
-    # Iterate over all fasta files in the folder
-    for fasta_file in os.listdir(input_folder):
-        if fasta_file.endswith(".fasta"):
-            fasta_path = os.path.join(input_folder, fasta_file)
-            print(f"the current fasta path is: {fasta_path}")
+        fasta_path = Path(input_folder) / fasta_file
+        if not fasta_path.is_file():
+            continue
 
-            if os.path.isfile(fasta_path):
+        base_filename = fasta_path.stem
+        prefix = clustering_dir / base_filename
 
-                base_filename = os.path.splitext(fasta_file)[
-                    0
-                ]  # get the base filename with no extension
+        subprocess.run(
+            [
+                "mmseqs",
+                "easy-cluster",
+                str(fasta_path),
+                str(prefix),
+                temp_dir,
+                "--min-seq-id",
+                "0.85",
+                "-c",
+                "0.8",
+                "--cov-mode",
+                "1",
+                "-v",
+                "1",
+            ],
+            check=True,
+        )
 
-                prefix = os.path.join(
-                    cluster_folder, base_filename
-                )  # define the prefix for mmseqs easy-cluster
+        tsv_src = Path(f"{prefix}_cluster.tsv")
+        rep_src = Path(f"{prefix}_rep_seq.fasta")
+        all_src = Path(f"{prefix}_all_seqs.fasta")
 
-                print(f"Clustering {fasta_file}...")  # run mmseqs easy-cluster
-                subprocess.run(
-                    [
-                        "mmseqs",
-                        "easy-cluster",
-                        fasta_path,
-                        prefix,
-                        temp_dir,
-                        "--min-seq-id",
-                        "0.85",
-                        "-c",
-                        "0.8",
-                        "--cov-mode",
-                        "1",
-                        "-v",
-                        "1",
-                    ]
-                )
-                print(
-                    f"Clustering completed for {fasta_file}, results stored with prefix {prefix}"
-                )
+
+        if tsv_src.exists():
+            shutil.move(str(tsv_src), clustering_dir / "scaffolds_cluster.tsv")
+        if rep_src.exists():
+            shutil.move(str(rep_src), clustering_dir / "scaffolds_rep_seq.fasta")
+        if all_src.exists():
+            shutil.move(str(all_src), clustering_dir / "scaffolds_all_seqs.fasta")
 
     shutil.rmtree(temp_dir)
     print("All clustering tasks completed.")
 
 
-def process_fasta_and_clusters(fasta_file, cluster_tsv_folder, output_base_folder):
+def process_fasta_and_clusters(fasta_file: str, input_folder: str):
+    clustering_dir = Path(input_folder) / "clustering"
+    cluster_tsv = clustering_dir / "scaffolds_cluster.tsv"
+    cluster_fasta_dir = clustering_dir / "cluster_fasta"
+    cluster_fasta_dir.mkdir(exist_ok=True)
 
-    base_filename = os.path.basename(fasta_file).rsplit(".", 1)[0]
-
-    cluster_tsv = os.path.join(cluster_tsv_folder, f"{base_filename}_cluster.tsv")
-
-    if not os.path.isfile(cluster_tsv):
+    if not cluster_tsv.is_file():
         print(f"Cluster TSV file not found for {fasta_file}, skipping.")
         return
 
-    output_folder = os.path.join(output_base_folder, f"{base_filename}_cluster_fasta")
-    os.makedirs(output_folder, exist_ok=True)
-
-    cluster_df = pd.read_csv(
-        cluster_tsv, sep="\t", header=None, names=["cluster", "contig"]
-    )
-
-    records = list(Bio.SeqIO.parse(fasta_file, "fasta"))
-
+    cluster_df = pd.read_csv(cluster_tsv, sep="\t", header=None, names=["cluster", "contig"])
+    records = list(SeqIO.parse(fasta_file, "fasta"))
     clusters = cluster_df["cluster"].unique()
 
-    for cluster in tqdm(clusters, desc=f"Processing clusters for {base_filename}"):
+    width = max(4, len(str(len(clusters))))
+
+    for i, cluster in enumerate(tqdm(clusters, desc="Processing clusters")):
         contigs = cluster_df[cluster_df["cluster"] == cluster]["contig"].values
-        contig_records = [record for record in records if record.id in contigs]
-        Bio.SeqIO.write(
-            contig_records, os.path.join(output_folder, f"{cluster}.fasta"), "fasta"
-        )
+        contig_records = [r for r in records if r.id in contigs]
+        cluster_name = f"scaffold_{str(i+1).zfill(width)}.fasta"
+        SeqIO.write(contig_records, cluster_fasta_dir / cluster_name, "fasta")
+
+    print("All cluster FASTA files created.")
