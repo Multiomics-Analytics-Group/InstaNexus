@@ -2,6 +2,7 @@
 outputs/
 figures/
 logs/
+nextflow/
 
 # ignore compiled python files
 *.pyc
