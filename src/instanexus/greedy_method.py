@@ -298,25 +298,26 @@ def combine_seqs_into_scaffolds(contigs, min_overlap):
 
 
 def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm=False):
+
+    def clean(seqs):
+        """Remove duplicates, filter by length, and sort by descending size."""
+        seqs = list(set(seqs))
+        seqs = [s for s in seqs if len(s) > size_threshold]
+        return sorted(seqs, key=len, reverse=True)
+
+    current = clean(contigs)
     prev = None
-    current = contigs
 
     while prev != current:
         prev = current
 
-        current = combine_seqs_into_scaffolds(current, min_overlap)
-        current = list(set(current))
-        current = [s for s in current if len(s) > size_threshold]
-        current = sorted(current, key=len, reverse=True)
+        next_round = combine_seqs_into_scaffolds(current, min_overlap)
+        next_round = merge_contigs(next_round)
+        next_round = clean(next_round)
 
-        current = combine_seqs_into_scaffolds(current, min_overlap)
-        current = list(set(current))
-        current = [s for s in current if len(s) > size_threshold]
-        current = sorted(current, key=len, reverse=True)
+        if next_round == current:
+            break
 
-        current = merge_contigs(current)
-        current = list(set(current))
-        current = [s for s in current if len(s) > size_threshold]
-        current = sorted(current, key=len, reverse=True)
+        current = next_round
 
     return current
