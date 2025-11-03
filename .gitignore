@@ -3,6 +3,7 @@ outputs/
 figures/
 logs/
 nextflow/
+work/
 
 # ignore compiled python files
 *.pyc
@@ -25,3 +26,6 @@ inputs/NB12.csv
 inputs/NB13.csv
 inputs/pa.csv
 inputs/pb.csv
+
+.nextflow.log*
+.nextflow/
