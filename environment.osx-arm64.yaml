@@ -40,3 +40,4 @@ dependencies:
       - twine
       - hatchling
       - wheel
+      - sphinx
