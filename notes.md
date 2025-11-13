@@ -22,7 +22,7 @@ conda activate instanexus
 navigate to: https://github.com/Multiomics-Analytics-Group/InstaNexus/wiki/Reproducibility-test
 
 
-## Update your environment after uploading new libraries/modules
+## Update your environment after updating the file with new libraries/modules
 
 we added biopython to yml file
 
