@@ -1,15 +1,17 @@
-# data 
+# folders
 outputs/
 figures/
 logs/
 nextflow/
 work/
+examples/outputs/
+.ipynb_checkpoints/
+.vscode/
 
 # ignore compiled python files
 *.pyc
 __pycache__/
 .DS_Store
-environment.yml
 
 # files
 inputs/BIND15.csv
@@ -27,16 +29,13 @@ inputs/NB13.csv
 inputs/pa.csv
 inputs/pb.csv
 
-.nextflow.log*
-.nextflow/
-
 examples/*.svg
+docs/tutorials/case_studies/*.csv
+docs/tutorials/case_studies/notebook_results/
+docs/tutorials/case_studies/summary_tables/*
 
 src/instanexus/script_dbg.py
 src/instanexus/script_greedy.py
 src/instanexus/dbg.py
 src/instanexus/greedy_method.py
 src/instanexus/generate_cluster_fasta.py
-
-# folders
-examples/outputs/
