@@ -29,3 +29,11 @@ inputs/pb.csv
 
 .nextflow.log*
 .nextflow/
+
+examples/*.svg
+
+src/instanexus/script_dbg.py
+src/instanexus/script_greedy.py
+
+# folders
+examples/outputs/
