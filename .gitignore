@@ -34,6 +34,9 @@ examples/*.svg
 
 src/instanexus/script_dbg.py
 src/instanexus/script_greedy.py
+src/instanexus/dbg.py
+src/instanexus/greedy_method.py
+src/instanexus/generate_cluster_fasta.py
 
 # folders
 examples/outputs/
