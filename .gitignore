@@ -7,6 +7,7 @@ work/
 examples/outputs/
 .ipynb_checkpoints/
 .vscode/
+docs/build/
 
 # ignore compiled python files
 *.pyc
@@ -30,9 +31,9 @@ inputs/pa.csv
 inputs/pb.csv
 
 examples/*.svg
-docs/tutorials/case_studies/*.csv
-docs/tutorials/case_studies/notebook_results/
-docs/tutorials/case_studies/summary_tables/*
+docs/source/tutorials/case_studies/*.csv
+docs/source/tutorials/case_studies/notebook_results/
+docs/source/tutorials/case_studies/summary_tables/*
 
 src/instanexus/script_dbg.py
 src/instanexus/script_greedy.py
