@@ -67,7 +67,7 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 | `json/` | Metadata and parameter configuration files |
 | `outputs/` | Generated results (created during execution) |
 | `src/instanexus/` | Core InstaNexus package |
-| `src/instanexus/main.py` | **Master orchestrator** (runs the full pipeline) |
+| `src/instanexus/main.py` | Runs the full pipeline |
 | `src/instanexus/preprocessing.py` | Module for data cleaning |
 | `src/instanexus/assembly.py` | Module for sequence assembly |
 | `src/instanexus/clustering.py` | Module for clustering (mmseqs2) |
