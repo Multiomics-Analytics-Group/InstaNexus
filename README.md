@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/instanexus_logo 2.svg" width="600" alt="InstaNexus logo">
+  <img src="docs/source/assets/instanexus_logo 2.svg" width="600" alt="InstaNexus logo">
 </p>
 
 <p align="center"><em>A de novo protein sequencing workflow</em></p>
