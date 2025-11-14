@@ -61,23 +61,31 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 | Folder / File | Description |
 |----------------|-------------|
-| `environment.linux.yml` | Conda environment for Linux systems |
-| `environment.osx-arm64.yaml` | Conda environment for macOS (Apple Silicon) |
-| `src/instanexus/` | Core InstaNexus package (modules + CLI) |
-| `src/instanexus/__main__.py` | Entry point for CLI (`instanexus` command) |
-| `src/instanexus/script_dbg.py` | De Bruijn Graph-based assembly |
-| `src/instanexus/script_greedy.py` | Greedy-based peptide assembly |
-| `src/opt/` | Grid search and optimization workflows |
+| `docs/` | Sphinx documentation, tutorials, and images |
 | `fasta/` | FASTA reference and contaminant sequences |
 | `inputs/` | Example input CSV files |
 | `json/` | Metadata and parameter configuration files |
-| `notebooks/` | Jupyter notebooks for analysis and visualization |
-| `images/` | Logos and workflow figures |
 | `outputs/` | Generated results (created during execution) |
+| `src/instanexus/` | Core InstaNexus package |
+| `src/instanexus/main.py` | **Master orchestrator** (runs the full pipeline) |
+| `src/instanexus/preprocessing.py` | Module for data cleaning |
+| `src/instanexus/assembly.py` | Module for sequence assembly |
+| `src/instanexus/clustering.py` | Module for clustering (mmseqs2) |
+| `src/instanexus/alignment.py` | Module for alignment (clustalo) |
+| `src/instanexus/consensus.py` | Module for consensus generation |
+| `src/instanexus/opt/` | Grid search and optimization workflows |
+| `tests/` | Pytest unit and integration tests |
+| `environment.linux.yml` | Conda environment for Linux |
+| `environment.osx-arm64.yaml` | Conda environment for macOS |
+| `pyproject.toml` | Package metadata, dependencies, and entry point |
 
 ---
 
 ## Installation
+
+InstaNexus requires Python 3.11+, Conda, **MMseqs2**, and **Clustal Omega**.
+
+We strongly recommend installing these dependencies in a dedicated conda environment.
 
 - [Conda](https://docs.conda.io/en/latest/)
 - [MMseqs2](https://github.com/soedinglab/MMseqs2)
@@ -93,91 +101,90 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 Follow these steps to clone the repository and set up the environment using Conda:
 
-### 1. Clone the repository
+### Option 1: Install from PyPI
 
-To clone and set up the environment:
+1.  Create and activate your conda environment.
+2.  Install the package directly from PyPI:
+
+```bash
+pip install instanexus
+```
+
+### Option 2: Install from Source (for Developers)
+If you want to modify or contribute to the code, you can install it from the source repository:
+
+#### Clone the repository:
 
 ```bash
 git clone git@github.com:Multiomics-Analytics-Group/InstaNexus.git
 cd instanexus
 ```
 
-### 2. Create and activate the Conda environment
-
-Create instanexus conda environment for linux.
-
+#### Create and activate the Conda environment:
 ```bash
+# For Linux
 conda env create -f environment.linux.yml
-```
-
-Create instanexus conda environment for OS.
-
-```bash
+# For macOS (Apple Silicon)
 conda env create -f environment.osx-arm64.yaml
-```
 
-Activate:
-
-```bash
 conda activate instanexus
 ```
 
----
-
-### 3. Install InstaNexus as a local package
-
-```
+#### Install the package in editable mode:
+```bash
 pip install -e .
 ```
 
-Then verify the CLI installation:
-
-```
-instanexus --version
+#### Verify the installation
+```bash
+instanexus --help
 ```
 
 ---
 
 ## Command-line usage
 
-After activating the environment, you can run InstaNexus directly from the terminal:
+After installation (and adding the `[project.scripts]` entry point), you can run the entire InstaNexus pipeline using the `instanexus` command.
+
+All parameters for preprocessing, assembly, clustering, and consensus are provided in a single call. The pipeline will automatically create a unique, timestamped output folder for that specific combination of parameters.
+
 ```bash
 instanexus --help
 ```
 
-### Run De Bruijn graph assembly
+Example: Run the full pipeline
+This command runs the complete workflow:
 
-```
-instanexus dbg --input_csv inputs/sample.csv --chain light --folder_outputs outputs --reference
+Preprocesses the input CSV.
+
+Assembles using dbg (De Bruijn graph).
+
+Clusters the resulting scaffolds.
+
+Aligns the clusters.
+
+Generates consensus sequences.
+
+```bash
+instanexus \
+    --input-csv inputs/bsa.csv \
+    --folder-outputs outputs \
+    --metadata-json-path json/sample_metadata.json \
+    --contaminants-fasta-path fasta/contaminants.fasta \
+    --assembly-mode dbg \
+    --conf 0.9 \
+    --kmer-size 7 \
+    --size-threshold 12 \
+    --min-overlap 3 \
+    --min-seq-id 0.85 \
+    --coverage 0.8
 ```
 
-### Run greedy assembly
-
-```
-instanexus greedy --input_csv inputs/sample.csv --folder_outputs outputs
-```
-
+The results for this specific run will be saved in a unique directory, such as:```outputs/bsa/dbg_c0.9_ks7_mo3_ts12/```
 
 
 
 ---
-
-## Hyperparameter Optimization
-
-To launch the hyperparameter grid search, run the following command from the project root (the folder containing ```src/``` and ```json/```):
-
-```bash
-python -m src.opt.gridsearch
-```
-**Adjusting Parameters**
-
-Grid search parameters for both the De Bruijn graph (dbg) and Greedy (greedy) assembly methods are defined in:
-
-```bash
-json/gridsearch_params.json
-```
-
-To test more (or fewer) combinations, edit the arrays for each parameter in this file.
 
 ## License
 
