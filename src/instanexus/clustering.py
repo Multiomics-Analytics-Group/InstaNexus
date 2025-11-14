@@ -11,7 +11,7 @@ r"""Clustering module for assembled scaffolds.
  ██████████      █████    ░░████████  
 ░░░░░░░D░░      ░░░░░      ░░░░░░░░   
      
-__authors__ = Marco Reverenna
+__authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
 __date__ = 14 Nov 2025
@@ -22,7 +22,6 @@ __status__ = Dev
 
 import argparse
 import logging
-import os
 import shutil
 import subprocess
 import pandas as pd

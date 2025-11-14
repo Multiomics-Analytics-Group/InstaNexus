@@ -28,7 +28,7 @@ import argparse
 import Bio
 
 from . import helpers
-from . import mapping as map
+from . import visualization as viz
 
 from tqdm import tqdm
 from pathlib import Path
@@ -778,13 +778,13 @@ def main(
         stats_path = output_path.parent / "statistics"
         stats_path.mkdir(parents=True, exist_ok=True)
 
-        mapped_scaffolds = map.process_protein_contigs_scaffold(
+        mapped_scaffolds = viz.process_protein_contigs_scaffold(
             assembled_contigs=scaffolds,
             target_protein=protein_norm,
             max_mismatches=max_mismatches,
             min_identity=min_identity, 
         )
-        df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
+        df_scaffolds_mapped = viz.create_dataframe_from_mapped_sequences(
             data=mapped_scaffolds
         )
         helpers.compute_assembly_statistics(
