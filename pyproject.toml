@@ -7,7 +7,7 @@ packages = ["src/instanexus"]
 
 [project]
 name = "instanexus"
-version = "0.1.0"
+version = "0.2.0"
 description = "End-to-end workflow for de novo protein sequencing based on InstaNovo"
 readme = "README.md"
 readme-content-type = "text/markdown"
@@ -48,7 +48,7 @@ Homepage = "https://github.com/Multiomics-Analytics-Group/InstaNexus"
 Issues = "https://github.com/Multiomics-Analytics-Group/InstaNexus/issues"
 
 [project.scripts]
-instanexus = "instanexus.__main__:main"
+instanexus = "instanexus.main:cli"
 
 [tool.black]
 line-length = 88
