@@ -14,7 +14,7 @@ r"""Assembly module for InstaNexus.
 __authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
 __copyright__ = Copyright 2024-2025
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 01 Nov 2025
+__date__ = 14 Nov 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -26,8 +26,9 @@ import networkx as nx
 import pandas as pd
 import argparse
 import Bio
-import helpers
-import mapping as map
+
+from . import helpers
+from . import mapping as map
 
 from tqdm import tqdm
 from pathlib import Path
@@ -39,13 +40,10 @@ from dataclasses import dataclass
 from typing import List, Tuple, Dict, Any, Iterable, Optional
 
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-##################################
-#        GREEDY FUNCTIONS        #
-##################################
+
 
 def find_peptide_overlaps(peptides, min_overlap):
     """Finds overlaps between peptide sequences using a greedy approach."""
@@ -157,9 +155,6 @@ def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm
     
     return current
 
-##################################
-#          DBG FUNCTIONS         #
-##################################
 
 def get_kmers(seqs, kmer_size):
     """Generate k-mers of specified length from input sequences."""
@@ -288,11 +283,7 @@ def scaffold_iterative_dbg(contigs, min_overlap, size_threshold, disable_tqdm=Fa
         current = [s for s in current if len(s) > size_threshold]
     return sorted(current, key=len, reverse=True)
 
-# =========================
-##################################
-#     DBG WEIGHTED FUNCTIONS     #
-##################################
-# =========================
+
 
 def get_kmers(sequences: Iterable[str], kmer_size: int) -> List[str]:
     """Generate all k-mers from a list of sequences."""
@@ -312,9 +303,6 @@ def get_kmer_counts(kmers: Iterable[str]) -> Counter:
     return Counter(kmers)
 
 
-# =========================
-# Build DBG (weighted)
-# =========================
 def build_dbg_from_kmers(kmers: Iterable[str]) -> nx.DiGraph:
     """
     Build a weighted De Bruijn graph:
@@ -345,9 +333,6 @@ def filter_low_weight_edges(G: nx.DiGraph, min_weight: int = 2) -> nx.DiGraph:
     return G
 
 
-# =========================
-# Collapse unbranched paths → contigs
-# =========================
 @dataclass
 class ContigPath:
     nodes: List[str]         # list of (k-1)-mer node labels in path order
@@ -411,9 +396,6 @@ def assemble_contigs_dbgx(G: nx.DiGraph, min_length: int = 0) -> List[ContigPath
     return contigs
 
 
-# =========================
-# Scoring contigs (coverage-aware, reference-free)
-# =========================
 @dataclass
 class ContigScore:
     seq: str
@@ -421,7 +403,7 @@ class ContigScore:
     mean_weight: float
     min_weight: int
     max_weight: int
-    score: float            # composite score used for ranking
+    score: float
 
 def score_contig(cp: ContigPath, alpha_len: float = 1.0, alpha_cov: float = 1.0, alpha_min: float = 0.2) -> ContigScore:
     """
@@ -449,9 +431,6 @@ def rank_contigs_by_score(contigs: List[ContigPath],
     return sorted(scored, key=lambda s: (s.score, s.length), reverse=True)
 
 
-# =========================
-# Iterative refine (optional)
-# =========================
 def scaffold_iterative_dbgx(seqs: List[str],
                             kmer_size: int,
                             size_threshold: int = 10,
@@ -503,10 +482,6 @@ def scaffold_iterative_dbgx(seqs: List[str],
             seen.add(s)
             uniq.append(s)
     return uniq
-
-##################################
-#    DBG EXTENSION FUNCTIONS     #
-##################################
 
 
 def extend_path_dbg(G, contig, k, min_weight=1):
@@ -573,10 +548,6 @@ def extend_path_dbg(G, contig, k, min_weight=1):
     return seq
 
 
-##################################
-#       ASSEMBLER CLASS          #
-##################################
-
 class Assembler:
     """Unified assembler supporting 'greedy', 'dbg' and 'dbgx' (NetworkX) modes."""
 
@@ -612,90 +583,18 @@ class Assembler:
         self.alpha_cov = alpha_cov
         self.alpha_min = alpha_min
 
-    def assemble_greedy(self, sequences, output_folder, protein_norm =None):
+    def assemble_greedy(self, sequences):
 
         logger.info(f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})")
         contigs = assemble_contigs_greedy(sequences, self.min_overlap)
         contigs = list(set(contigs))
         contigs = sorted(contigs, key=len, reverse=True)
 
-        contigs_path = Path(output_folder) / "contigs"
-        contigs_path.mkdir(parents=True, exist_ok=True)
-
-        records = [
-            Bio.SeqRecord.SeqRecord(
-                Bio.Seq.Seq(contig), id=f"contig_{i+1}", description=f"length: {len(contig)}"
-            )
-            for i, contig in enumerate(contigs)
-        ]
-        Bio.SeqIO.write(
-            records,
-            contigs_path / "contigs_greedy.fasta",
-            "fasta",
-        )
-
-        if protein_norm:
-            logger.info("reference mode:mapping contigs")
-            stats_path = Path(output_folder) / "statistics"
-
-            mapped_contigs = map.process_protein_contigs_scaffold(
-                contigs, 
-                protein_norm, 
-                self.max_mismatches, 
-                self.min_identity
-                )
-            
-            df_contigs = map.create_dataframe_from_mapped_sequences(
-                data=mapped_contigs
-            )
-            helpers.compute_assembly_statistics(
-                df=df_contigs,
-                sequence_type="contigs",
-                output_folder=str(stats_path),
-                reference=protein_norm
-            )
-
         scaffolds =  scaffold_iterative_greedy(contigs, self.min_overlap, self.size_threshold)
-        scaffolds_path = Path(output_folder) / "scaffolds"
-        scaffolds_path.mkdir(parents=True, exist_ok=True)
-
-        records = []
-        for i, seq in enumerate(scaffolds):
-            record = Bio.SeqRecord.SeqRecord(
-                Bio.Seq.Seq(seq), id=f"scaffold_{i+1}", description=f"length: {len(seq)}"
-            )
-            records.append(record)
-
-        Bio.SeqIO.write(
-            records,
-            scaffolds_path / "scaffolds.fasta",
-            "fasta",
-        )
-
-        if protein_norm:
-            logger.info("Reference mode: Mapping scaffolds...")
-            stats_path = Path(output_folder) / "statistics" 
-            
-            mapped_scaffolds = map.process_protein_contigs_scaffold(
-                assembled_contigs=scaffolds,
-                target_protein=protein_norm,
-                max_mismatches=self.max_mismatches,
-                min_identity=self.min_identity, 
-            )
-            df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
-                data=mapped_scaffolds
-            )
-            helpers.compute_assembly_statistics(
-                df=df_scaffolds_mapped,
-                sequence_type="scaffolds",
-                output_folder=str(stats_path),
-                reference=protein_norm,
-            )
 
         return scaffolds
-        # return scaffold_iterative_greedy(contigs, self.min_overlap, self.size_threshold)
 
-    def assemble_dbg(self, sequences, output_folder, protein_norm=None):
+    def assemble_dbg(self, sequences):
         logger.info(f"[Assembler] Running DBG assembly (kmer_size={self.kmer_size})")
 
         kmers = get_kmers(sequences, self.kmer_size)
@@ -705,90 +604,14 @@ class Assembler:
         contigs = sorted(contigs, key=len, reverse=True)
         contigs = [seq for seq in contigs if len(seq) > self.size_threshold]
 
-        contigs_path = Path(output_folder) / "contigs"
-        contigs_path.mkdir(parents=True, exist_ok=True)
-
-        records = [
-            Bio.SeqRecord.SeqRecord(
-                Bio.Seq.Seq(contig),
-                id=f"contig_{idx+1}",
-                description=f"length: {len(contig)}",
-            )
-            for idx, contig in enumerate(contigs)
-        ]
-        Bio.SeqIO.write(
-            records,
-            contigs_path / "contigs_dbg.fasta",
-            "fasta",
-        )
-
-        if protein_norm:
-            logger.info("Reference mode: Mapping contigs (DBG)...")
-            stats_path = Path(output_folder) / "statistics"
-            stats_path.mkdir(parents=True, exist_ok=True) # Assicurati che esista
-
-            mapped_contigs = map.process_protein_contigs_scaffold(
-                contigs, 
-                protein_norm, 
-                self.max_mismatches, 
-                self.min_identity
-            )
-            df_contigs = map.create_dataframe_from_mapped_sequences(
-                data=mapped_contigs
-            )
-            helpers.compute_assembly_statistics(
-                df=df_contigs,
-                sequence_type="contigs",
-                output_folder=str(stats_path),
-                reference=protein_norm
-            )
-
         scaffolds = scaffold_iterative_dbg(contigs, self.min_overlap, self.size_threshold)
-
-        scaffolds_path = Path(output_folder) / "scaffolds"
-        scaffolds_path.mkdir(parents=True, exist_ok=True)
-
-        records = [
-            Bio.SeqRecord.SeqRecord(
-                Bio.Seq.Seq(scaffold),
-                id=f"scaffold_{idx+1}",
-                description=f"length: {len(scaffold)}",
-            )
-            for idx, scaffold in enumerate(scaffolds)
-        ]
-        Bio.SeqIO.write(
-            records,
-            scaffolds_path / "scaffolds.fasta",
-            "fasta",
-        )
-
-        if protein_norm:
-            logger.info("Reference mode: Mapping scaffolds (DBG)...")
-            stats_path = Path(output_folder) / "statistics" # Già creata
-            
-            mapped_scaffolds = map.process_protein_contigs_scaffold(
-                assembled_contigs=scaffolds,
-                target_protein=protein_norm,
-                max_mismatches=self.max_mismatches,
-                min_identity=self.min_identity, 
-            )
-            df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
-                data=mapped_scaffolds
-            )
-            helpers.compute_assembly_statistics(
-                df=df_scaffolds_mapped,
-                sequence_type="scaffolds",
-                output_folder=str(stats_path),
-                reference=protein_norm,
-            )
 
         return scaffolds
     
 
-    def assemble_dbg_weighted(self, sequences: List[str], output_folder: str, protein_norm: Optional[str] = None) -> List[str]:
+    def assemble_dbg_weighted(self, sequences: List[str]) -> List[str]:
         logger.info(f"[Assembler] Running DBG weighted (k={self.kmer_size}, min_weight={self.min_weight}, refine_rounds={self.refine_rounds})")
 
-        # 1) Build graph from original sequences (reference-free)
         kmers = get_kmers(sequences, self.kmer_size)
         if not kmers:
             logger.warning("No kmers generated; returning empty result.")
@@ -797,13 +620,11 @@ class Assembler:
         G = build_dbg_from_kmers(kmers)
         G = filter_low_weight_edges(G, min_weight=self.min_weight)
 
-        # 2) Collapse to contigs
         contigs_cp = assemble_contigs_dbgx(G, min_length=self.size_threshold)
         if not contigs_cp:
             logger.warning("No contigs assembled from DBGX; returning empty result.")
             return []
 
-        # 3) Rank by score (length + coverage)
         ranked = rank_contigs_by_score(contigs_cp, self.alpha_len, self.alpha_cov, self.alpha_min)
         contigs = [r.seq for r in ranked]
 
@@ -820,65 +641,11 @@ class Assembler:
                 alpha_min=self.alpha_min,
             )
 
-        contigs_path = Path(output_folder) / "contigs"
-        contigs_path.mkdir(parents=True, exist_ok=True)
-        contig_records = [
-            Bio.SeqRecord.SeqRecord(
-                Bio.Seq.Seq(seq),
-                id=f"contig_{i+1}",
-                description=f"length: {len(seq)}"
-            ) for i, seq in enumerate(contigs)
-        ]
-        Bio.SeqIO.write(contig_records, contigs_path / "contigs_dbg_weighted.fasta", "fasta")
-
         scaffolds = list(contigs)
-        scaffolds_path = Path(output_folder) / "scaffolds"
-        scaffolds_path.mkdir(parents=True, exist_ok=True)
-        scaffold_records = [
-            Bio.SeqRecord.SeqRecord(
-                Bio.Seq.Seq(seq),
-                id=f"scaffold_{i+1}",
-                description=f"length: {len(seq)}"
-            ) for i, seq in enumerate(scaffolds)
-        ]
-        Bio.SeqIO.write(scaffold_records, scaffolds_path / "scaffolds.fasta", "fasta")
-
-        if protein_norm:
-            logger.info("Reference mode (eval only): mapping contigs/scaffolds for coverage statistics.")
-            stats_path = Path(output_folder) / "statistics"
-            stats_path.mkdir(parents=True, exist_ok=True)
-
-            mapped_contigs = map.process_protein_contigs_scaffold(
-                assembled_contigs=contigs,
-                target_protein=protein_norm,
-                max_mismatches=self.max_mismatches,
-                min_identity=self.min_identity
-            )
-            df_contigs = map.create_dataframe_from_mapped_sequences(mapped_contigs)
-            helpers.compute_assembly_statistics(
-                df=df_contigs,
-                sequence_type="contigs",
-                output_folder=str(stats_path),
-                reference=protein_norm
-            )
-
-            mapped_scaffolds = map.process_protein_contigs_scaffold(
-                assembled_contigs=scaffolds,
-                target_protein=protein_norm,
-                max_mismatches=self.max_mismatches,
-                min_identity=self.min_identity
-            )
-            df_scaffolds = map.create_dataframe_from_mapped_sequences(mapped_scaffolds)
-            helpers.compute_assembly_statistics(
-                df=df_scaffolds,
-                sequence_type="scaffolds",
-                output_folder=str(stats_path),
-                reference=protein_norm
-            )
 
         return scaffolds
     
-    def assemble_dbgX(self, sequences, output_folder, protein_norm=None):
+    def assemble_dbgX(self, sequences):
         logger.info(f"[Assembler] Running DBG-Extension (k={self.kmer_size})")
 
         kmers = get_kmers(sequences, self.kmer_size)
@@ -892,34 +659,12 @@ class Assembler:
         extended_contigs = [extend_path_dbg(G, c, self.kmer_size, self.min_weight) for c in contigs]
         extended_contigs = sorted(set(extended_contigs), key=len, reverse=True)
 
-        contigs_path = Path(output_folder) / "contigs"
-        contigs_path.mkdir(parents=True, exist_ok=True)
-        records = [
-            Bio.SeqRecord.SeqRecord(Bio.Seq.Seq(seq),
-                                    id=f"contig_{i+1}",
-                                    description=f"length: {len(seq)}")
-            for i, seq in enumerate(extended_contigs)
-        ]
-        Bio.SeqIO.write(records, contigs_path / "contigs_dbgx.fasta", "fasta")
-
-        if protein_norm:
-            logger.info("Reference mode: Mapping extended contigs (DBGEX)...")
-            stats_path = Path(output_folder) / "statistics"
-            stats_path.mkdir(parents=True, exist_ok=True)
-            mapped = map.process_protein_contigs_scaffold(
-                extended_contigs, protein_norm, self.max_mismatches, self.min_identity
-            )
-            df = map.create_dataframe_from_mapped_sequences(mapped)
-            helpers.compute_assembly_statistics(
-                df=df, sequence_type="contigs", output_folder=str(stats_path), reference=protein_norm
-            )
-
         return extended_contigs
     
-    def assemble_fusion(self, sequences, output_folder, protein_norm=None):
+    def assemble_fusion(self, sequences):
         logger.info(f"[Assembler] Running FUSION (DBG weighted + greedy merge)")
 
-        contigs_dbg_weighted = self.assemble_dbg_weighted(sequences, output_folder, protein_norm=None)
+        contigs_dbg_weighted = self.assemble_dbg_weighted(sequences)
 
         logger.info("Running greedy merge on DBG weighted contigs...")
         contigs_greedy = assemble_contigs_greedy(sequences, self.min_overlap)
@@ -934,87 +679,50 @@ class Assembler:
         fused = [s for s in fused if len(s) > self.size_threshold]
         fused = sorted(set(fused), key=len, reverse=True)
 
-        scaffolds_path = Path(output_folder) / "scaffolds"
-        scaffolds_path.mkdir(parents=True, exist_ok=True)
-        records = [
-            Bio.SeqRecord.SeqRecord(Bio.Seq.Seq(seq),
-                                    id=f"scaffold_{i+1}",
-                                    description=f"length: {len(seq)}")
-            for i, seq in enumerate(fused)
-        ]
-        Bio.SeqIO.write(records, scaffolds_path / "scaffolds_fusion.fasta", "fasta")
-
-        if protein_norm:
-            logger.info("Reference mode: Mapping fusion scaffolds...")
-            stats_path = Path(output_folder) / "statistics"
-            stats_path.mkdir(parents=True, exist_ok=True)
-            mapped = map.process_protein_contigs_scaffold(
-                assembled_contigs=fused,
-                target_protein=protein_norm,
-                max_mismatches=self.max_mismatches,
-                min_identity=self.min_identity
-            )
-            df = map.create_dataframe_from_mapped_sequences(mapped)
-            helpers.compute_assembly_statistics(
-                df=df, sequence_type="scaffolds", output_folder=str(stats_path), reference=protein_norm
-            )
-
         return fused
 
 
-    def run(self, sequences: List[str], output_folder: str, protein_norm: Optional[str] = None):
+    def run(self, sequences: List[str]):
         if not sequences:
             logger.error("No valid sequences provided for assembly.")
             raise ValueError("Input sequences list is empty.")
         
         if self.mode == "greedy":
-            return self.assemble_greedy(sequences, output_folder, protein_norm=protein_norm)
+            return self.assemble_greedy(sequences)
         elif self.mode == "dbg":
-            return self.assemble_dbg(sequences, output_folder, protein_norm=protein_norm)
+            return self.assemble_dbg(sequences)
         elif self.mode == "dbg_weighted":
-            return self.assemble_dbg_weighted(sequences, output_folder, protein_norm=protein_norm)
+            return self.assemble_dbg_weighted(sequences)
         elif self.mode == "dbgX":
-            return self.assemble_dbgX(sequences, output_folder, protein_norm=protein_norm)
+            return self.assemble_dbgX(sequences)
         elif self.mode == "fusion":
-            return self.assemble_fusion(sequences, output_folder, protein_norm=protein_norm)
+            return self.assemble_fusion(sequences)
 
-    # def run(self, sequences, output_folder, protein_norm=None):
-
-    #     # Validate input sequences
-    #     if not sequences:
-    #         logger.error("No valid sequences provided for assembly.")
-    #         raise ValueError("Input sequences list is empty.")
-
-    #     # Choose assembly method
-    #     if self.mode == "greedy":
-    #         return self.assemble_greedy(sequences, output_folder, protein_norm=protein_norm)
-        
-    #     elif self.mode == "dbg":
-    #         return self.assemble_dbg(sequences, output_folder, protein_norm=protein_norm)
-        
 
 def main(
-    input_data: str,
-    output_folder: str = "outputs",
-    assembly_mode: str = "greedy",
-    kmer_size: int = 6,
-    min_overlap: int = 4,
-    size_threshold: int = 10,
-    reference: bool = False,
-    chain: str = "",    
-    min_identity: float = 0.8,
-    max_mismatches: int = 10,
-    #chain: str,
+    input_csv_path: str,
+    output_scaffolds_path: str,
+    metadata_json_path: str,
+    assembly_mode: str,
+    kmer_size: int,
+    min_overlap: int,
+    size_threshold: int,
+    reference: bool,
+    chain: str,    
+    min_identity: float,
+    max_mismatches: int,
 ):
     """Main function for standalone assembly."""
 
     protein_norm = None # None means no reference mode
     if reference:
-        logger.info(f"Reference mode ENABLED")
+        logger.info(f"Reference mode enabled. Loading reference protein...")
+        if not metadata_json_path:
+            raise ValueError("metadata_json_path is required when reference mode is enabled.")
         
         try:
-            run_name = Path(input_data).stem # extract run name from input file
-            meta = helpers.get_sample_metadata(run=run_name, chain=chain)
+            run_name = Path(input_csv_path).stem # extract run name from input file
+            meta = helpers.get_sample_metadata(run=run_name, chain=chain, json_path=metadata_json_path)
             protein= meta["protein"]
             protein_norm = helpers.get_normalized_protein(protein)
             logger.info("Reference protein loaded and normalized successfully.")
@@ -1024,26 +732,17 @@ def main(
             logger.warning("Disabling reference mode.")
             reference = False # if fails, disable reference mode
 
-    input_data = Path(input_data)
-    output_folder = Path(output_folder)
-    # folder already created in previous steps
-    # output_folder.mkdir(parents=True, exist_ok=True)
+    input_data = Path(input_csv_path)
 
     print(f"Starting assembly pipeline with {assembly_mode}...")
 
     # Load input sequences
-    if input_data.suffix == ".csv":
-        df = pd.read_csv(input_data)
-        if "cleaned_preds" in df.columns:
-            sequences = df["cleaned_preds"].dropna().tolist()
-        elif "preds" in df.columns:
-            sequences = df["preds"].dropna().tolist()
-        else:
-            raise ValueError("CSV must contain a 'cleaned_preds' or 'preds' column.")
-    elif input_data.suffix in [".fa", ".fasta"]:
-        sequences = [str(record.seq) for record in SeqIO.parse(input_data, "fasta")]
+    df = pd.read_csv(input_data)
+
+    if "cleaned_preds" in df.columns:
+        sequences = df["cleaned_preds"].dropna().tolist()
     else:
-        raise ValueError("Input must be a .csv or .fasta file")
+        raise ValueError("CSV must contain a 'cleaned_preds' column.")
 
     assembler = Assembler(
         mode=assembly_mode,
@@ -1054,17 +753,47 @@ def main(
         max_mismatches=max_mismatches
     )
 
-    scaffolds = assembler.run(sequences = sequences,
-                              output_folder = output_folder,
-                              protein_norm = protein_norm
-                              )
+    scaffolds = assembler.run(sequences = sequences)
 
-    output_file = output_folder / f"scaffolds_{assembly_mode}.fasta"
-    with open(output_file, "w") as f:
-        for i, seq in enumerate(scaffolds, 1):
-            f.write(f">scaffold_{i}\n{seq}\n")
+    output_path = Path(output_scaffolds_path)
+    output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Assembly completed — {len(scaffolds)} scaffolds saved to {output_file}")
+    records = [
+        Bio.SeqRecord.SeqRecord(
+            Bio.Seq.Seq(seq), id=f"scaffold_{i+1}", description=f"length: {len(seq)}"
+        )
+        for i, seq in enumerate(scaffolds)
+    ]
+
+    Bio.SeqIO.write(
+        records,
+        output_path,
+        "fasta",
+    )
+
+    logger.info(f"Assembly completed — {len(scaffolds)} scaffolds saved to {output_path}")
+
+    if protein_norm:
+        logger.info("Reference mode: calculating statistics...")
+        stats_path = output_path.parent / "statistics"
+        stats_path.mkdir(parents=True, exist_ok=True)
+
+        mapped_scaffolds = map.process_protein_contigs_scaffold(
+            assembled_contigs=scaffolds,
+            target_protein=protein_norm,
+            max_mismatches=max_mismatches,
+            min_identity=min_identity, 
+        )
+        df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
+            data=mapped_scaffolds
+        )
+        helpers.compute_assembly_statistics(
+            df=df_scaffolds_mapped,
+            sequence_type="scaffolds",
+            output_folder=str(stats_path),
+            reference=protein_norm,
+        )
+        logger.info(f"Reference mode: Statistics saved to {stats_path}")
 
 
 def cli():
@@ -1074,16 +803,22 @@ def cli():
         description="Run Greedy or DBG assembly on peptide sequences."
     )
     parser.add_argument(
-        "--input-data",
+        "--input-csv-path",
         type=str,
         required=True,
         help="Path to input CSV or FASTA file containing sequences.",
     )
     parser.add_argument(
-        "--output-folder",
+        "--output-scaffolds-path",
         type=str,
-        default="outputs",
-        help="Directory to save output files.",
+        required=True,
+        help="Path to save the output scaffolds FASTA file.",
+    )
+    parser.add_argument(
+        "--metadata-json-path",
+        type=str,
+        default=None, # Optional, but required by --reference
+        help="Path to sample_metadata.json (required for --reference).",
     )
     parser.add_argument(
         "--assembly-mode",
@@ -1139,29 +874,16 @@ def cli():
 
     # in case of non-DBG mode, ignore kmer_size
     if args.assembly_mode != "dbg":
-        args.kmer_size = None  # Ignore kmer_size for non-DBG modes
+        args.kmer_size = 0
         logger.info("Ignoring kmer_size (used only for DBG mode).")
+    
+    if args.reference and not args.metadata_json_path:
+        parser.error("--metadata-json-path is required when --reference is enabled.")
 
-    main(
-        input_data=args.input_data,
-        output_folder=args.output_folder,
-        assembly_mode=args.assembly_mode,
-        kmer_size=args.kmer_size,
-        min_overlap=args.min_overlap,
-        size_threshold=args.size_threshold,
-        reference=args.reference,
-        chain=args.chain,
-        min_identity=args.min_identity,
-        max_mismatches=args.max_mismatches
-    )
+    main(**vars(args))
 
 
 if __name__ == "__main__":
     cli()
 
-# python assembly.py \
-# --input-data ../../outputs/bsa/comb_dbg_c0.9_ks7_ts12_mo5/cleaned/cleaned_data.csv \
-# --output-folder ../../outputs/bsa/comb_dbg_c0.9_ks7_ts12_mo5 \
-# --assembly-mode greedy \
-# --min-overlap 4 \
-# --size-threshold 10
+# python -m instanexus.assembly --input-csv-path outputs/bsa/bsa_cleaned.csv --output-scaffolds-path outputs/bsa/bsa_scaffolds.fasta --metadata-json-path json/sample_metadata.json --assembly-mode dbg_weighted --kmer-size 7 --min-overlap 3 --size-threshold 10 --min-identity 0.8 --max-mismatches 10

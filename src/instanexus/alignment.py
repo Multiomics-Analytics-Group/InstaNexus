@@ -14,7 +14,7 @@ r"""Alignment module for clustered scaffolds.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 03 Nov 2025
+__date__ = 14 Nov 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -28,7 +28,6 @@ import subprocess
 from pathlib import Path
 from Bio import SeqIO
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -47,10 +46,10 @@ def align_or_copy_fasta(fasta_file, output_file):
     if len(sequences) == 1:
         # Only one sequence, no alignment needed
         shutil.copy(fasta_file, output_file)
-        logger.info(f"Copied single-sequence file: {Path(fasta_file).name}")
+        logger.debug(f"Copied single-sequence file: {Path(fasta_file).name}")
     elif len(sequences) > 1:
         # Multiple sequences, run clustalo
-        logger.info(f"Aligning {len(sequences)} sequences from {Path(fasta_file).name}...")
+        logger.debug(f"Aligning {len(sequences)} sequences from {Path(fasta_file).name}...")
         try:
             subprocess.run(
                 ["clustalo", "-i", fasta_file, "-o", output_file, "--outfmt", "fa", "--force"],
@@ -69,18 +68,16 @@ def align_or_copy_fasta(fasta_file, output_file):
         logger.warning(f"Skipping empty FASTA file: {Path(fasta_file).name}")
 
 
-def process_alignment(scaffolds_folder: str):
+def process_alignment(input_dir: str, output_dir: str):
     """
-    Align all FASTA files in .../scaffolds/clustering/cluster_fasta
-    and save results in .../scaffolds/alignment/.
+    Align all FASTA files from input_dir and save results in output_dir.
     
     Args:
-        scaffolds_folder (str): Path to the .../scaffolds/ directory.
+        input_dir (str): Path to the .../cluster_fasta/ directory.
+        output_dir (str): Path to the .../alignment/ directory.
     """
-    scaffolds_folder_path = Path(scaffolds_folder)
-    clustering_dir = scaffolds_folder_path / "clustering"
-    cluster_fasta_folder = clustering_dir / "cluster_fasta"
-    alignment_folder = scaffolds_folder_path / "alignment"
+    cluster_fasta_folder = Path(input_dir)
+    alignment_folder = Path(output_dir)
     
     alignment_folder.mkdir(parents=True, exist_ok=True)
 
@@ -105,23 +102,20 @@ def process_alignment(scaffolds_folder: str):
     logger.info("All alignment tasks completed.")
 
 
-def main(combo_folder: str):
+def main(input_cluster_fasta_folder: str, 
+    output_alignment_folder: str):
     """
     Main function to run the alignment script.
     """
     logger.info("--- Starting Step 4: Alignment ---")
-    
-    combo_folder_path = Path(combo_folder)
-    scaffolds_folder_path = combo_folder_path / "scaffolds"
 
-    if not scaffolds_folder_path.exists():
-        logger.error(f"Scaffolds folder not found: {scaffolds_folder_path}")
-        raise FileNotFoundError(f"Scaffolds folder not found: {scaffolds_folder_path}")
+    logger.info(f"Input Folder (cluster FASTA): {input_cluster_fasta_folder}")
+    logger.info(f"Output Folder (Alignments): {output_alignment_folder}")
 
-    logger.info(f"Input (Scaffolds Folder): {scaffolds_folder_path}")
-    
-    # Call the core logic function, passing the .../scaffolds/ path
-    process_alignment(scaffolds_folder=str(scaffolds_folder_path))
+    process_alignment(
+        input_dir=input_cluster_fasta_folder,
+        output_dir=output_alignment_folder
+    )
     
     logger.info("--- Step 4: Alignment Completed ---")
 
@@ -135,16 +129,28 @@ def cli():
     )
     
     parser.add_argument(
-        "--combo-folder",
+        "--input-folder",
         type=str,
         required=True,
-        help="Path to the 'comb_...' folder (output of the assembly step)."
+        help="Path to the folder containing cluster FASTA files (e.g., .../cluster_fasta)."
+    )
+    parser.add_argument(
+        "--output-folder",
+        type=str,
+        required=True,
+        help="Path to the folder to save aligned .afa files (e.g., .../alignment)."
     )
     
     args = parser.parse_args()
-    
-    main(combo_folder=args.combo_folder)
+
+    main(input_cluster_fasta_folder=args.input_folder,
+         output_alignment_folder=args.output_folder
+         )
 
 
 if __name__ == "__main__":
     cli()
+
+# python -m instanexus.alignment \
+#     --input-folder outputs/bsa/scaffolds/clustering/cluster_fasta \
+#     --output-folder outputs/bsa/scaffolds/alignment

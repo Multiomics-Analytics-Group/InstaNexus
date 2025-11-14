@@ -14,7 +14,7 @@ r"""Consensus generation module for aligned scaffolds.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 03 Nov 2025
+__date__ = 14 Nov 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -26,24 +26,22 @@ import os
 import json
 import re
 import statistics
+from tqdm import tqdm
+
 from pathlib import Path
 from collections import Counter
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+
 import Bio.SeqRecord 
-from tqdm import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import plotly.express as px
-import plotly.io as pio
 import logomaker
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
-
 
 def generate_pssm(aligned_records):
     """Generates a Position-Specific Scoring Matrix (PSSM) from aligned sequences."""
@@ -80,26 +78,35 @@ def generate_consensus(pssm_df, threshold=0.6):
 
 
 def plot_heatmap2(pssm_df, output_file):
-    """Generates and saves a Plotly heatmap from a PSSM."""
+    """Generates and saves a Seaborn heatmap from a PSSM."""
     df_t = pssm_df.T
-    fig = px.imshow(
+    
+    max_fig_width = 50
+    fig_width = min(len(pssm_df) / 1.5, max_fig_width) 
+    fig_height = max(5, len(df_t) / 4) 
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    
+    sns.heatmap(
         df_t,
-        color_continuous_scale="Reds",
-        aspect="auto",
-        labels={"x": "Position", "y": "Amino acid", "color": "Frequency"},
+        ax=ax,
+        cmap="Reds",
+        linewidths=0.1,
+        linecolor='lightgrey',
+        cbar_kws={'label': 'Frequency'}
     )
-    fig.update_layout(
-        font=dict(family="DejaVu Sans", size=15),
-        xaxis_title="Position",
-        yaxis_title="Amino acid",
-        margin=dict(l=40, r=40, t=40, b=40),
-        coloraxis_colorbar=dict(title="Frequency"),
-    )
-    # Set x-ticks to be every 5 positions
-    x_tickvals = list(range(0, df_t.shape[1], 5))
-    fig.update_xaxes(tickmode="array", tickvals=x_tickvals, tickangle=0)
-    fig.update_yaxes(autorange="reversed")
-    pio.write_image(fig, output_file, format="svg", width=1200, height=400, scale=2)
+    
+    tick_positions = list(range(0, df_t.shape[1], 5))
+    tick_labels = [str(t+1) for t in tick_positions] 
+    ax.set_xticks([t + 0.5 for t in tick_positions]) 
+    ax.set_xticklabels(tick_labels, rotation=0)
+
+    ax.set_xlabel("Position", fontsize=14)
+    ax.set_ylabel("Amino Acid", fontsize=14)
+    
+    plt.tight_layout()
+    plt.savefig(output_file, format="svg", dpi=150)
+    plt.close(fig) 
 
 
 def plot_logo2(pssm_df, output_file):
@@ -185,11 +192,9 @@ def run_consensus_generation(align_folder: str, output_folder: str, run_id: str 
         consensus_fasta_path = consensus_fasta_dir / f"{base_filename}_consensus.fasta"
         Bio.SeqIO.write([consensus_record], consensus_fasta_path, "fasta")
 
-        # Plot heatmap
         heatmap_path = heatmap_dir / f"{base_filename}_heatmap.svg"
         plot_heatmap2(pssm_df, heatmap_path)
 
-        # Plot logo
         logo_path = logo_dir / f"{base_filename}_logo.svg"
         plot_logo2(pssm_df, logo_path)
 
@@ -246,27 +251,20 @@ def generate_consensus_stats(consensus_base_folder):
 
 
 def main(
-    combo_folder: str, 
-    run_name: str, 
-    assembly_mode: str, 
-    conf: float
+    input_alignment_folder: str, 
+    output_consensus_folder: str,
+    run_id: str = ""
 ):
     """
     Main function to run the consensus generation script.
     """
     logger.info("--- Starting Step 5: Consensus Generation ---")
-    
-    # Reconstruct paths
-    combo_folder_path = Path(combo_folder)
-    scaffolds_folder_path = combo_folder_path / "scaffolds"
-    align_folder_in = scaffolds_folder_path / "alignment"
-    consensus_folder_out = scaffolds_folder_path / "consensus"
+
+    align_folder_in = Path(input_alignment_folder)
+    consensus_folder_out = Path(output_consensus_folder)
 
     logger.info(f"Alignment Folder (Input): {align_folder_in}")
     logger.info(f"Consensus Folder (Output): {consensus_folder_out}")
-
-    # Recreate the run_id for the tqdm progress bar
-    run_id = f"{assembly_mode}_{conf}_{run_name}"
 
     # --- Step 1: Generate consensus, heatmaps, and logos ---
     logger.info("Running consensus generation from alignment files...")
@@ -295,38 +293,35 @@ def cli():
     )
     
     parser.add_argument(
-        "--combo-folder",
+        "--input-folder",
         type=str,
         required=True,
-        help="Path to the 'comb_...' folder (output of the assembly step)."
+        help="Path to the folder containing aligned .afa files (e.g., .../alignment)."
     )
     parser.add_argument(
-        "--run-name",
+        "--output-folder",
         type=str,
         required=True,
-        help="The base name of the run (e.g., 'bsa')."
+        help="Path to the folder to save consensus outputs (e.g., .../consensus)."
     )
     parser.add_argument(
-        "--assembly-mode",
+        "--run-id",
         type=str,
-        default="greedy",
-        help="Assembly mode used (e.g., 'greedy', 'dbg')."
-    )
-    parser.add_argument(
-        "--conf",
-        type=float,
-        default=0.88,
-        help="Confidence score used in the run."
+        default="",
+        help="Optional ID to display in the progress bar."
     )
     
     args = parser.parse_args()
     
     main(
-        combo_folder=args.combo_folder,
-        run_name=args.run_name,
-        assembly_mode=args.assembly_mode,
-        conf=args.conf
+        input_alignment_folder=args.input_folder,
+        output_consensus_folder=args.output_folder,
+        run_id=args.run_id
     )
 
 if __name__ == "__main__":
     cli()
+
+# python -m instanexus.consensus \
+#     --input-folder outputs/bsa/scaffolds/alignment \
+#     --output-folder outputs/bsa/scaffolds/consensus

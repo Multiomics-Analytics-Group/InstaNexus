@@ -33,6 +33,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 JSON_DIR = PROJECT_ROOT / "json"
 
+
 def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.json"):
     with open(json_path, "r") as f:
         all_meta = json.load(f)
@@ -71,7 +72,7 @@ def create_subdirectories_outputs(folder):
     Args:
         folder (str): The path of the parent directory.
     """
-    subdirectories = ["contigs", "scaffolds", "statistics"]
+    subdirectories = ["cleaned", "contigs", "scaffolds", "statistics"]
     for subdirectory in subdirectories:
         create_directory(f"{folder}/{subdirectory}")
 

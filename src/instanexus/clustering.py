@@ -14,7 +14,7 @@ r"""Clustering module for assembled scaffolds.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 03 Nov 2025
+__date__ = 14 Nov 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -31,7 +31,6 @@ from tempfile import mkdtemp
 from Bio import SeqIO
 from tqdm import tqdm
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -156,10 +155,7 @@ def process_fasta_and_clusters(fasta_file: Path, scaffolds_folder: Path):
 
 
 def main(
-    combo_folder: str, 
-    run_name: str, 
-    assembly_mode: str, 
-    conf: float,
+    input_scaffolds_folder: str,
     min_seq_id: float,
     coverage: float
 ):
@@ -168,33 +164,30 @@ def main(
     """
     logger.info("--- Starting Step 3: Clustering ---")
     
-    combo_folder_path = Path(combo_folder)
-    scaffolds_folder_out = combo_folder_path / "scaffolds"
-    clustering_out = scaffolds_folder_out / "clustering"
+    scaffolds_folder_path = Path(input_scaffolds_folder)
+    clustering_out_path = scaffolds_folder_path / "clustering"
+    fasta_input_path = scaffolds_folder_path / "scaffolds.fasta"
 
-    logger.info(f"Scaffolds Folder (Input): {scaffolds_folder_out}")
-    logger.info(f"Clustering Folder (Output): {clustering_out}")
+    logger.info(f"Scaffolds Folder (Input): {scaffolds_folder_path}")
+    logger.info(f"Clustering Folder (Output): {clustering_out_path  }")
 
-    # --- Step 1: Run the main clustering (mmseqs) ---
+    if not scaffolds_folder_path.exists():
+        logger.error(f"Scaffolds folder does not exist: {scaffolds_folder_path}")
+        raise FileNotFoundError(f"Scaffolds folder does not exist: {scaffolds_folder_path}")
+    
     logger.info("Running cluster_fasta_files...")
     cluster_fasta_files(
-        scaffolds_folder=scaffolds_folder_out,
-        clustering_dir=clustering_out,
+        scaffolds_folder=scaffolds_folder_path,
+        clustering_dir=clustering_out_path,
         min_seq_id=min_seq_id,
         coverage=coverage
     )
     
     # --- Step 2: Process the cluster results (split FASTA) ---
     logger.info("Running process_fasta_and_clusters...")
-    fasta_input = scaffolds_folder_out / "scaffolds.fasta"
-    
-    if not fasta_input.exists():
-        logger.error(f"Input FASTA not found: {fasta_input}")
-        raise FileNotFoundError(f"Input FASTA not found: {fasta_input}")
-        
     process_fasta_and_clusters(
-        fasta_file=fasta_input,
-        scaffolds_folder=scaffolds_folder_out
+        fasta_file=fasta_input_path,
+        scaffolds_folder=scaffolds_folder_path
     )
     
     logger.info("--- Step 3: Clustering Completed ---")
@@ -208,28 +201,10 @@ def cli():
     )
     
     parser.add_argument(
-        "--combo-folder",
+        "--input-scaffolds-folder",
         type=str,
         required=True,
-        help="Path to the 'comb_...' folder (output of the assembly step)."
-    )
-    parser.add_argument(
-        "--run-name",
-        type=str,
-        required=True,
-        help="The base name of the run (e.g., 'bsa')."
-    )
-    parser.add_argument(
-        "--assembly-mode",
-        type=str,
-        default="greedy",
-        help="Assembly mode used (e.g., 'greedy', 'dbg')."
-    )
-    parser.add_argument(
-        "--conf",
-        type=float,
-        default=0.88,
-        help="Confidence score used in the run."
+        help="Path to the folder containing 'scaffolds.fasta' (e.g., 'outputs/bsa/scaffolds')."
     )
     parser.add_argument(
         "--min-seq-id",
@@ -247,10 +222,7 @@ def cli():
     args = parser.parse_args()
     
     main(
-        combo_folder=args.combo_folder,
-        run_name=args.run_name,
-        assembly_mode=args.assembly_mode,
-        conf=args.conf,
+        input_scaffolds_folder=args.input_scaffolds_folder,
         min_seq_id=args.min_seq_id,
         coverage=args.coverage
     )
@@ -258,8 +230,4 @@ def cli():
 if __name__ == "__main__":
     cli()
 
-# python src/instanexus/clustering.py \
-#    --combo-folder "outputs/bsa/comb_dbg_c0.9_ks7_ts12_mo5" \
-#    --run-name "bsa" \
-#    --assembly-mode "dbg" \
-#    --conf 0.9
+# python -m instanexus/clustering --input-scaffolds-folder outputs/bsa/scaffolds --min-seq-id 0.85 --coverage 0.8
