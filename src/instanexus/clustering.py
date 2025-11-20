@@ -3,14 +3,14 @@
 r"""Clustering module for assembled scaffolds.
 
  ██████████   ███████████ █████  █████
-░░███░░░░███ ░█░░░███░░░█░░███  ░░███ 
- ░███   ░░███░   ░███  ░  ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ███     ░███     ░███   ░███ 
- ██████████      █████    ░░████████  
-░░░░░░░D░░      ░░░░░      ░░░░░░░░   
-     
+░░███░░░░███ ░█░░░███░░░█░░███  ░░███
+ ░███   ░░███░   ░███  ░  ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ███     ░███     ░███   ░███
+ ██████████      █████    ░░████████
+░░░░░░░D░░      ░░░░░      ░░░░░░░░
+
 __authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
@@ -30,19 +30,21 @@ from tempfile import mkdtemp
 from Bio import SeqIO
 from tqdm import tqdm
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 def cluster_fasta_files(
-    scaffolds_folder: Path, 
-    clustering_dir: Path, 
-    min_seq_id: float = 0.85, 
-    coverage: float = 0.8
+    scaffolds_folder: Path,
+    clustering_dir: Path,
+    min_seq_id: float = 0.85,
+    coverage: float = 0.8,
 ):
     """
     Runs mmseqs easy-cluster on the scaffolds.fasta file.
-    
+
     This is based on the user's provided function, but modified to be
     more robust by targeting only 'scaffolds.fasta' instead of looping.
     """
@@ -51,7 +53,7 @@ def cluster_fasta_files(
     cluster_fasta_dir.mkdir(exist_ok=True)
 
     temp_dir = mkdtemp(prefix="mmseqs-")
-    
+
     fasta_path = scaffolds_folder / "scaffolds.fasta"
     if not fasta_path.is_file():
         logger.error(f"Input file not found, skipping clustering: {fasta_path}")
@@ -124,22 +126,26 @@ def process_fasta_and_clusters(fasta_file: Path, scaffolds_folder: Path):
         return
 
     try:
-        cluster_df = pd.read_csv(cluster_tsv, sep="\t", header=None, names=["cluster", "contig"])
+        cluster_df = pd.read_csv(
+            cluster_tsv, sep="\t", header=None, names=["cluster", "contig"]
+        )
     except pd.errors.EmptyDataError:
-        logger.warning(f"Cluster TSV file is empty: {cluster_tsv}. No clusters to process.")
+        logger.warning(
+            f"Cluster TSV file is empty: {cluster_tsv}. No clusters to process."
+        )
         return
-        
+
     records = list(SeqIO.parse(fasta_file, "fasta"))
-    records_dict = SeqIO.to_dict(records) # Faster lookup
+    records_dict = SeqIO.to_dict(records)  # Faster lookup
     clusters = cluster_df["cluster"].unique()
 
     logger.info(f"Splitting {len(records)} sequences into {len(clusters)} clusters.")
-    
-    width = max(4, len(str(len(clusters)))) # For zfill padding
+
+    width = max(4, len(str(len(clusters))))  # For zfill padding
 
     for i, cluster_id in enumerate(tqdm(clusters, desc="Processing clusters")):
         contig_ids = cluster_df[cluster_df["cluster"] == cluster_id]["contig"].values
-        
+
         contig_records = []
         for contig_id in contig_ids:
             if contig_id in records_dict:
@@ -153,16 +159,12 @@ def process_fasta_and_clusters(fasta_file: Path, scaffolds_folder: Path):
     logger.info(f"All cluster FASTA files created in: {cluster_fasta_dir}")
 
 
-def main(
-    input_scaffolds_folder: str,
-    min_seq_id: float,
-    coverage: float
-):
+def main(input_scaffolds_folder: str, min_seq_id: float, coverage: float):
     """
     Main function to run the clustering script.
     """
     logger.info("--- Starting Step 3: Clustering ---")
-    
+
     scaffolds_folder_path = Path(input_scaffolds_folder)
     clustering_out_path = scaffolds_folder_path / "clustering"
     fasta_input_path = scaffolds_folder_path / "scaffolds.fasta"
@@ -172,24 +174,26 @@ def main(
 
     if not scaffolds_folder_path.exists():
         logger.error(f"Scaffolds folder does not exist: {scaffolds_folder_path}")
-        raise FileNotFoundError(f"Scaffolds folder does not exist: {scaffolds_folder_path}")
-    
+        raise FileNotFoundError(
+            f"Scaffolds folder does not exist: {scaffolds_folder_path}"
+        )
+
     logger.info("Running cluster_fasta_files...")
     cluster_fasta_files(
         scaffolds_folder=scaffolds_folder_path,
         clustering_dir=clustering_out_path,
         min_seq_id=min_seq_id,
-        coverage=coverage
+        coverage=coverage,
     )
-    
+
     # --- Step 2: Process the cluster results (split FASTA) ---
     logger.info("Running process_fasta_and_clusters...")
     process_fasta_and_clusters(
-        fasta_file=fasta_input_path,
-        scaffolds_folder=scaffolds_folder_path
+        fasta_file=fasta_input_path, scaffolds_folder=scaffolds_folder_path
     )
-    
+
     logger.info("--- Step 3: Clustering Completed ---")
+
 
 def cli():
     """
@@ -198,33 +202,34 @@ def cli():
     parser = argparse.ArgumentParser(
         description="Clustering script for assembled scaffolds."
     )
-    
+
     parser.add_argument(
         "--input-scaffolds-folder",
         type=str,
         required=True,
-        help="Path to the folder containing 'scaffolds.fasta' (e.g., 'outputs/bsa/scaffolds')."
+        help="Path to the folder containing 'scaffolds.fasta' (e.g., 'outputs/bsa/scaffolds').",
     )
     parser.add_argument(
         "--min-seq-id",
         type=float,
         default=0.85,
-        help="Minimum sequence identity for mmseqs (default: 0.85)."
+        help="Minimum sequence identity for mmseqs (default: 0.85).",
     )
     parser.add_argument(
         "--coverage",
         type=float,
         default=0.8,
-        help="Coverage parameter (-c) for mmseqs (default: 0.8)."
+        help="Coverage parameter (-c) for mmseqs (default: 0.8).",
     )
-    
+
     args = parser.parse_args()
-    
+
     main(
         input_scaffolds_folder=args.input_scaffolds_folder,
         min_seq_id=args.min_seq_id,
-        coverage=args.coverage
+        coverage=args.coverage,
     )
+
 
 if __name__ == "__main__":
     cli()

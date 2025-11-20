@@ -3,14 +3,14 @@
 r"""Consensus generation module for aligned scaffolds.
 
  ██████████   ███████████ █████  █████
-░░███░░░░███ ░█░░░███░░░█░░███  ░░███ 
- ░███   ░░███░   ░███  ░  ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ███     ░███     ░███   ░███ 
- ██████████      █████    ░░████████  
-░░░░░░░░░░      ░░░░░      ░░░░░░░░   
-                          
+░░███░░░░███ ░█░░░███░░░█░░███  ░░███
+ ░███   ░░███░   ░███  ░  ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ███     ░███     ░███   ░███
+ ██████████      █████    ░░████████
+░░░░░░░░░░      ░░░░░      ░░░░░░░░
+
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
@@ -34,14 +34,17 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-import Bio.SeqRecord 
+import Bio.SeqRecord
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import logomaker
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 def generate_pssm(aligned_records):
     """Generates a Position-Specific Scoring Matrix (PSSM) from aligned sequences."""
@@ -52,17 +55,17 @@ def generate_pssm(aligned_records):
                 pssm[i] = Counter()
             if aa != "-":  # Ignore gaps
                 pssm[i][aa] += 1
-    
+
     # Normalize to frequencies
     for i in pssm:
         total = sum(pssm[i].values())
         if total > 0:
             for aa in pssm[i]:
                 pssm[i][aa] /= total
-                
+
     pssm_df = pd.DataFrame(pssm).fillna(0).T
     pssm_df.index = pssm_df.index + 1  # 1-based indexing for positions
-    pssm_df = pssm_df.sort_index(axis=1) # Sort columns alphabetically (A, C, D...)
+    pssm_df = pssm_df.sort_index(axis=1)  # Sort columns alphabetically (A, C, D...)
     return pssm_df
 
 
@@ -80,33 +83,33 @@ def generate_consensus(pssm_df, threshold=0.6):
 def plot_heatmap2(pssm_df, output_file):
     """Generates and saves a Seaborn heatmap from a PSSM."""
     df_t = pssm_df.T
-    
+
     max_fig_width = 50
-    fig_width = min(len(pssm_df) / 1.5, max_fig_width) 
-    fig_height = max(5, len(df_t) / 4) 
+    fig_width = min(len(pssm_df) / 1.5, max_fig_width)
+    fig_height = max(5, len(df_t) / 4)
 
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-    
+
     sns.heatmap(
         df_t,
         ax=ax,
         cmap="Reds",
         linewidths=0.1,
-        linecolor='lightgrey',
-        cbar_kws={'label': 'Frequency'}
+        linecolor="lightgrey",
+        cbar_kws={"label": "Frequency"},
     )
-    
+
     tick_positions = list(range(0, df_t.shape[1], 5))
-    tick_labels = [str(t+1) for t in tick_positions] 
-    ax.set_xticks([t + 0.5 for t in tick_positions]) 
+    tick_labels = [str(t + 1) for t in tick_positions]
+    ax.set_xticks([t + 0.5 for t in tick_positions])
     ax.set_xticklabels(tick_labels, rotation=0)
 
     ax.set_xlabel("Position", fontsize=14)
     ax.set_ylabel("Amino Acid", fontsize=14)
-    
+
     plt.tight_layout()
     plt.savefig(output_file, format="svg", dpi=150)
-    plt.close(fig) 
+    plt.close(fig)
 
 
 def plot_logo2(pssm_df, output_file):
@@ -114,7 +117,7 @@ def plot_logo2(pssm_df, output_file):
     max_fig_width = 50
     fig_width = min(len(pssm_df) / 1.5, max_fig_width)
     fig, ax = plt.subplots(figsize=[fig_width, 3])
-    
+
     logo = logomaker.Logo(
         pssm_df,
         ax=ax,
@@ -131,7 +134,7 @@ def plot_logo2(pssm_df, output_file):
         width=0.85,
         baseline_width=0.5,
     )
-    
+
     logo.style_xticks(anchor=0, rotation=0, spacing=1, fontsize=16, ha="center")
     ax.set_yticks([0, 0.5, 1])
     ax.set_yticklabels([0, 0.5, 1], fontsize=16)
@@ -165,15 +168,15 @@ def run_consensus_generation(align_folder: str, output_folder: str, run_id: str 
     logo_dir.mkdir(exist_ok=True)
 
     alignment_files = [f for f in sorted(os.listdir(align_path)) if f.endswith(".afa")]
-    
+
     logger.info(f"Found {len(alignment_files)} aligned .afa files.")
-    
+
     for alignment_file in tqdm(
         alignment_files,
         desc=f"[{run_id}] Generating Consensus" if run_id else "Generating Consensus",
     ):
         alignment_path = align_path / alignment_file
-        base_filename = alignment_path.stem # e.g., 'scaffold_0001_aligned'
+        base_filename = alignment_path.stem  # e.g., 'scaffold_0001_aligned'
 
         aligned_records = list(SeqIO.parse(alignment_path, "fasta"))
         if not aligned_records:
@@ -206,7 +209,7 @@ def generate_consensus_stats(consensus_base_folder):
     """Calculates statistics on the generated consensus FASTA files."""
     consensus_base_folder = Path(consensus_base_folder)
     fasta_files = list(consensus_base_folder.glob("*_consensus.fasta"))
-    
+
     if not fasta_files:
         logger.warning("No consensus FASTA files found, skipping stats.")
         return
@@ -214,26 +217,28 @@ def generate_consensus_stats(consensus_base_folder):
     lengths = []
     gap_lengths_all = []
     sequences_without_gaps = 0
-    
+
     for fasta_path in fasta_files:
         record = next(SeqIO.parse(fasta_path, "fasta"))
         seq = str(record.seq)
         seq_len = len(seq)
         lengths.append(seq_len)
-        
+
         if "-" not in seq:
             sequences_without_gaps += 1
         else:
             gap_lengths = [len(g.group()) for g in re.finditer(r"-+", seq)]
             gap_lengths_all.extend(gap_lengths)
-            
+
     longest_gap = max(gap_lengths_all) if gap_lengths_all else 0
     shortest_gap = min(gap_lengths_all) if gap_lengths_all else 0
-    percent_no_gaps = (sequences_without_gaps / len(fasta_files) * 100) if fasta_files else 0
+    percent_no_gaps = (
+        (sequences_without_gaps / len(fasta_files) * 100) if fasta_files else 0
+    )
     max_length = max(lengths) if lengths else 0
     min_length = min(lengths) if lengths else 0
     avg_length = statistics.mean(lengths) if lengths else 0
-    
+
     stats = {
         "n_consensus_files": len(fasta_files),
         "longest_gap": longest_gap,
@@ -243,18 +248,14 @@ def generate_consensus_stats(consensus_base_folder):
         "min_consensus_length": min_length,
         "avg_consensus_length": round(avg_length, 2),
     }
-    
+
     stats_path = consensus_base_folder.parent / "consensus_stats.json"
     with open(stats_path, "w") as f:
         json.dump(stats, f, indent=4)
     logger.info(f"Consensus statistics saved to: {stats_path}")
 
 
-def main(
-    input_alignment_folder: str, 
-    output_consensus_folder: str,
-    run_id: str = ""
-):
+def main(input_alignment_folder: str, output_consensus_folder: str, run_id: str = ""):
     """
     Main function to run the consensus generation script.
     """
@@ -271,16 +272,14 @@ def main(
     consensus_fasta_dir = run_consensus_generation(
         align_folder=str(align_folder_in),
         output_folder=str(consensus_folder_out),
-        run_id=run_id
+        run_id=run_id,
     )
-    
+
     # --- Step 2: Generate statistics on the consensus files ---
     if consensus_fasta_dir:
         logger.info("Running consensus statistics generation...")
-        generate_consensus_stats(
-            consensus_base_folder=consensus_fasta_dir
-        )
-    
+        generate_consensus_stats(consensus_base_folder=consensus_fasta_dir)
+
     logger.info("--- Step 5: Consensus Generation Completed ---")
 
 
@@ -291,33 +290,34 @@ def cli():
     parser = argparse.ArgumentParser(
         description="Consensus generation script for aligned scaffolds."
     )
-    
+
     parser.add_argument(
         "--input-folder",
         type=str,
         required=True,
-        help="Path to the folder containing aligned .afa files (e.g., .../alignment)."
+        help="Path to the folder containing aligned .afa files (e.g., .../alignment).",
     )
     parser.add_argument(
         "--output-folder",
         type=str,
         required=True,
-        help="Path to the folder to save consensus outputs (e.g., .../consensus)."
+        help="Path to the folder to save consensus outputs (e.g., .../consensus).",
     )
     parser.add_argument(
         "--run-id",
         type=str,
         default="",
-        help="Optional ID to display in the progress bar."
+        help="Optional ID to display in the progress bar.",
     )
-    
+
     args = parser.parse_args()
-    
+
     main(
         input_alignment_folder=args.input_folder,
         output_consensus_folder=args.output_folder,
-        run_id=args.run_id
+        run_id=args.run_id,
     )
+
 
 if __name__ == "__main__":
     cli()

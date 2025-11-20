@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
-r""" Preprocessing module for InstaNexus.
+r"""Preprocessing module for InstaNexus.
 
  ██████████   ███████████ █████  █████
-░░███░░░░███ ░█░░░███░░░█░░███  ░░███ 
- ░███   ░░███░   ░███  ░  ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ███     ░███     ░███   ░███ 
- ██████████      █████    ░░████████  
-░░░░░░░░░░      ░░░░░      ░░░░░░░░   
-                                      
+░░███░░░░███ ░█░░░███░░░█░░███  ░░███
+ ░███   ░░███░   ░███  ░  ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ███     ░███     ░███   ░███
+ ██████████      █████    ░░████████
+░░░░░░░░░░      ░░░░░      ░░░░░░░░
+
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
@@ -34,14 +34,15 @@ from pathlib import Path
 from Bio import SeqIO
 
 
-#PROJECT_ROOT = Path(__file__).resolve().parents[2]
-#JSON_DIR = PROJECT_ROOT / "json"
+# PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# JSON_DIR = PROJECT_ROOT / "json"
+
 
 def get_sample_metadata(run, chain="", json_path=None):
     """Retrieve sample metadata from a JSON file based on the run and optional chain."""
     if json_path is None:
         raise ValueError("json_path must be provided.")
-    
+
     with open(json_path, "r") as f:
         all_meta = json.load(f)
 
@@ -174,22 +175,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-
 def main(
     input_csv: str,
     metadata_json: str,
     contaminants_fasta: str,
     chain: str,
-    #folder_outputs: str,
+    # folder_outputs: str,
     reference: bool,
-    #assembly_mode: str,
+    # assembly_mode: str,
     conf: float,
     output_csv_path: str,
-    #kmer_size: int,
-    #size_threshold: int,
-    #min_overlap: int,
-    #min_identity: float,
-    #max_mismatches: int,
+    # kmer_size: int,
+    # size_threshold: int,
+    # min_overlap: int,
+    # min_identity: float,
+    # max_mismatches: int,
 ):
     """Main function to run the preprocessing script."""
     input_csv = Path(input_csv)
@@ -197,7 +197,7 @@ def main(
     print("Starting preprocessing pipeline.")
 
     input_csv = Path(input_csv)
-    run = input_csv.stem # stem gives the filename without suffix
+    run = input_csv.stem  # stem gives the filename without suffix
 
     # load metadata
     if chain:
@@ -221,15 +221,15 @@ def main(
 
     print("Parameters loaded.")
 
-    #folder_outputs = Path(folder_outputs) / run
-    #folder_outputs.mkdir(parents=True, exist_ok=True)
+    # folder_outputs = Path(folder_outputs) / run
+    # folder_outputs.mkdir(parents=True, exist_ok=True)
 
-    #folder_name_parts = [f"comb_{assembly_mode}", f"c{conf}", f"ts{size_threshold}", f"mo{min_overlap}"]
+    # folder_name_parts = [f"comb_{assembly_mode}", f"c{conf}", f"ts{size_threshold}", f"mo{min_overlap}"]
 
     # if assembly_mode == "dbg":
     #     folder_name_parts.insert(2, f"ks{kmer_size}")
 
-    #if reference:
+    # if reference:
     #    folder_name_parts.extend([f"mi{min_identity}", f"mm{max_mismatches}"])
 
     # combination_folder_out = folder_outputs / "_".join(folder_name_parts)
@@ -238,7 +238,7 @@ def main(
     # print(f"Output folders created at: {combination_folder_out}")
 
     logger.info("Starting data cleaning...")
-    
+
     if reference:
         protein_norm = normalize_sequence(protein)
     df = pd.read_csv(input_csv)
@@ -246,16 +246,14 @@ def main(
     df["protease"] = df["experiment_name"].apply(
         lambda name: extract_protease(name, proteases)
     )
-    
+
     df = clean_dataframe(df)
-    
+
     df["cleaned_preds"] = df["preds"].apply(remove_modifications)
-    
+
     cleaned_psms = df["cleaned_preds"].tolist()
 
-    filtered_psms = filter_contaminants(
-        cleaned_psms, run, contaminants_fasta
-    )
+    filtered_psms = filter_contaminants(cleaned_psms, run, contaminants_fasta)
     df = df[df["cleaned_preds"].isin(filtered_psms)]
 
     if reference:
@@ -269,15 +267,15 @@ def main(
         df = df[df["conf"] > conf]
     else:
         logger.info("No confidence threshold applied.")
-    
+
     df.reset_index(drop=True, inplace=True)
-    
+
     logger.info("Data cleaning completed.")
     cleaned_csv_path = Path(output_csv_path)
     cleaned_csv_path.parent.mkdir(parents=True, exist_ok=True)
 
-    #cleaned_csv_path = combination_folder_out / "cleaned" / "cleaned_data.csv"
-    
+    # cleaned_csv_path = combination_folder_out / "cleaned" / "cleaned_data.csv"
+
     df.to_csv(cleaned_csv_path, index=False)
     logger.info("Cleaned data saved to: {}.".format(cleaned_csv_path))
 
@@ -371,12 +369,13 @@ def cli():
         "--output-csv-path",
         type=str,
         required=True,
-        help="Path to the output CSV file."
+        help="Path to the output CSV file.",
     )
 
     args = parser.parse_args()
 
     main(**vars(args))
+
 
 if __name__ == "__main__":
     cli()
