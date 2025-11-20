@@ -25,10 +25,6 @@ import os
 from pathlib import Path
 
 # import libraries
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 JSON_DIR = PROJECT_ROOT / "json"

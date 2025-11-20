@@ -192,7 +192,7 @@ def run_pipeline(args):
     logger.info(f"All results will be saved to: {experiment_folder}")
 
     try:
-        logger.info(f"--- [Step 1/5] Running Preprocessing ---")
+        logger.info("--- [Step 1/5] Running Preprocessing ---")
         preprocessing.main(
             input_csv=args.input_csv,
             metadata_json=args.metadata_json_path,
@@ -207,7 +207,7 @@ def run_pipeline(args):
         return
 
     try:
-        logger.info(f"--- [Step 2/5] Running Assembly ---")
+        logger.info("--- [Step 2/5] Running Assembly ---")
         assembly.main(
             input_csv_path=str(cleaned_csv_path),
             output_scaffolds_path=str(scaffolds_fasta_path),
@@ -226,7 +226,7 @@ def run_pipeline(args):
         return
 
     try:
-        logger.info(f"--- [Step 3/5] Running Clustering ---")
+        logger.info("--- [Step 3/5] Running Clustering ---")
         clustering.main(
             input_scaffolds_folder=str(scaffolds_folder),  # Pass the folder
             min_seq_id=args.min_seq_id,
@@ -237,7 +237,7 @@ def run_pipeline(args):
         return
 
     try:
-        logger.info(f"--- [Step 4/5] Running Alignment ---")
+        logger.info("--- [Step 4/5] Running Alignment ---")
         alignment.main(
             input_cluster_fasta_folder=str(cluster_fasta_folder),
             output_alignment_folder=str(alignment_folder),
@@ -247,7 +247,7 @@ def run_pipeline(args):
         return
 
     try:
-        logger.info(f"--- [Step 5/5] Running Consensus ---")
+        logger.info("--- [Step 5/5] Running Consensus ---")
         consensus.main(
             input_alignment_folder=str(alignment_folder),
             output_consensus_folder=str(consensus_folder),
@@ -257,7 +257,7 @@ def run_pipeline(args):
         logger.error(f"Consensus failed: {e}")
         return
 
-    logger.info(f"--- InstaNexus Pipeline finished successfully! ---")
+    logger.info("--- InstaNexus Pipeline finished successfully! ---")
     logger.info(f"Final results in: {experiment_folder}")
 
 

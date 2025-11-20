@@ -28,12 +28,11 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List
 
 import Bio
 import networkx as nx
 import pandas as pd
-from Bio import SeqIO
 from tqdm import tqdm
 
 from . import helpers
@@ -696,7 +695,7 @@ class Assembler:
         return extended_contigs
 
     def assemble_fusion(self, sequences):
-        logger.info(f"[Assembler] Running FUSION (DBG weighted + greedy merge)")
+        logger.info("[Assembler] Running FUSION (DBG weighted + greedy merge)")
 
         contigs_dbg_weighted = self.assemble_dbg_weighted(sequences)
 
@@ -749,7 +748,7 @@ def main(
 
     protein_norm = None  # None means no reference mode
     if reference:
-        logger.info(f"Reference mode enabled. Loading reference protein...")
+        logger.info("Reference mode enabled. Loading reference protein...")
         if not metadata_json_path:
             raise ValueError(
                 "metadata_json_path is required when reference mode is enabled."

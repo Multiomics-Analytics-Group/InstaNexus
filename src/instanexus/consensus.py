@@ -35,8 +35,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from Bio import SeqIO
-from Bio.Seq import Seq
-from Bio.SeqRecord import SeqRecord
 from tqdm import tqdm
 
 logging.basicConfig(

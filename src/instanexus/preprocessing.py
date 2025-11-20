@@ -24,14 +24,11 @@ import json
 import logging
 
 # import libraries
-import os
 import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from Bio import SeqIO
 
 # PROJECT_ROOT = Path(__file__).resolve().parents[2]
