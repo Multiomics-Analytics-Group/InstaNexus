@@ -26,10 +26,9 @@ import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from tqdm import tqdm
-
 from src.opt.opt_dbg import run_pipeline_dbg
 from src.opt.opt_greedy import run_pipeline_greedy
+from tqdm import tqdm
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
