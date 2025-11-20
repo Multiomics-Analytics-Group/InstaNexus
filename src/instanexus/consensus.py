@@ -21,24 +21,23 @@ __status__ = Dev
 """
 
 import argparse
+import json
 import logging
 import os
-import json
 import re
 import statistics
-from tqdm import tqdm
-
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
+
+import Bio.SeqRecord
+import logomaker
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-
-import Bio.SeqRecord
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import logomaker
+from tqdm import tqdm
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"

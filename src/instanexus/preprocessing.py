@@ -20,19 +20,19 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
+import json
+import logging
+
 # import libraries
 import os
 import re
-import json
-import logging
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-
-from pathlib import Path
 from Bio import SeqIO
-
 
 # PROJECT_ROOT = Path(__file__).resolve().parents[2]
 # JSON_DIR = PROJECT_ROOT / "json"

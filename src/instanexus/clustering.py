@@ -24,9 +24,10 @@ import argparse
 import logging
 import shutil
 import subprocess
-import pandas as pd
 from pathlib import Path
 from tempfile import mkdtemp
+
+import pandas as pd
 from Bio import SeqIO
 from tqdm import tqdm
 

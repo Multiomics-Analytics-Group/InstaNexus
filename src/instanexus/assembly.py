@@ -20,25 +20,24 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
+import argparse
+
 # import libraries
 import logging
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from itertools import combinations
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+import Bio
 import networkx as nx
 import pandas as pd
-import argparse
-import Bio
+from Bio import SeqIO
+from tqdm import tqdm
 
 from . import helpers
 from . import visualization as viz
-
-from tqdm import tqdm
-from pathlib import Path
-from Bio import SeqIO
-from collections import defaultdict
-from collections import Counter
-from itertools import combinations
-from dataclasses import dataclass
-from typing import List, Tuple, Dict, Any, Iterable, Optional
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

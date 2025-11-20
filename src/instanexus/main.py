@@ -23,11 +23,8 @@ __status__ = Dev
 import argparse
 import logging
 from pathlib import Path
-from . import preprocessing
-from . import assembly
-from . import clustering
-from . import alignment
-from . import consensus
+
+from . import alignment, assembly, clustering, consensus, preprocessing
 
 # Setup logging
 logging.basicConfig(
