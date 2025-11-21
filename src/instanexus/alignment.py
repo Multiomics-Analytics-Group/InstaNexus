@@ -26,6 +26,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+
 from Bio import SeqIO
 
 logging.basicConfig(

@@ -1,5 +1,6 @@
-import sys
 import argparse
+import sys
+
 from . import script_dbg, script_greedy
 
 

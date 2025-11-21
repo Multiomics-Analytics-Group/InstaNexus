@@ -1,30 +1,26 @@
 [build-system]
-requires = ["hatchling>=1.25"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/instanexus"]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "instanexus"
-version = "0.2.0"
+version = "0.2.1"
 description = "End-to-end workflow for de novo protein sequencing based on InstaNovo"
 readme = "README.md"
-readme-content-type = "text/markdown"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 authors = [
   { name = "Marco Reverenna", email = "marcor@dtu.dk" }
 ]
 
 keywords = ["proteomics", "bioinformatics", "protein sequencing", "de novo", "assembly", "mass spectrometry"]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
 
 dependencies = [
   "biopython>=1.85",
@@ -35,13 +31,24 @@ dependencies = [
   "plotly>=6.2.0",
   "logomaker>=0.8",
   "networkx>=3.3",
+  "mmseqs2",
+  "upsetplot"
 ]
 
-classifiers = [
-  "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: OS Independent"
+[project.optional-dependencies]
+# Optional dependencies to locally build the documentation
+docs = [
+  "sphinx",
+  "sphinx-book-theme",
+  "myst-nb",
+  "ipywidgets",
+  "sphinx-new-tab-link!=0.2.2",
+  "jupytext",
+  "sphinx-copybutton",
 ]
+
+# local development options
+dev = ["black[jupyter]", "ruff", "pytest", "isort", "jupytext"]
 
 [project.urls]
 Homepage = "https://github.com/Multiomics-Analytics-Group/InstaNexus"
@@ -50,16 +57,26 @@ Issues = "https://github.com/Multiomics-Analytics-Group/InstaNexus/issues"
 [project.scripts]
 instanexus = "instanexus.main:cli"
 
+# --- TOOL CONFIGURATIONS ---
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+# Exclude notebooks to avoid linting errors on them
+exclude = ["*.ipynb", "docs/source/tutorials/*"]
+line-length = 88
+
+[tool.ruff.lint]
+# Enable common rules: E (pycodestyle errors), W (warnings), F (pyflakes), B (bugbear)
+extend-select = ["E", "W", "F", "B"]
+
 [tool.black]
 line-length = 88
 target-version = ['py311']
 
 [tool.isort]
 profile = "black"
-
-[tool.ruff]
-exclude = ["*.ipynb"]
-
-authors = [
-  { name = "Marco Reverenna", email = "marcor@dtu.dk" }
-]
