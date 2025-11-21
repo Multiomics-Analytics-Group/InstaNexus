@@ -27,6 +27,7 @@ dependencies:
 
   # development tools
   - black
+  - ruff
   - pytest
   - coverage
   - mypy

@@ -3,14 +3,14 @@
 r"""Assembly module for InstaNexus.
 
  ██████████   ███████████ █████  █████
-░░███░░░░███ ░█░░░███░░░█░░███  ░░███ 
- ░███   ░░███░   ░███  ░  ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ███     ░███     ░███   ░███ 
- ██████████      █████    ░░████████  
-░░░░░░░░░░      ░░░░░      ░░░░░░░░   
-                          
+░░███░░░░███ ░█░░░███░░░█░░███  ░░███
+ ░███   ░░███░   ░███  ░  ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ███     ░███     ░███   ░███
+ ██████████      █████    ░░████████
+░░░░░░░░░░      ░░░░░      ░░░░░░░░
+
 __authors__ = Marco Reverenna & Konstantinos Kalogeropoulus
 __copyright__ = Copyright 2024-2025
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
@@ -32,22 +32,20 @@ from . import visualization as viz
 
 from tqdm import tqdm
 from pathlib import Path
-from Bio import SeqIO
 from collections import defaultdict
 from collections import Counter
 from itertools import combinations
 from dataclasses import dataclass
-from typing import List, Tuple, Dict, Any, Iterable, Optional
+from typing import List, Dict, Iterable
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
 def find_peptide_overlaps(peptides, min_overlap):
     """Finds overlaps between peptide sequences using a greedy approach."""
-    overlaps = defaultdict(list) 
+    overlaps = defaultdict(list)
 
     for index_a, peptide_a in tqdm(enumerate(peptides), desc="Finding overlaps"):
         for index_b, peptide_b in enumerate(peptides):
@@ -136,14 +134,16 @@ def combine_seqs_into_scaffolds(contigs, min_overlap):
 
 def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm=False):
     """Iterative scaffolding using Greedy approach."""
+
     def clean(seqs):
         """Remove duplicates, filter by length, and sort by descending size."""
         seqs = list(set(seqs))
         seqs = [s for s in seqs if len(s) > size_threshold]
         return sorted(seqs, key=len, reverse=True)
+
     current = clean(contigs)
     prev = None
-    
+
     while prev != current:
         prev = current
         next_round = combine_seqs_into_scaffolds(current, min_overlap)
@@ -152,7 +152,7 @@ def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm
         if next_round == current:
             break
         current = next_round
-    
+
     return current
 
 
@@ -160,7 +160,7 @@ def get_kmers(seqs, kmer_size):
     """Generate k-mers of specified length from input sequences."""
     kmers = []
     for seq in seqs:
-        kmers.extend(seq[i:i+kmer_size] for i in range(len(seq)-kmer_size+1))
+        kmers.extend(seq[i : i + kmer_size] for i in range(len(seq) - kmer_size + 1))
     return kmers
 
 
@@ -178,8 +178,7 @@ def get_kmer_counts(kmers):
 
 
 def get_debruijn_edges_from_kmers(kmers):
-    """Generate edges of a De Bruijn graph from a list of k-mers.
-    """
+    """Generate edges of a De Bruijn graph from a list of k-mers."""
     edges = set()
     k_1mers = defaultdict(set)
     for kmer in kmers:
@@ -226,9 +225,7 @@ def assemble_contigs_dbg(edges):
 def find_overlaps(contigs, min_overlap, disable_tqdm=False):
     """Find overlaps between pairs of contigs based on specified minimum overlap."""
     overlaps = []
-    total_pairs = sum(
-        1 for _ in combinations(contigs, 2)
-    )
+    total_pairs = sum(1 for _ in combinations(contigs, 2))
     with tqdm(total=total_pairs, desc="Finding overlaps", disable=disable_tqdm) as pbar:
         for a, b in combinations(
             contigs, 2
@@ -284,7 +281,6 @@ def scaffold_iterative_dbg(contigs, min_overlap, size_threshold, disable_tqdm=Fa
     return sorted(current, key=len, reverse=True)
 
 
-
 def get_kmers(sequences: Iterable[str], kmer_size: int) -> List[str]:
     """Generate all k-mers from a list of sequences."""
     kmers = []
@@ -294,7 +290,7 @@ def get_kmers(sequences: Iterable[str], kmer_size: int) -> List[str]:
         L = len(seq)
         if L < kmer_size:
             continue
-        kmers.extend(seq[i:i+kmer_size] for i in range(L - kmer_size + 1))
+        kmers.extend(seq[i : i + kmer_size] for i in range(L - kmer_size + 1))
     return kmers
 
 
@@ -325,7 +321,9 @@ def build_dbg_from_kmers(kmers: Iterable[str]) -> nx.DiGraph:
 
 def filter_low_weight_edges(G: nx.DiGraph, min_weight: int = 2) -> nx.DiGraph:
     """Remove edges with weight < min_weight (light error correction)."""
-    to_remove = [(u, v) for u, v, d in G.edges(data=True) if d.get("weight", 0) < min_weight]
+    to_remove = [
+        (u, v) for u, v, d in G.edges(data=True) if d.get("weight", 0) < min_weight
+    ]
     G.remove_edges_from(to_remove)
     # drop isolated nodes
     iso = [n for n in G.nodes if G.in_degree(n) == 0 and G.out_degree(n) == 0]
@@ -335,9 +333,10 @@ def filter_low_weight_edges(G: nx.DiGraph, min_weight: int = 2) -> nx.DiGraph:
 
 @dataclass
 class ContigPath:
-    nodes: List[str]         # list of (k-1)-mer node labels in path order
-    seq: str                 # assembled sequence
-    weights: List[int]       # edge weights along the path
+    nodes: List[str]  # list of (k-1)-mer node labels in path order
+    seq: str  # assembled sequence
+    weights: List[int]  # edge weights along the path
+
 
 def _extend_linear_path(G: nx.DiGraph, start: str, succ: str) -> ContigPath:
     """Extend from start→succ while in/out-degree == 1 (unbranched)."""
@@ -405,13 +404,20 @@ class ContigScore:
     max_weight: int
     score: float
 
-def score_contig(cp: ContigPath, alpha_len: float = 1.0, alpha_cov: float = 1.0, alpha_min: float = 0.2) -> ContigScore:
+
+def score_contig(
+    cp: ContigPath,
+    alpha_len: float = 1.0,
+    alpha_cov: float = 1.0,
+    alpha_min: float = 0.2,
+) -> ContigScore:
     """
     Simple reference-free score combining length and coverage:
       score = alpha_len * log(length) + alpha_cov * mean_weight + alpha_min * min_weight
     Adjust alphas to your data. You can also plug-in intensity-based terms later.
     """
     import math
+
     if cp.weights:
         mean_w = sum(cp.weights) / len(cp.weights)
         min_w = min(cp.weights)
@@ -420,26 +426,37 @@ def score_contig(cp: ContigPath, alpha_len: float = 1.0, alpha_cov: float = 1.0,
         mean_w = min_w = max_w = 0.0
     L = len(cp.seq)
     composite = alpha_len * math.log(max(L, 2)) + alpha_cov * mean_w + alpha_min * min_w
-    return ContigScore(seq=cp.seq, length=L, mean_weight=mean_w, min_weight=min_w, max_weight=max_w, score=composite)
+    return ContigScore(
+        seq=cp.seq,
+        length=L,
+        mean_weight=mean_w,
+        min_weight=min_w,
+        max_weight=max_w,
+        score=composite,
+    )
 
 
-def rank_contigs_by_score(contigs: List[ContigPath],
-                          alpha_len: float = 1.0,
-                          alpha_cov: float = 1.0,
-                          alpha_min: float = 0.2) -> List[ContigScore]:
+def rank_contigs_by_score(
+    contigs: List[ContigPath],
+    alpha_len: float = 1.0,
+    alpha_cov: float = 1.0,
+    alpha_min: float = 0.2,
+) -> List[ContigScore]:
     scored = [score_contig(c, alpha_len, alpha_cov, alpha_min) for c in contigs]
     return sorted(scored, key=lambda s: (s.score, s.length), reverse=True)
 
 
-def scaffold_iterative_dbgx(seqs: List[str],
-                            kmer_size: int,
-                            size_threshold: int = 10,
-                            min_weight: int = 2,
-                            max_rounds: int = 5,
-                            patience: int = 2,
-                            alpha_len: float = 1.0,
-                            alpha_cov: float = 1.0,
-                            alpha_min: float = 0.2) -> List[str]:
+def scaffold_iterative_dbgx(
+    seqs: List[str],
+    kmer_size: int,
+    size_threshold: int = 10,
+    min_weight: int = 2,
+    max_rounds: int = 5,
+    patience: int = 2,
+    alpha_len: float = 1.0,
+    alpha_cov: float = 1.0,
+    alpha_min: float = 0.2,
+) -> List[str]:
     """
     Optional refinement:
       rebuild DBG from current contigs → collapse → filter by size → repeat
@@ -463,7 +480,9 @@ def scaffold_iterative_dbgx(seqs: List[str],
         seqs_new = [r.seq for r in ranked]
 
         # improvement heuristic: fewer contigs or longer top contig
-        improved = (len(seqs_new) < len(best)) or (seqs_new and best and len(seqs_new[0]) > len(best[0]))
+        improved = (len(seqs_new) < len(best)) or (
+            seqs_new and best and len(seqs_new[0]) > len(best[0])
+        )
         if improved:
             best = seqs_new
             no_improve = 0
@@ -494,7 +513,7 @@ def extend_path_dbg(G, contig, k, min_weight=1):
     # Extension forwards
     while extended:
         extended = False
-        suffix = seq[-(k-1):]
+        suffix = seq[-(k - 1) :]
         if suffix not in G or G.out_degree(suffix) == 0:
             break
 
@@ -522,7 +541,7 @@ def extend_path_dbg(G, contig, k, min_weight=1):
     extended = True
     while extended:
         extended = False
-        prefix = seq[:k-1]
+        prefix = seq[: k - 1]
         if prefix not in G or G.in_degree(prefix) == 0:
             break
 
@@ -551,22 +570,26 @@ def extend_path_dbg(G, contig, k, min_weight=1):
 class Assembler:
     """Unified assembler supporting 'greedy', 'dbg' and 'dbgx' (NetworkX) modes."""
 
-    def __init__(self,
-                 mode: str = "greedy",
-                 min_overlap: int = 4,
-                 size_threshold: int = 10,
-                 kmer_size: int = 6,
-                 min_identity: float = 0.8,
-                 max_mismatches: int = 10,
-                 # dbgx-specific:
-                 min_weight: int = 2,
-                 refine_rounds: int = 0,   # 0 = no refine, >0 enables iterative refine
-                 refine_patience: int = 2,
-                 alpha_len: float = 1.0,
-                 alpha_cov: float = 1.0,
-                 alpha_min: float = 0.2):
+    def __init__(
+        self,
+        mode: str = "greedy",
+        min_overlap: int = 4,
+        size_threshold: int = 10,
+        kmer_size: int = 6,
+        min_identity: float = 0.8,
+        max_mismatches: int = 10,
+        # dbgx-specific:
+        min_weight: int = 2,
+        refine_rounds: int = 0,  # 0 = no refine, >0 enables iterative refine
+        refine_patience: int = 2,
+        alpha_len: float = 1.0,
+        alpha_cov: float = 1.0,
+        alpha_min: float = 0.2,
+    ):
         if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion"]:
-            raise ValueError("mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX' or 'fusion'")
+            raise ValueError(
+                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX' or 'fusion'"
+            )
 
         self.mode = mode
         self.min_overlap = min_overlap
@@ -585,12 +608,16 @@ class Assembler:
 
     def assemble_greedy(self, sequences):
 
-        logger.info(f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})")
+        logger.info(
+            f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})"
+        )
         contigs = assemble_contigs_greedy(sequences, self.min_overlap)
         contigs = list(set(contigs))
         contigs = sorted(contigs, key=len, reverse=True)
 
-        scaffolds =  scaffold_iterative_greedy(contigs, self.min_overlap, self.size_threshold)
+        scaffolds = scaffold_iterative_greedy(
+            contigs, self.min_overlap, self.size_threshold
+        )
 
         return scaffolds
 
@@ -604,13 +631,16 @@ class Assembler:
         contigs = sorted(contigs, key=len, reverse=True)
         contigs = [seq for seq in contigs if len(seq) > self.size_threshold]
 
-        scaffolds = scaffold_iterative_dbg(contigs, self.min_overlap, self.size_threshold)
+        scaffolds = scaffold_iterative_dbg(
+            contigs, self.min_overlap, self.size_threshold
+        )
 
         return scaffolds
-    
 
     def assemble_dbg_weighted(self, sequences: List[str]) -> List[str]:
-        logger.info(f"[Assembler] Running DBG weighted (k={self.kmer_size}, min_weight={self.min_weight}, refine_rounds={self.refine_rounds})")
+        logger.info(
+            f"[Assembler] Running DBG weighted (k={self.kmer_size}, min_weight={self.min_weight}, refine_rounds={self.refine_rounds})"
+        )
 
         kmers = get_kmers(sequences, self.kmer_size)
         if not kmers:
@@ -625,7 +655,9 @@ class Assembler:
             logger.warning("No contigs assembled from DBGX; returning empty result.")
             return []
 
-        ranked = rank_contigs_by_score(contigs_cp, self.alpha_len, self.alpha_cov, self.alpha_min)
+        ranked = rank_contigs_by_score(
+            contigs_cp, self.alpha_len, self.alpha_cov, self.alpha_min
+        )
         contigs = [r.seq for r in ranked]
 
         if self.refine_rounds and self.refine_rounds > 0:
@@ -644,7 +676,7 @@ class Assembler:
         scaffolds = list(contigs)
 
         return scaffolds
-    
+
     def assemble_dbgX(self, sequences):
         logger.info(f"[Assembler] Running DBG-Extension (k={self.kmer_size})")
 
@@ -656,13 +688,15 @@ class Assembler:
         contigs = [c.seq for c in contigs_cp]
 
         logger.info("Extending contigs using DBG paths (coverage-aware)...")
-        extended_contigs = [extend_path_dbg(G, c, self.kmer_size, self.min_weight) for c in contigs]
+        extended_contigs = [
+            extend_path_dbg(G, c, self.kmer_size, self.min_weight) for c in contigs
+        ]
         extended_contigs = sorted(set(extended_contigs), key=len, reverse=True)
 
         return extended_contigs
-    
+
     def assemble_fusion(self, sequences):
-        logger.info(f"[Assembler] Running FUSION (DBG weighted + greedy merge)")
+        logger.info("[Assembler] Running FUSION (DBG weighted + greedy merge)")
 
         contigs_dbg_weighted = self.assemble_dbg_weighted(sequences)
 
@@ -681,12 +715,11 @@ class Assembler:
 
         return fused
 
-
     def run(self, sequences: List[str]):
         if not sequences:
             logger.error("No valid sequences provided for assembly.")
             raise ValueError("Input sequences list is empty.")
-        
+
         if self.mode == "greedy":
             return self.assemble_greedy(sequences)
         elif self.mode == "dbg":
@@ -708,29 +741,33 @@ def main(
     min_overlap: int,
     size_threshold: int,
     reference: bool,
-    chain: str,    
+    chain: str,
     min_identity: float,
     max_mismatches: int,
 ):
     """Main function for standalone assembly."""
 
-    protein_norm = None # None means no reference mode
+    protein_norm = None  # None means no reference mode
     if reference:
-        logger.info(f"Reference mode enabled. Loading reference protein...")
+        logger.info("Reference mode enabled. Loading reference protein...")
         if not metadata_json_path:
-            raise ValueError("metadata_json_path is required when reference mode is enabled.")
-        
+            raise ValueError(
+                "metadata_json_path is required when reference mode is enabled."
+            )
+
         try:
-            run_name = Path(input_csv_path).stem # extract run name from input file
-            meta = helpers.get_sample_metadata(run=run_name, chain=chain, json_path=metadata_json_path)
-            protein= meta["protein"]
+            run_name = Path(input_csv_path).stem  # extract run name from input file
+            meta = helpers.get_sample_metadata(
+                run=run_name, chain=chain, json_path=metadata_json_path
+            )
+            protein = meta["protein"]
             protein_norm = helpers.get_normalized_protein(protein)
             logger.info("Reference protein loaded and normalized successfully.")
-        
+
         except Exception as e:
             logger.error(f"Failed to get reference protein: {e}")
             logger.warning("Disabling reference mode.")
-            reference = False # if fails, disable reference mode
+            reference = False  # if fails, disable reference mode
 
     input_data = Path(input_csv_path)
 
@@ -750,10 +787,10 @@ def main(
         size_threshold=size_threshold,
         kmer_size=kmer_size,
         min_identity=min_identity,
-        max_mismatches=max_mismatches
+        max_mismatches=max_mismatches,
     )
 
-    scaffolds = assembler.run(sequences = sequences)
+    scaffolds = assembler.run(sequences=sequences)
 
     output_path = Path(output_scaffolds_path)
     output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -771,7 +808,9 @@ def main(
         "fasta",
     )
 
-    logger.info(f"Assembly completed — {len(scaffolds)} scaffolds saved to {output_path}")
+    logger.info(
+        f"Assembly completed — {len(scaffolds)} scaffolds saved to {output_path}"
+    )
 
     if protein_norm:
         logger.info("Reference mode: calculating statistics...")
@@ -782,7 +821,7 @@ def main(
             assembled_contigs=scaffolds,
             target_protein=protein_norm,
             max_mismatches=max_mismatches,
-            min_identity=min_identity, 
+            min_identity=min_identity,
         )
         df_scaffolds_mapped = viz.create_dataframe_from_mapped_sequences(
             data=mapped_scaffolds
@@ -817,7 +856,7 @@ def cli():
     parser.add_argument(
         "--metadata-json-path",
         type=str,
-        default=None, # Optional, but required by --reference
+        default=None,  # Optional, but required by --reference
         help="Path to sample_metadata.json (required for --reference).",
     )
     parser.add_argument(
@@ -855,19 +894,19 @@ def cli():
         "--chain",
         type=str,
         default="",
-        help="Specify chain type (light/heavy) required for reference lookup."
+        help="Specify chain type (light/heavy) required for reference lookup.",
     )
     parser.add_argument(
         "--min-identity",
         type=float,
         default=0.8,
-        help="Minimum identity for reference mapping."
+        help="Minimum identity for reference mapping.",
     )
     parser.add_argument(
         "--max-mismatches",
         type=int,
         default=10,
-        help="Maximum mismatches for reference mapping."
+        help="Maximum mismatches for reference mapping.",
     )
 
     args = parser.parse_args()
@@ -876,7 +915,7 @@ def cli():
     if args.assembly_mode != "dbg":
         args.kmer_size = 0
         logger.info("Ignoring kmer_size (used only for DBG mode).")
-    
+
     if args.reference and not args.metadata_json_path:
         parser.error("--metadata-json-path is required when --reference is enabled.")
 

@@ -2,6 +2,7 @@ import sys
 import argparse
 from . import script_dbg, script_greedy
 
+
 def main():
     banner = r"""
      ______                   __             __  __                                   
@@ -15,8 +16,9 @@ def main():
 
     parser = argparse.ArgumentParser(
         prog="instanexus",
-        description=(banner + "\n"
-            "InstaNexus CLI: de novo protein sequencing based on InstaNovo,\n\n" \
+        description=(
+            banner + "\n"
+            "InstaNexus CLI: de novo protein sequencing based on InstaNovo,\n\n"
             "an end-to-end workflow from de novo peptides to proteins\n\n"
             "Usage:\n"
             "  instanexus <command> [options]\n\n"
@@ -30,8 +32,8 @@ def main():
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    
-    parser.add_argument('--version', action='version', version='InstaNexus 0.1.0'),
+
+    parser.add_argument("--version", action="version", version="InstaNexus 0.1.0"),
 
     subparsers = parser.add_subparsers(dest="command", help="subcommands")
 
@@ -49,6 +51,7 @@ def main():
         script_greedy.cli()
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()

@@ -57,6 +57,9 @@ target-version = ['py311']
 [tool.isort]
 profile = "black"
 
+[tool.ruff]
+exclude = ["*.ipynb"]
+
 authors = [
   { name = "Marco Reverenna", email = "marcor@dtu.dk" }
 ]
