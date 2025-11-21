@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
-r""" Visualization module for InstaNexus.
+r"""Visualization module for InstaNexus.
 
  ██████████   ███████████ █████  █████
-░░███░░░░███ ░█░░░███░░░█░░███  ░░███ 
- ░███   ░░███░   ░███  ░  ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ███     ░███     ░███   ░███ 
- ██████████      █████    ░░████████  
-░░░░░░░░░░      ░░░░░      ░░░░░░░░   
+░░███░░░░███ ░█░░░███░░░█░░███  ░░███
+ ░███   ░░███░   ░███  ░  ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ███     ░███     ░███   ░███
+ ██████████      █████    ░░████████
+░░░░░░░░░░      ░░░░░      ░░░░░░░░
 
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
@@ -21,11 +21,12 @@ __status__ = Dev
 """
 
 import os
-import numpy as np
-import pandas as pd
+
 import Bio.SeqIO
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
@@ -429,9 +430,7 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
             x1 = fine_x[i + 1]
             y_segment = (fine_y[i] + fine_y[i + 1]) / 2.0
             x_mid = (x0 + x1) / 2.0
-            alpha = 1 - (x_mid - 0.88) / (
-                1 - 0.88
-            )
+            alpha = 1 - (x_mid - 0.88) / (1 - 0.88)
             fillcolor = (
                 f"rgba({base_color[0]}, {base_color[1]}, {base_color[2]}, {alpha:.2f})"
             )
@@ -571,7 +570,7 @@ def plot_confidence_distribution(df, folder_figures, min_conf=0, max_conf=1):
     fig.update_xaxes(
         showgrid=True,
         gridcolor="lightgray",
-        ticklabelposition="outside bottom", 
+        ticklabelposition="outside bottom",
         dtick=0.02,
     )
     fig.update_yaxes(showgrid=True, gridcolor="lightgray")
@@ -603,8 +602,8 @@ def plot_protease_distribution(protease_counts, folder_figures):
     fig.update_traces(textposition="outside", width=0.4)
 
     mm_to_px = 3.78
-    width_mm = 240 
-    height_mm = 200  
+    width_mm = 240
+    height_mm = 200
 
     fig.update_layout(
         width=int(width_mm * mm_to_px),
@@ -619,11 +618,12 @@ def plot_protease_distribution(protease_counts, folder_figures):
             color="black",
         ),
         margin=dict(t=50, b=50, l=50, r=100),
-        plot_bgcolor="white", 
+        plot_bgcolor="white",
         paper_bgcolor="white",
     )
 
     fig.write_image(f"{folder_figures}/proteases_distribution.svg")
+
 
 def map_to_protein(seq, protein, max_mismatches, min_identity):
     """Maps a sequence (`seq`) to a target protein sequence, allowing for mismatches,
@@ -893,8 +893,7 @@ def mapping_sequences(mapped_sequences, prot_seq, title, output_folder, output_f
 
 
 def create_dataframe_from_mapped_sequences(data):
-    """Takes a list of tuples containing sequence data and returns a structured DataFrame.
-    """
+    """Takes a list of tuples containing sequence data and returns a structured DataFrame."""
     # Create the initial DataFrame
     df = pd.DataFrame(data, columns=["Sequence", "Details"])
 

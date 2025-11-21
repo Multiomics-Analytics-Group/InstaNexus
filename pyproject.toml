@@ -9,6 +9,11 @@ packages = ["src/instanexus"]
 name = "instanexus"
 version = "0.2.0"
 description = "End-to-end workflow for de novo protein sequencing based on InstaNovo"
+
+authors = [
+  { name = "Marco Reverenna", email = "marcor@dtu.dk" }
+]
+
 readme = "README.md"
 readme-content-type = "text/markdown"
 requires-python = ">=3.10"
@@ -56,7 +61,3 @@ target-version = ['py311']
 
 [tool.isort]
 profile = "black"
-
-authors = [
-  { name = "Marco Reverenna", email = "marcor@dtu.dk" }
-]

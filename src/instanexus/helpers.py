@@ -3,14 +3,14 @@
 r"""
 
  ██████████   ███████████ █████  █████
-░░███░░░░███ ░█░░░███░░░█░░███  ░░███ 
- ░███   ░░███░   ░███  ░  ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ░███    ░███     ░███   ░███ 
- ░███    ███     ░███     ░███   ░███ 
- ██████████      █████    ░░████████  
-░░░░░░░░░░      ░░░░░      ░░░░░░░░   
-                          
+░░███░░░░███ ░█░░░███░░░█░░███  ░░███
+ ░███   ░░███░   ░███  ░  ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ░███    ░███     ░███   ░███
+ ░███    ███     ░███     ░███   ░███
+ ██████████      █████    ░░████████
+░░░░░░░░░░      ░░░░░      ░░░░░░░░
+
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
@@ -20,15 +20,11 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-# import libraries
-import numpy as np
-import pandas as pd
-import os
 import json
-import plotly.express as px
-import plotly.graph_objects as go
+import os
 from pathlib import Path
 
+# import libraries
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 JSON_DIR = PROJECT_ROOT / "json"

@@ -18,23 +18,24 @@ __status__ = Dev
 """
 
 
-import re
 import json
-import pandas as pd
-import numpy as np
-import preprocessing as prep
+import re
 from math import log2
 from pathlib import Path
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    precision_recall_curve,
-    f1_score,
-    average_precision_score,
-)
-import matplotlib.pyplot as plt
+
 import joblib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import preprocessing as prep
 import seaborn as sns
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    average_precision_score,
+    f1_score,
+    precision_recall_curve,
+)
+from sklearn.model_selection import train_test_split
 
 # side meaning where the protease cleaves
 # residues meaning which amino acids it cleaves after (C-side) or before (N-side
