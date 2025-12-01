@@ -37,9 +37,7 @@ import seaborn as sns
 from Bio import SeqIO
 from tqdm import tqdm
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -229,9 +227,7 @@ def generate_consensus_stats(consensus_base_folder):
 
     longest_gap = max(gap_lengths_all) if gap_lengths_all else 0
     shortest_gap = min(gap_lengths_all) if gap_lengths_all else 0
-    percent_no_gaps = (
-        (sequences_without_gaps / len(fasta_files) * 100) if fasta_files else 0
-    )
+    percent_no_gaps = (sequences_without_gaps / len(fasta_files) * 100) if fasta_files else 0
     max_length = max(lengths) if lengths else 0
     min_length = min(lengths) if lengths else 0
     avg_length = statistics.mean(lengths) if lengths else 0
@@ -284,9 +280,7 @@ def cli():
     """
     Command-line interface (CLI) for the consensus generation script.
     """
-    parser = argparse.ArgumentParser(
-        description="Consensus generation script for aligned scaffolds."
-    )
+    parser = argparse.ArgumentParser(description="Consensus generation script for aligned scaffolds.")
 
     parser.add_argument(
         "--input-folder",

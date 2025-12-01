@@ -34,18 +34,13 @@ from tqdm import tqdm
 
 
 def missing_values_barplot(run, dataframe, folder):
-
     dataframe["missing_preds"] = dataframe["preds"].isna()
 
     missing_counts_df = dataframe["missing_preds"].value_counts().reset_index()
     missing_counts_df.columns = ["PSMs", "Count"]
-    missing_counts_df["PSMs"] = missing_counts_df["PSMs"].map(
-        {True: "Missing", False: "Valid"}
-    )
+    missing_counts_df["PSMs"] = missing_counts_df["PSMs"].map({True: "Missing", False: "Valid"})
 
-    missing_counts_df = missing_counts_df.sort_values(
-        "PSMs", key=lambda x: x.map({"Valid": 0, "Missing": 1})
-    )
+    missing_counts_df = missing_counts_df.sort_values("PSMs", key=lambda x: x.map({"Valid": 0, "Missing": 1}))
 
     valid_count = (
         missing_counts_df.loc[missing_counts_df["PSMs"] == "Valid", "Count"].values[0]
@@ -124,12 +119,9 @@ def missing_values_barplot(run, dataframe, folder):
 
 
 def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=False):
-
     df = df[df["conf"] >= conf_lim]
 
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: "mapped" if x in reference else "unmapped"
-    )
+    df["mapped"] = df["cleaned_preds"].apply(lambda x: "mapped" if x in reference else "unmapped")
 
     fig = px.histogram(
         df,
@@ -143,9 +135,7 @@ def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=Fals
 
     fig.update_traces(xbins=dict(start=0, end=1, size=0.01))
 
-    title_text = (
-        "Distribution of mapped and unmapped sequences by confidence" if title else ""
-    )
+    title_text = "Distribution of mapped and unmapped sequences by confidence" if title else ""
 
     fig.update_layout(
         title=title_text,
@@ -197,18 +187,13 @@ def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=Fals
 
 
 def fdr_ratio_mapped_unmapped(run, df, folder):
-
     bin_centers = []
     ratios = []
 
     for start in np.arange(0, 1, 0.05):
         end = start + 0.05
-        subset_map = df[
-            (df["mapped"] == "True") & (df["conf"] >= start) & (df["conf"] < end)
-        ]
-        subset_unmap = df[
-            (df["mapped"] == "False") & (df["conf"] >= start) & (df["conf"] < end)
-        ]
+        subset_map = df[(df["mapped"] == "True") & (df["conf"] >= start) & (df["conf"] < end)]
+        subset_unmap = df[(df["mapped"] == "False") & (df["conf"] >= start) & (df["conf"] < end)]
 
         count_map = len(subset_map)
         count_unmap = len(subset_unmap)
@@ -315,11 +300,8 @@ def fdr_ratio_mapped_unmapped(run, df, folder):
 
 
 def plot_relative_map_distribution(run, df, reference, folder, title=False):
-
     df = df[df["conf"] >= 0].copy()
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: "mapped" if x in reference else "unmapped"
-    )
+    df["mapped"] = df["cleaned_preds"].apply(lambda x: "mapped" if x in reference else "unmapped")
 
     bins = np.arange(0, 1, 0.05)
     # bins = np.arange(0, 1.02, 0.02)
@@ -349,11 +331,7 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
     )
     # orange - unmapped: #ff7f0e, blue: #1f77b4, brown #AF6E7E
 
-    title_text = (
-        "Relative distribution of mapped and unmapped peptides by confidence"
-        if title
-        else ""
-    )
+    title_text = "Relative distribution of mapped and unmapped peptides by confidence" if title else ""
 
     fig.update_layout(
         title=title_text,
@@ -413,9 +391,7 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
             y_segment = (fine_y[i] + fine_y[i + 1]) / 2.0
             x_mid = (x0 + x1) / 2.0
             alpha = 1 - (x_mid - 0.88) / (1 - 0.88)
-            fillcolor = (
-                f"rgba({base_color[0]}, {base_color[1]}, {base_color[2]}, {alpha:.2f})"
-            )
+            fillcolor = f"rgba({base_color[0]}, {base_color[1]}, {base_color[2]}, {alpha:.2f})"
 
             fig.add_shape(
                 type="rect",
@@ -431,24 +407,17 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
             )
 
     fig.update_traces(line=dict(width=3.5))
-    fig.for_each_trace(
-        lambda t: t.update(name="mapped") if t.name == "Mapped" else None
-    )
+    fig.for_each_trace(lambda t: t.update(name="mapped") if t.name == "Mapped" else None)
 
-    fig.for_each_trace(
-        lambda t: t.update(name="unmapped") if t.name == "Unmapped" else None
-    )
+    fig.for_each_trace(lambda t: t.update(name="unmapped") if t.name == "Unmapped" else None)
 
     fig.write_image(f"{folder}/{run}_relative_mapped_unmapped_distribution.svg")
 
 
 def plot_map_distribution(run, df, reference, folder, threshold, title=False):
-
     df = df[df["conf"] >= threshold].copy()
 
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: "mapped" if x in reference else "unmapped"
-    )
+    df["mapped"] = df["cleaned_preds"].apply(lambda x: "mapped" if x in reference else "unmapped")
 
     bins = np.arange(threshold, 1.002, 0.02)
 
@@ -461,8 +430,7 @@ def plot_map_distribution(run, df, reference, folder, threshold, title=False):
         {
             "confidence": np.tile(bin_centers, 2),
             "count": np.concatenate([counts_mapped, counts_unmapped]),
-            "category": ["mapped"] * len(counts_mapped)
-            + ["unmapped"] * len(counts_unmapped),
+            "category": ["mapped"] * len(counts_mapped) + ["unmapped"] * len(counts_unmapped),
         }
     )
 
@@ -475,9 +443,7 @@ def plot_map_distribution(run, df, reference, folder, threshold, title=False):
         barmode="stack",
     )
 
-    title_text = (
-        "Distribution of mapped and unmapped sequences by confidence" if title else ""
-    )
+    title_text = "Distribution of mapped and unmapped sequences by confidence" if title else ""
 
     fig.update_layout(
         title=title_text,
@@ -510,13 +476,9 @@ def plot_map_distribution(run, df, reference, folder, threshold, title=False):
         dtick=0.02,
     )
 
-    fig.for_each_trace(
-        lambda t: t.update(name="mapped") if t.name == "Mapped" else None
-    )
+    fig.for_each_trace(lambda t: t.update(name="mapped") if t.name == "Mapped" else None)
 
-    fig.for_each_trace(
-        lambda t: t.update(name="unmapped") if t.name == "Unmapped" else None
-    )
+    fig.for_each_trace(lambda t: t.update(name="unmapped") if t.name == "Unmapped" else None)
 
     fig.write_image(f"{folder}/{run}_psms_mapped_unmapped_distribution.svg")
 
@@ -538,9 +500,7 @@ def plot_confidence_distribution(df, folder_figures, min_conf=0, max_conf=1):
     )
 
     fig.update_layout(
-        title="Confidence score distribution between {} and {}".format(
-            min_conf, max_conf
-        ),
+        title="Confidence score distribution between {} and {}".format(min_conf, max_conf),
         xaxis_title="Values",
         yaxis_title="Frequency",
         bargap=0.1,
@@ -556,9 +516,7 @@ def plot_confidence_distribution(df, folder_figures, min_conf=0, max_conf=1):
         dtick=0.02,
     )
     fig.update_yaxes(showgrid=True, gridcolor="lightgray")
-    fig.write_image(
-        f"{folder_figures}/confidence_distribution_range_{min_conf}_{max_conf}.png"
-    )
+    fig.write_image(f"{folder_figures}/confidence_distribution_range_{min_conf}_{max_conf}.png")
 
 
 def plot_protease_distribution(protease_counts, folder_figures):
@@ -647,9 +605,7 @@ def map_to_protein(seq, protein, max_mismatches, min_identity):
     return best_match
 
 
-def process_protein_contigs_scaffold(
-    assembled_contigs, target_protein, max_mismatches, min_identity
-):
+def process_protein_contigs_scaffold(assembled_contigs, target_protein, max_mismatches, min_identity):
     """Maps each contig in `assembled_contigs` to a target protein sequence (`target_protein`)
     and identifies which contigs match based on specified mismatch and identity thresholds.
     """
@@ -679,7 +635,7 @@ def write_mapped_contigs(mapped_contigs, folder, filename_prefix):
         start, end, mismatches, identity = mapping
         record = Bio.SeqRecord.SeqRecord(
             Bio.Seq.Seq(contig),
-            id=f"Contig {idx+1}",
+            id=f"Contig {idx + 1}",
             description=f"length: {len(contig)}, start: {start}, end: {end}, mismatches: {len(mismatches)}, identity: {identity:.2f}",
         )
         records.append(record)
@@ -690,18 +646,12 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
     sns.set("paper", "ticks", "colorblind", font_scale=1.5)
     _, ax = plt.subplots(figsize=(12, 4))
 
-    ax.add_patch(
-        patches.Rectangle(
-            (0, 0), len(prot_seq), 0.2, facecolor="#e6f0ef", edgecolor="#e6f0ef"
-        )
-    )
+    ax.add_patch(patches.Rectangle((0, 0), len(prot_seq), 0.2, facecolor="#e6f0ef", edgecolor="#e6f0ef"))
 
     tracks = {}
     ind = 0
 
-    for _, (contig, mapping) in tqdm(
-        enumerate(mapped_contigs), desc="Plotting contigs"
-    ):
+    for _, (contig, mapping) in tqdm(enumerate(mapped_contigs), desc="Plotting contigs"):
         start_index, end_index, mismatches, _ = mapping
 
         ind += 1
@@ -757,7 +707,7 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
     ax.set_title(title)
 
     handles, labels = ax.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
+    by_label = dict(zip(labels, handles, strict=False))
     ax.legend(
         by_label.values(),
         by_label.keys(),
@@ -880,9 +830,7 @@ def create_dataframe_from_mapped_sequences(data):
     df = pd.DataFrame(data, columns=["Sequence", "Details"])
 
     # Expand the 'Details' column into separate columns
-    df[["start", "end", "mismatches_pos", "identity_score"]] = pd.DataFrame(
-        df["Details"].tolist(), index=df.index
-    )
+    df[["start", "end", "mismatches_pos", "identity_score"]] = pd.DataFrame(df["Details"].tolist(), index=df.index)
 
     df.drop(columns=["Details"], inplace=True)
     df.rename(columns={"Sequence": "sequence"}, inplace=True)
@@ -901,7 +849,6 @@ def mapping_substitutions(
     match_color="#6baed6",
     show_figure=False,
 ):
-
     default_colors = {
         "match": match_color,
         "mismatch": "#b30000",
@@ -929,11 +876,7 @@ def mapping_substitutions(
         start_index, end_index, mismatches, _ = mapping
         ind += 1
 
-        contig_color = (
-            contig_colors[ind % len(contig_colors)]
-            if isinstance(contig_colors, list)
-            else contig_colors
-        )
+        contig_color = contig_colors[ind % len(contig_colors)] if isinstance(contig_colors, list) else contig_colors
 
         placed = False
         for track_num, track in tracks.items():
@@ -1074,7 +1017,6 @@ def mapping_psms_protease_associated(
     output_file,
     show_figure=False,
 ):
-
     fig = go.Figure()
 
     fig.add_shape(

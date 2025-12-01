@@ -17,7 +17,6 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-
 import json
 import re
 from math import log2
@@ -242,9 +241,7 @@ def load_aa_properties(json_path):
 def peptide_props(seq, aa_properties):
     """Calculate hydrophobicity, mass stats, and basic residue fraction."""
     if not seq or not isinstance(seq, str) or len(seq) == 0:
-        return pd.Series(
-            {"mean_hydro": 0, "mean_mass": 0, "mass_std": 0, "frac_basic": 0}
-        )
+        return pd.Series({"mean_hydro": 0, "mean_mass": 0, "mass_std": 0, "frac_basic": 0})
 
     vals_h = [aa_properties.get(a, {"hydro": 0})["hydro"] for a in seq]
     vals_m = [aa_properties.get(a, {"mass": 0})["mass"] for a in seq]
@@ -265,9 +262,7 @@ def build_reference_free_features(df, aa_properties, protease_rules):
 
     df = df.copy()
     df["seq_length"] = df["cleaned_preds"].str.len()
-    df["has_special"] = (
-        df["cleaned_preds"].str.contains(r"[^A-Z]", regex=True).astype(int)
-    )
+    df["has_special"] = df["cleaned_preds"].str.contains(r"[^A-Z]", regex=True).astype(int)
     df["first_aa"] = df["cleaned_preds"].str[0].astype("category").cat.codes
     df["last_aa"] = df["cleaned_preds"].str[-1].astype("category").cat.codes
 
@@ -289,20 +284,18 @@ def build_reference_free_features(df, aa_properties, protease_rules):
 
     df["cterm_matches_protease"] = [
         cterm_matches_any(s, p, protease_rules)
-        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list)
+        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list, strict=False)
     ]
     df["nterm_matches_protease"] = [
         nterm_matches_any(s, p, protease_rules)
-        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list)
+        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list, strict=False)
     ]
     df["internal_expected_sites_min"] = [
         internal_expected_sites_min(s, p, protease_rules)
-        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list)
+        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list, strict=False)
     ]
 
-    df["proline_block_at_cterm"] = (
-        df["cleaned_preds"].fillna("").apply(proline_block_at_cterm)
-    )
+    df["proline_block_at_cterm"] = df["cleaned_preds"].fillna("").apply(proline_block_at_cterm)
     df["protease"] = df["protease"].astype("category").cat.codes
 
     return df
@@ -310,9 +303,7 @@ def build_reference_free_features(df, aa_properties, protease_rules):
 
 def train_model(df, reference_seq, model_path, aa_properties, protease_rules):
     """Train Random Forest classifier and save model with optimal threshold."""
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: int(isinstance(x, str) and x in reference_seq)
-    )
+    df["mapped"] = df["cleaned_preds"].apply(lambda x: int(isinstance(x, str) and x in reference_seq))
     df = build_reference_free_features(df, aa_properties, protease_rules)
 
     exclude = ["experiment_name", "scan_number", "preds", "cleaned_preds"]
@@ -320,9 +311,7 @@ def train_model(df, reference_seq, model_path, aa_properties, protease_rules):
 
     x = df[feature_cols]
     y = df["mapped"].astype(int)
-    x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=0.3, stratify=y, random_state=42
-    )
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, stratify=y, random_state=42)
 
     model = RandomForestClassifier(n_estimators=500, random_state=42, n_jobs=-1)
     model.fit(x_train, y_train)
@@ -364,9 +353,7 @@ def plot_precision_recall(metrics, output_dir, filename="precision_recall_curve.
     best_idx = metrics["best_idx"]
     ap = metrics["ap"]
 
-    sns.lineplot(
-        x=recall, y=precision, color="#2E86AB", linewidth=1, label=f"AP = {ap:.2f}"
-    )
+    sns.lineplot(x=recall, y=precision, color="#2E86AB", linewidth=1, label=f"AP = {ap:.2f}")
     plt.scatter(
         recall[best_idx],
         precision[best_idx],
@@ -439,9 +426,7 @@ def main():
     protein_norm = prep.normalize_sequence(protein)
     df = pd.read_csv(INPUT_DIR / f"{run}.csv")
 
-    df["protease"] = df["experiment_name"].apply(
-        lambda name: prep.extract_protease(name, proteases)
-    )
+    df["protease"] = df["experiment_name"].apply(lambda name: prep.extract_protease(name, proteases))
 
     df = prep.clean_dataframe(df)
 
@@ -449,15 +434,11 @@ def main():
 
     cleaned_psms = df["cleaned_preds"].tolist()
 
-    filtered_psms = prep.filter_contaminants(
-        cleaned_psms, run, FASTA_DIR / "contaminants.fasta"
-    )
+    filtered_psms = prep.filter_contaminants(cleaned_psms, run, FASTA_DIR / "contaminants.fasta")
 
     df = df[df["cleaned_preds"].isin(filtered_psms)]
 
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: int(isinstance(x, str) and x in protein_norm)
-    )
+    df["mapped"] = df["cleaned_preds"].apply(lambda x: int(isinstance(x, str) and x in protein_norm))
 
     model_path = BASE_DIR / "peptide_selector.pkl"
     metrics = train_model(df, protein, model_path, aa_props, protease_rules)

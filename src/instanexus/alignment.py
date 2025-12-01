@@ -29,9 +29,7 @@ from pathlib import Path
 
 from Bio import SeqIO
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -52,9 +50,7 @@ def align_or_copy_fasta(fasta_file, output_file):
         logger.debug(f"Copied single-sequence file: {Path(fasta_file).name}")
     elif len(sequences) > 1:
         # Multiple sequences, run clustalo
-        logger.debug(
-            f"Aligning {len(sequences)} sequences from {Path(fasta_file).name}..."
-        )
+        logger.debug(f"Aligning {len(sequences)} sequences from {Path(fasta_file).name}...")
         try:
             subprocess.run(
                 [
@@ -72,9 +68,7 @@ def align_or_copy_fasta(fasta_file, output_file):
                 text=True,
             )
         except FileNotFoundError:
-            logger.error(
-                "clustalo command not found. Please ensure it is in your system's PATH."
-            )
+            logger.error("clustalo command not found. Please ensure it is in your system's PATH.")
             raise
         except subprocess.CalledProcessError as e:
             logger.error(f"Clustalo failed for {fasta_file}: {e.stderr}")
@@ -99,13 +93,9 @@ def process_alignment(input_dir: str, output_dir: str):
 
     if not cluster_fasta_folder.exists():
         logger.error(f"Cluster FASTA folder not found: {cluster_fasta_folder}")
-        raise FileNotFoundError(
-            f"Cluster FASTA folder not found: {cluster_fasta_folder}"
-        )
+        raise FileNotFoundError(f"Cluster FASTA folder not found: {cluster_fasta_folder}")
 
-    fasta_files_to_align = [
-        f for f in sorted(os.listdir(cluster_fasta_folder)) if f.endswith(".fasta")
-    ]
+    fasta_files_to_align = [f for f in sorted(os.listdir(cluster_fasta_folder)) if f.endswith(".fasta")]
 
     logger.info(f"Found {len(fasta_files_to_align)} cluster FASTA files to align.")
 
@@ -128,9 +118,7 @@ def main(input_cluster_fasta_folder: str, output_alignment_folder: str):
     logger.info(f"Input Folder (cluster FASTA): {input_cluster_fasta_folder}")
     logger.info(f"Output Folder (Alignments): {output_alignment_folder}")
 
-    process_alignment(
-        input_dir=input_cluster_fasta_folder, output_dir=output_alignment_folder
-    )
+    process_alignment(input_dir=input_cluster_fasta_folder, output_dir=output_alignment_folder)
 
     logger.info("--- Step 4: Alignment Completed ---")
 
@@ -139,9 +127,7 @@ def cli():
     """
     Command-line interface (CLI) for the alignment script.
     """
-    parser = argparse.ArgumentParser(
-        description="Alignment script for clustered scaffolds."
-    )
+    parser = argparse.ArgumentParser(description="Alignment script for clustered scaffolds.")
 
     parser.add_argument(
         "--input-folder",

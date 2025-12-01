@@ -20,19 +20,19 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
-import pandas as pd
-import seaborn as sns
+import json
+import logging
 import os
 import sys
-import logging
-import json
 from pathlib import Path
-from Bio import SeqIO
 
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+from instanexus import helpers, preprocessing, visualization
 from instanexus.assembly import Assembler
-from instanexus import visualization, helpers, preprocessing
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
@@ -95,17 +95,13 @@ def add_quantification_data(df_main, run_name, inputs_folder):
         valid_peps = set(df_main["cleaned_preds"].unique())
         df_quant = df_quant[df_quant["cleaned_preds"].isin(valid_peps)]
 
-        df_sum = df_quant.groupby("cleaned_preds", as_index=False)[
-            "total_abundance_norm"
-        ].sum()
-        df_sum.rename(
-            columns={"total_abundance_norm": "peptide_abundance"}, inplace=True
-        )
+        df_sum = df_quant.groupby("cleaned_preds", as_index=False)["total_abundance_norm"].sum()
+        df_sum.rename(columns={"total_abundance_norm": "peptide_abundance"}, inplace=True)
 
         df_merged = pd.merge(df_main, df_sum, on="cleaned_preds", how="left")
         df_merged["peptide_abundance"] = df_merged["peptide_abundance"].fillna(0)
         return df_merged
-    except:
+    except Exception:
         return df_main
 
 
@@ -121,7 +117,7 @@ def load_custom_palette():
             color = colors_data.get(json_key, {}).get("scaffold", "#333333")
             custom_palette[category_label] = color
         return custom_palette
-    except:
+    except Exception:
         return default_palette
 
 
@@ -140,9 +136,7 @@ def main():
     all_results = []
 
     for category, file_list in SAMPLE_GROUPS.items():
-        logger.info(
-            f"=== Processing Category: {category} ({len(file_list)} samples) ==="
-        )
+        logger.info(f"=== Processing Category: {category} ({len(file_list)} samples) ===")
 
         for filename in file_list:
             csv_path = INPUTS_FOLDER / filename
@@ -156,9 +150,7 @@ def main():
 
             try:
                 clean_run_name = run_name.replace("_cleaned", "")
-                meta = preprocessing.get_sample_metadata(
-                    clean_run_name, json_path=METADATA_JSON
-                )
+                meta = preprocessing.get_sample_metadata(clean_run_name, json_path=METADATA_JSON)
                 protein_norm = preprocessing.normalize_sequence(meta.get("protein", ""))
                 proteases = meta.get("proteases", [])
             except Exception as e:
@@ -169,27 +161,21 @@ def main():
 
             if "experiment_name" in df.columns:
                 df["protease"] = df["experiment_name"].apply(
-                    lambda x: preprocessing.extract_protease(x, proteases)
+                    lambda x, p=proteases: preprocessing.extract_protease(x, p)
                 )
 
             df = preprocessing.clean_dataframe(df)
 
             if "cleaned_preds" in df.columns:
-                df["cleaned_preds"] = df["cleaned_preds"].apply(
-                    preprocessing.remove_modifications
-                )
+                df["cleaned_preds"] = df["cleaned_preds"].apply(preprocessing.remove_modifications)
                 df = df.dropna(subset=["cleaned_preds"])
             else:
                 continue
 
-            df = add_quantification_data(
-                df, clean_run_name, inputs_folder=INPUTS_FOLDER
-            )
+            df = add_quantification_data(df, clean_run_name, inputs_folder=INPUTS_FOLDER)
 
             clean_list = df["cleaned_preds"].tolist()
-            filtered = preprocessing.filter_contaminants(
-                clean_list, clean_run_name, CONTAMINANTS_FASTA
-            )
+            filtered = preprocessing.filter_contaminants(clean_list, clean_run_name, CONTAMINANTS_FASTA)
             df = df[df["cleaned_preds"].isin(filtered)]
 
             for fdr in FDR_THRESHOLDS:
@@ -235,9 +221,7 @@ def main():
 
                 cov = 0
                 if mapped:
-                    df_map = visualization.create_dataframe_from_mapped_sequences(
-                        mapped
-                    )
+                    df_map = visualization.create_dataframe_from_mapped_sequences(mapped)
                     stats = helpers.compute_assembly_statistics(
                         df=df_map,
                         sequence_type="temp",
@@ -290,9 +274,7 @@ def main():
     )
 
     g.fig.subplots_adjust(top=0.82, wspace=0.3, hspace=0.4)
-    g.fig.suptitle(
-        f"Aggregated assembly performance (Mean ± 95% CI)", fontsize=16, y=0.98
-    )
+    g.fig.suptitle("Aggregated assembly performance (Mean ± 95% CI)", fontsize=16, y=0.98)
 
     legend_handles = []
     for cat in SAMPLE_GROUPS.keys():
@@ -322,14 +304,12 @@ def main():
     g.set(xticks=FDR_THRESHOLDS)
 
     for ax in g.axes.flat:
-        ax.set_xticklabels([f"{int(x*100)}%" for x in FDR_THRESHOLDS])
+        ax.set_xticklabels([f"{int(x * 100)}%" for x in FDR_THRESHOLDS])
 
     g.fig.subplots_adjust(top=0.82, wspace=0.3, hspace=0.4)
 
     plt.savefig(mode_output / "aggregated_coverage_faceted.svg", bbox_inches="tight")
-    plt.savefig(
-        mode_output / "aggregated_coverage_faceted.png", dpi=300, bbox_inches="tight"
-    )
+    plt.savefig(mode_output / "aggregated_coverage_faceted.png", dpi=300, bbox_inches="tight")
 
     logger.info(f"Aggregated plots saved to: {mode_output}")
 

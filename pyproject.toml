@@ -67,14 +67,15 @@ where = ["src"]
 [tool.ruff]
 # Exclude notebooks to avoid linting errors on them
 exclude = ["*.ipynb", "docs/source/tutorials/*"]
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 # Enable common rules: E (pycodestyle errors), W (warnings), F (pyflakes), B (bugbear)
 extend-select = ["E", "W", "F", "B"]
+ignore = ["E501"]
 
 [tool.black]
-line-length = 88
+line-length = 120
 target-version = ['py311']
 
 [tool.isort]

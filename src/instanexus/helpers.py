@@ -116,10 +116,8 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
 
     # Create a set of covered positions (adjusting for 0-based indexing)
     covered_positions = set()
-    for start, end in zip(df["start"], df["end"]):
-        covered_positions.update(
-            range(start - 1, end)
-        )  # Convert 1-based to 0-based indexing
+    for start, end in zip(df["start"], df["end"], strict=False):
+        covered_positions.update(range(start - 1, end))  # Convert 1-based to 0-based indexing
     statistics["coverage"] = float(len(covered_positions) / statistics["reference_end"])
 
     # identity score statistics
@@ -128,9 +126,7 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     # statistics['std_identity'] = float(df['identity_score'].std())
 
     # mismatch statistics
-    statistics["perfect_matches"] = int(
-        sum(df["mismatches_pos"].apply(len) == 0)
-    )  # sequences with no mismatches
+    statistics["perfect_matches"] = int(sum(df["mismatches_pos"].apply(len) == 0))  # sequences with no mismatches
     all_mismatches = [pos for mismatches in df["mismatches_pos"] for pos in mismatches]
     statistics["total_mismatches"] = int(len(set(all_mismatches)))
 

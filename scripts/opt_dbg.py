@@ -56,10 +56,7 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
     raise ValueError(f"No metadata found for run '{run}' with chain '{chain}'.")
 
 
-def run_pipeline_dbg(
-    conf, kmer_size, min_overlap, max_mismatches, min_identity, size_threshold
-):
-
+def run_pipeline_dbg(conf, kmer_size, min_overlap, max_mismatches, min_identity, size_threshold):
     ass_method = "dbg"
     run = "ma1"
 
@@ -98,9 +95,7 @@ def run_pipeline_dbg(
 
     df = pd.read_csv(INPUT_DIR / f"{run}.csv")
 
-    df["protease"] = df["experiment_name"].apply(
-        lambda name: prep.extract_protease(name, proteases)
-    )
+    df["protease"] = df["experiment_name"].apply(lambda name: prep.extract_protease(name, proteases))
 
     df = prep.clean_dataframe(df)
 
@@ -108,15 +103,11 @@ def run_pipeline_dbg(
 
     cleaned_psms = df["cleaned_preds"].tolist()
 
-    filtered_psms = prep.filter_contaminants(
-        cleaned_psms, run, FASTA_DIR / "contaminants.fasta"
-    )
+    filtered_psms = prep.filter_contaminants(cleaned_psms, run, FASTA_DIR / "contaminants.fasta")
 
     df = df[df["cleaned_preds"].isin(filtered_psms)]
 
-    df["mapped"] = df["cleaned_preds"].apply(
-        lambda x: "True" if x in protein_norm else "False"
-    )
+    df["mapped"] = df["cleaned_preds"].apply(lambda x: "True" if x in protein_norm else "False")
 
     df = df[df["conf"] > conf]
 
@@ -142,7 +133,7 @@ def run_pipeline_dbg(
     records = [
         Bio.SeqRecord.SeqRecord(
             Bio.Seq.Seq(contig),
-            id=f"contig_{idx+1}",
+            id=f"contig_{idx + 1}",
             description=f"length: {len(contig)}",
         )
         for idx, contig in enumerate(assembled_contigs)
@@ -154,9 +145,7 @@ def run_pipeline_dbg(
         "fasta",
     )
 
-    mapped_contigs = map.process_protein_contigs_scaffold(
-        assembled_contigs, protein_norm, max_mismatches, min_identity
-    )
+    mapped_contigs = map.process_protein_contigs_scaffold(assembled_contigs, protein_norm, max_mismatches, min_identity)
 
     df_contigs = map.create_dataframe_from_mapped_sequences(data=mapped_contigs)
 
@@ -174,9 +163,7 @@ def run_pipeline_dbg(
 
     assembled_scaffolds = sorted(assembled_scaffolds, key=len, reverse=True)
 
-    assembled_scaffolds = [
-        scaffold for scaffold in assembled_scaffolds if len(scaffold) > size_threshold
-    ]
+    assembled_scaffolds = [scaffold for scaffold in assembled_scaffolds if len(scaffold) > size_threshold]
 
     assembled_scaffolds = dbg.merge_sequences(assembled_scaffolds)
 
@@ -184,15 +171,11 @@ def run_pipeline_dbg(
 
     assembled_scaffolds = sorted(assembled_scaffolds, key=len, reverse=True)
 
-    assembled_scaffolds = [
-        scaffold for scaffold in assembled_scaffolds if len(scaffold) > size_threshold
-    ]
+    assembled_scaffolds = [scaffold for scaffold in assembled_scaffolds if len(scaffold) > size_threshold]
 
     records = []
     for i, seq in enumerate(assembled_scaffolds):
-        record = Bio.SeqRecord.SeqRecord(
-            Bio.Seq.Seq(seq), id=f"scaffold_{i+1}", description=f"length: {len(seq)}"
-        )
+        record = Bio.SeqRecord.SeqRecord(Bio.Seq.Seq(seq), id=f"scaffold_{i + 1}", description=f"length: {len(seq)}")
         records.append(record)
 
     Bio.SeqIO.write(
@@ -208,9 +191,7 @@ def run_pipeline_dbg(
         min_identity=min_identity,
     )
 
-    df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(
-        data=mapped_scaffolds
-    )
+    df_scaffolds_mapped = map.create_dataframe_from_mapped_sequences(data=mapped_scaffolds)
 
     comp_stat.compute_assembly_statistics(
         df=df_scaffolds_mapped,

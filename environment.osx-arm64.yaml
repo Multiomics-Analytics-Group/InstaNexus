@@ -38,6 +38,7 @@ dependencies:
   - pip
   - pip:
       - build
+      - isort
       - twine
       - hatchling
       - wheel

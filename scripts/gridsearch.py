@@ -45,9 +45,9 @@ method = "greedy"  # Change to "greedy" for greedy method
 
 selected_grid = all_grids[method]
 
-keys, values = zip(*selected_grid.items())
+keys, values = zip(*selected_grid.items(), strict=False)
 
-combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+combinations = [dict(zip(keys, v, strict=False)) for v in itertools.product(*values)]
 total_combinations = len(combinations)
 
 os.makedirs("logs", exist_ok=True)
@@ -60,9 +60,7 @@ logging.basicConfig(
     handlers=handlers,
 )
 
-logging.info(
-    f"Starting hyperparameter optimization with {total_combinations} combinations."
-)
+logging.info(f"Starting hyperparameter optimization with {total_combinations} combinations.")
 print(f"Total combinations: {total_combinations}")
 
 
@@ -83,10 +81,7 @@ def run_analysis(params, iteration):
 def grid_search_parallel():
     """Perform hyperparameter optimization in parallel."""
     with ProcessPoolExecutor(max_workers=64) as executor:
-        futures = {
-            executor.submit(run_analysis, params, idx + 1): idx + 1
-            for idx, params in enumerate(combinations)
-        }
+        futures = {executor.submit(run_analysis, params, idx + 1): idx + 1 for idx, params in enumerate(combinations)}
 
         for _ in tqdm(as_completed(futures), total=len(futures), desc="Processing"):
             pass
