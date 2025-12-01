@@ -21,10 +21,9 @@ __status__ = Dev
 """
 
 # import libraries
-import os
 import json
+import os
 from pathlib import Path
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 JSON_DIR = PROJECT_ROOT / "json"

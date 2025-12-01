@@ -31,7 +31,6 @@ dependencies = [
   "plotly>=6.2.0",
   "logomaker>=0.8",
   "networkx>=3.3",
-  "mmseqs2",
   "upsetplot"
 ]
 

@@ -24,6 +24,7 @@ dependencies:
   # notebook
   - ipykernel
   - nbformat
+  - notebook
 
   # development tools
   - black

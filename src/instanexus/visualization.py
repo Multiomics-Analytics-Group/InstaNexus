@@ -14,7 +14,7 @@ r"""Visualization module for InstaNexus.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 14 Nov 2025
+__date__ = 25 Nov 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -339,24 +339,6 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
             "Unmapped": unmapped_percentages.fillna(0).values,
         }
     )
-
-    # intersection_x = None
-    # for i in range(1, len(hist_df)):
-    #     mapped_prev, unmapped_prev = hist_df.iloc[i - 1][["Mapped", "Unmapped"]]
-    #     mapped_curr, unmapped_curr = hist_df.iloc[i][["Mapped", "Unmapped"]]
-
-    #     if mapped_prev < unmapped_prev and mapped_curr >= unmapped_curr:
-    #         x0 = hist_df.iloc[i - 1]["confidence"]
-    #         x1 = hist_df.iloc[i]["confidence"]
-
-    #         y_diff_prev = mapped_prev - unmapped_prev
-    #         y_diff_curr = mapped_curr - unmapped_curr
-
-    #         intersection_x = x0 + (x1 - x0) * (-y_diff_prev) / (
-    #             y_diff_curr - y_diff_prev
-    #         )
-    #         break
-
     fig = px.line(
         hist_df,
         x="confidence",
@@ -917,6 +899,7 @@ def mapping_substitutions(
     output_folder=".",
     contig_colors="#6baed6",
     match_color="#6baed6",
+    show_figure=False,
 ):
 
     default_colors = {
@@ -1077,9 +1060,19 @@ def mapping_substitutions(
         os.makedirs(output_folder, exist_ok=True)
         fig.write_image(os.path.join(output_folder, output_file), scale=2)
 
+    if show_figure:
+        fig.show()
+
 
 def mapping_psms_protease_associated(
-    mapped_sequences, prot_seq, labels, palette, title, output_folder, output_file
+    mapped_sequences,
+    prot_seq,
+    labels,
+    palette,
+    title,
+    output_folder,
+    output_file,
+    show_figure=False,
 ):
 
     fig = go.Figure()
@@ -1185,3 +1178,6 @@ def mapping_psms_protease_associated(
     )
 
     fig.write_image(f"{output_folder}/{output_file}", scale=2)
+
+    if show_figure:
+        fig.show()

@@ -23,11 +23,8 @@ __status__ = Dev
 import argparse
 import logging
 from pathlib import Path
-from . import preprocessing
-from . import assembly
-from . import clustering
-from . import alignment
-from . import consensus
+
+from . import alignment, assembly, clustering, consensus, preprocessing
 
 # Setup logging
 logging.basicConfig(
@@ -89,6 +86,12 @@ def cli():
         type=float,
         default=None,  # Default to None for preprocessing logic
         help="Confidence threshold for filtering (optional).",
+    )
+    parser.add_argument(
+        "--fdr",
+        type=float,
+        default=None,
+        help="False Discovery Rate threshold for filtering (e.g. 0.01).",
     )
     parser.add_argument(
         "--assembly-mode",
@@ -159,7 +162,9 @@ def run_pipeline(args):
     # Build the experiment folder name based on parameters
     folder_name_parts = [f"{args.assembly_mode}"]
 
-    if args.conf is not None:
+    if args.fdr is not None:
+        folder_name_parts.append(f"fdr{args.fdr}")
+    elif args.conf is not None:
         folder_name_parts.append(f"c{args.conf}")
 
     if "dbg" in args.assembly_mode:
@@ -203,6 +208,7 @@ def run_pipeline(args):
             chain=args.chain,
             reference=args.reference,
             conf=args.conf,
+            fdr=args.fdr,
             output_csv_path=str(cleaned_csv_path),  # Pass explicit path
         )
     except Exception as e:
@@ -276,6 +282,7 @@ if __name__ == "__main__":
 #    --assembly-mode dbg \
 #    --conf 0.9 \
 #    --kmer-size 7 \
+#    --fdr 0.2 \
 #    --size-threshold 12 \
 #    --min-overlap 3 \
 #    --min-seq-id 0.85

@@ -21,23 +21,24 @@ __status__ = Dev
 """
 
 # import libraries
+import argparse
 import logging
+import math
+import ast 
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from itertools import combinations
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional
+
+import Bio
 import networkx as nx
 import pandas as pd
-import argparse
-import Bio
+from tqdm import tqdm
 
 from . import helpers
 from . import visualization as viz
-
-from tqdm import tqdm
-from pathlib import Path
-from collections import defaultdict
-from collections import Counter
-from itertools import combinations
-from dataclasses import dataclass
-from typing import List, Dict, Iterable
-
+from . import preprocessing
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,8 +70,9 @@ def assemble_contigs_greedy(peptides, min_overlap):
     """Assembles contigs from peptide sequences using a greedy approach."""
     assembled_contigs = peptides[:]
     iteration = 0
+    MAX_ITERATIONS = 50
 
-    while True:
+    while iteration <MAX_ITERATIONS:
         iteration += 1
         overlaps = find_peptide_overlaps(assembled_contigs, min_overlap)
         if not overlaps:
@@ -104,6 +106,9 @@ def assemble_contigs_greedy(peptides, min_overlap):
         if len(new_contigs) == 0:
             break
 
+    if iteration >= MAX_ITERATIONS:
+        logger.warning(f"Greedy assembly stopped after max iterations ({MAX_ITERATIONS}).")
+
     return assembled_contigs
 
 
@@ -122,7 +127,7 @@ def merge_contigs_greedy(contigs):
 
 def combine_seqs_into_scaffolds(contigs, min_overlap):
     """Combine contigs based on a minimum overlap length."""
-    overlaps = find_overlaps(contigs, min_overlap=min_overlap)
+    overlaps = find_overlaps(contigs, min_overlap=min_overlap, disable_tqdm=True)
     combined_contigs = []
 
     for a, b, overlap in overlaps:
@@ -142,26 +147,131 @@ def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm
         return sorted(seqs, key=len, reverse=True)
 
     current = clean(contigs)
-    prev = None
+    MAX_ROUNDS = 10
 
-    while prev != current:
+    logger.info(f"Starting iterative scaffolding (Max rounds: {MAX_ROUNDS})...")
+    
+
+    for i in range(MAX_ROUNDS):
         prev = current
         next_round = combine_seqs_into_scaffolds(current, min_overlap)
         next_round = merge_contigs_greedy(next_round)
         next_round = clean(next_round)
-        if next_round == current:
+
+        if len(next_round) == len(current):
             break
+
         current = next_round
+        logger.info(f"  Round {i+1}: {len(current)} contigs")
 
     return current
 
 
-def get_kmers(seqs, kmer_size):
-    """Generate k-mers of specified length from input sequences."""
-    kmers = []
-    for seq in seqs:
-        kmers.extend(seq[i : i + kmer_size] for i in range(len(seq) - kmer_size + 1))
-    return kmers
+def get_weighted_kmers_from_df(df: pd.DataFrame, kmer_size: int, use_abundance: bool = True, use_quality: bool = True) -> Counter:
+    """
+    Generates k-mer weights integrating multiple data modalities.
+    
+    SCORING LOGIC:
+    1. Sequence Confidence (Deep Learning): Geometric Mean of 'instanovo_token_log_probabilities'.
+    2. Abundance (MS1): Logarithmic scaling of 'peptide_abundance'.
+    3. Quality (MS2): Linear boost from 'ion_match_intensity'.
+    4. Physics (iRT): Exponential penalty for 'iRT error'.
+    """
+    kmer_weights = Counter()
+    
+    # Column mapping
+    col_tokens = "instanovo_token_log_probabilities"
+    col_ms1_abundance = "peptide_abundance"   # MS1 Area
+    col_ms2_intensity = "ion_match_intensity" # MS2 Quality (0-1)
+    col_irt = "iRT error"
+
+    for _, row in df.iterrows():
+        sequence = row.get('cleaned_preds')
+        
+        # Skip invalid sequences
+        if not isinstance(sequence, str) or len(sequence) < kmer_size:
+            continue
+            
+        # --- 1. PARSE TOKEN PROBABILITIES (Keep in Log-Space) ---
+        log_probs = [] 
+        raw_probs_str = row.get(col_tokens)
+        
+        if isinstance(raw_probs_str, str) and raw_probs_str.startswith('['):
+            try:
+                parsed_log_probs = ast.literal_eval(raw_probs_str)
+                
+                # Handle Start/End Tokens [SOS, A, B, C, EOS] -> [A, B, C]
+                if len(parsed_log_probs) == len(sequence) + 2:
+                    log_probs = parsed_log_probs[1:-1] 
+                elif len(parsed_log_probs) == len(sequence):
+                    log_probs = parsed_log_probs 
+                else:
+                    log_probs = [0.0] * len(sequence) # Fallback: 100% prob
+            except Exception:
+                log_probs = [0.0] * len(sequence)
+        else:
+            log_probs = [0.0] * len(sequence)
+
+        # --- 2. CALCULATE GLOBAL PEPTIDE SCORE ---
+        global_multiplier = 1.0
+        
+        if use_abundance:
+            # A. Base Weight: MS1 Abundance (Log Scale)
+            ms1_val = row.get(col_ms1_abundance, 0)
+            if pd.notnull(ms1_val) and ms1_val > 0:
+                # log10(1e6) = 6.0. Adding 10 ensures we don't get log(small number) issues.
+                base_weight = math.log10(float(ms1_val) + 10)
+            else:
+                base_weight = 1.0 # Default if MS1 missing
+            
+            # B. Quality Boost: MS2 Intensity (0-1 range)
+            ms2_val = row.get(col_ms2_intensity, 0)
+            ms2_boost = 1.0
+            if pd.notnull(ms2_val):
+                # Linear boost: 0.1 -> 1.3x, 0.9 -> 3.7x
+                ms2_boost = 1.0 + (float(ms2_val) * 3.0)
+            
+            global_multiplier = base_weight * ms2_boost
+        
+        # C. Quality Penalty: iRT Error
+        if use_quality:
+            irt_err = row.get(col_irt, None)
+            is_missing = row.get("is_missing_irt_error", False)
+            pred_irt = row.get("predicted iRT", 0)
+
+            # Apply penalty ONLY if data is valid and error exists
+            # We ignore missing flags and dummy values (-30)
+            if pd.notnull(irt_err) and not is_missing and pred_irt > -20:
+                try:
+                    # Exponential decay (Sigma = 20.0 to handle long tails)
+                    global_multiplier *= math.exp(-abs(float(irt_err)) / 20.0)
+                except ValueError:
+                    pass
+
+        # --- 3. K-MER WEIGHTING (Geometric Mean) ---
+        for i in range(len(sequence) - kmer_size + 1):
+            kmer = sequence[i : i + kmer_size]
+            
+            # Extract log-probs for this specific k-mer
+            if i + kmer_size <= len(log_probs):
+                sub_logs = log_probs[i : i + kmer_size]
+                
+                # Geometric Mean Calculation
+                # Math: GeoMean(p1...pn) = exp( average(ln(p1)...ln(pn)) )
+                if sub_logs:
+                    avg_log_prob = sum(sub_logs) / len(sub_logs)
+                    local_confidence = math.exp(avg_log_prob)
+                else:
+                    local_confidence = 1.0
+            else:
+                local_confidence = 1.0
+            
+            # Final Weight = Global (MS1/MS2/iRT) * Local (Token Prob)
+            weight = global_multiplier * local_confidence
+            
+            kmer_weights[kmer] += weight
+
+    return kmer_weights
 
 
 def get_kmer_counts(kmers):
@@ -282,7 +392,7 @@ def scaffold_iterative_dbg(contigs, min_overlap, size_threshold, disable_tqdm=Fa
 
 
 def get_kmers(sequences: Iterable[str], kmer_size: int) -> List[str]:
-    """Generate all k-mers from a list of sequences."""
+    """Generate all k-mers from a list of sequences (preserves duplicates)."""
     kmers = []
     for seq in sequences:
         if not seq:
@@ -298,24 +408,25 @@ def get_kmer_counts(kmers: Iterable[str]) -> Counter:
     """Return a Counter of k-mer frequencies."""
     return Counter(kmers)
 
-
-def build_dbg_from_kmers(kmers: Iterable[str]) -> nx.DiGraph:
+def build_dbg_from_kmers(kmers: Iterable[str], weights: Counter = None) -> nx.DiGraph:
     """
-    Build a weighted De Bruijn graph:
-    - Nodes: (k-1)-mers
-    - Edges: k-mers, with attributes:
-        weight: int (count / coverage)
-        kmers:  list of the k-mers mapping to this edge (optional, kept for debug)
+    Build a De Bruijn graph.
+    If 'weights' (Counter) is provided, uses those values for edges.
+    Otherwise, counts occurrences from the list.
     """
     G = nx.DiGraph()
-    kmer_counts = Counter(kmers)
-    for kmer, count in tqdm(kmer_counts.items(), desc="Building DBG"):
+    
+    if weights:
+        iterator = weights.items() # (kmer, calculated_weight)
+    else:
+        iterator = Counter(kmers).items() # (kmer, count)
+
+    for kmer, weight in iterator:
         prefix, suffix = kmer[:-1], kmer[1:]
         if G.has_edge(prefix, suffix):
-            G[prefix][suffix]["weight"] += count
-            G[prefix][suffix]["kmers"].append(kmer)
+            G[prefix][suffix]["weight"] += weight
         else:
-            G.add_edge(prefix, suffix, weight=count, kmers=[kmer])
+            G.add_edge(prefix, suffix, weight=weight)
     return G
 
 
@@ -568,7 +679,15 @@ def extend_path_dbg(G, contig, k, min_weight=1):
 
 
 class Assembler:
-    """Unified assembler supporting 'greedy', 'dbg' and 'dbgx' (NetworkX) modes."""
+    """
+    Unified assembler supporting:
+    - 'greedy': Overlap-Layout-Consensus style.
+    - 'dbg': Standard De Bruijn Graph.
+    - 'dbg_weighted': DBG with node/edge filtering and scoring.
+    - 'dbgX': DBG with extension heuristics.
+    - 'fusion': Hybrid DBG + Greedy.
+    - 'multimodal': Heuristic DBG using MS1/MS2/AI/iRT features.
+    """
 
     def __init__(
         self,
@@ -578,17 +697,16 @@ class Assembler:
         kmer_size: int = 6,
         min_identity: float = 0.8,
         max_mismatches: int = 10,
-        # dbgx-specific:
         min_weight: int = 2,
-        refine_rounds: int = 0,  # 0 = no refine, >0 enables iterative refine
+        refine_rounds: int = 0,
         refine_patience: int = 2,
         alpha_len: float = 1.0,
         alpha_cov: float = 1.0,
         alpha_min: float = 0.2,
     ):
-        if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion"]:
+        if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg"]:
             raise ValueError(
-                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX' or 'fusion'"
+                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion' or 'multimodal_dbg'"
             )
 
         self.mode = mode
@@ -597,8 +715,6 @@ class Assembler:
         self.kmer_size = kmer_size
         self.min_identity = min_identity
         self.max_mismatches = max_mismatches
-
-        # dbgx params
         self.min_weight = min_weight
         self.refine_rounds = refine_rounds
         self.refine_patience = refine_patience
@@ -714,11 +830,138 @@ class Assembler:
         fused = sorted(set(fused), key=len, reverse=True)
 
         return fused
+    
 
-    def run(self, sequences: List[str]):
-        if not sequences:
-            logger.error("No valid sequences provided for assembly.")
-            raise ValueError("Input sequences list is empty.")
+    def assemble_multimodal_dbg(self, sequences: List[str], df_full: Optional[pd.DataFrame] = None) -> List[str]:
+        """
+        Multimodal Heuristic Assembly Strategy.
+        
+        Logic:
+        1. Landscape Construction: Weights nodes by MS1 Abundance, MS2 Intensity, iRT, and AI Confidence.
+        2. Seed Selection: Picks the 'Heaviest Seed' (highest confidence node).
+        3. Smart Navigation: Extends forward/backward using Lookahead Score (Edge * Node).
+        4. Path Burning: Removes assembled nodes to uncover lower-abundance variants.
+        """
+        logger.info(f"[Assembler] Running Multimodal DBG (Heuristic) k={self.kmer_size}")
+
+        # --- 1. WEIGHT CALCULATION (NODES & EDGES) ---
+        if df_full is not None:
+            logger.info("Using Multimodal Features (Token Probs, MS1/MS2, iRT) for weighting.")
+            
+            # Nodes are (k-1)-mers
+            node_weights = get_weighted_kmers_from_df(
+                df_full, self.kmer_size - 1, use_abundance=True, use_quality=True
+            )
+            # Edges are k-mers
+            edge_weights = get_weighted_kmers_from_df(
+                df_full, self.kmer_size, use_abundance=True, use_quality=True
+            )
+            # Build graph using calculated edge weights
+            G = build_dbg_from_kmers([], weights=edge_weights)
+        else:
+            # Fallback: Simple counts (if no dataframe provided)
+            logger.warning("No DataFrame provided for Multimodal DBG. Falling back to raw counts.")
+            node_kmers = get_kmers(sequences, self.kmer_size - 1)
+            node_weights = Counter(node_kmers)
+            
+            edge_kmers = get_kmers(sequences, self.kmer_size)
+            G = build_dbg_from_kmers(edge_kmers) 
+
+        # Apply weights to nodes
+        nx.set_node_attributes(G, node_weights, name='weight')
+
+        # --- 2. FILTERING ---
+        if self.min_weight > 1:
+            # Note: With multimodal weights (floats), min_weight might need tuning (e.g. 5.0)
+            # but usually >1 filters out single-observation errors effectively.
+            nodes_to_remove = [n for n, w in node_weights.items() if w < self.min_weight]
+            G.remove_nodes_from(nodes_to_remove)
+
+        contigs = []
+        
+        # --- 3. ASSEMBLY LOOP (Heaviest Seed + Smart Greedy) ---
+        while G.number_of_nodes() > 0:
+            # Find Seed: Node with highest weight
+            try:
+                seed_node = max(G.nodes, key=lambda n: G.nodes[n].get('weight', 0))
+            except ValueError:
+                break 
+            
+            # Stop if seed is too weak
+            if G.nodes[seed_node].get('weight', 0) < self.min_weight:
+                break
+
+            # Helper for Smart Greedy Decision
+            def get_best_neighbor(current_node, direction="successors"):
+                if direction == "successors":
+                    neighbors = list(G.successors(current_node))
+                else:
+                    neighbors = list(G.predecessors(current_node))
+                
+                if not neighbors:
+                    return None
+                
+                # Heuristic Score = EdgeWeight * DestNodeWeight
+                def score(n):
+                    if direction == "successors":
+                        edge_w = G.get_edge_data(current_node, n).get('weight', 1)
+                    else:
+                        edge_w = G.get_edge_data(n, current_node).get('weight', 1)
+                    node_w = G.nodes[n].get('weight', 1)
+                    return edge_w * node_w
+
+                return max(neighbors, key=score)
+
+            # Extend Forward
+            path_fwd = [seed_node]
+            curr = seed_node
+            while True:
+                best_next = get_best_neighbor(curr, direction="successors")
+                if not best_next or best_next in path_fwd: 
+                    break
+                path_fwd.append(best_next)
+                curr = best_next
+
+            # Extend Backward
+            path_bwd = []
+            curr = seed_node
+            while True:
+                best_prev = get_best_neighbor(curr, direction="predecessors")
+                if not best_prev or best_prev in path_bwd or best_prev in path_fwd:
+                    break
+                path_bwd.append(best_prev)
+                curr = best_prev
+
+            # Reconstruct
+            full_path_nodes = path_bwd[::-1] + path_fwd
+            
+            if not full_path_nodes:
+                G.remove_node(seed_node)
+                continue
+
+            sequence = full_path_nodes[0]
+            for kmer in full_path_nodes[1:]:
+                sequence += kmer[-1]
+            
+            if len(sequence) >= self.size_threshold:
+                contigs.append(sequence)
+
+            # Burn Path
+            G.remove_nodes_from(full_path_nodes)
+
+        return contigs
+    
+
+    def run(self, sequences: List[str], df_full: Optional[pd.DataFrame] = None):
+        """
+        Main entry point.
+        Args:
+            sequences: List of peptide strings (required for basic modes).
+            df_full: Optional DataFrame containing advanced features (required for optimized dbg_greedy).
+        """
+        if not sequences and (df_full is None or df_full.empty):
+            logger.error("No valid input provided for assembly.")
+            raise ValueError("Input sequences list or DataFrame is empty.")
 
         if self.mode == "greedy":
             return self.assemble_greedy(sequences)
@@ -730,6 +973,8 @@ class Assembler:
             return self.assemble_dbgX(sequences)
         elif self.mode == "fusion":
             return self.assemble_fusion(sequences)
+        elif self.mode == "multimodal_dbg":
+            return self.assemble_multimodal_dbg(sequences, df_full=df_full)
 
 
 def main(
@@ -756,12 +1001,14 @@ def main(
             )
 
         try:
-            run_name = Path(input_csv_path).stem  # extract run name from input file
+            run_stem = Path(input_csv_path).stem  # extract run name from input file
+            run_name = run_stem.replace("_cleaned", "")
+
             meta = helpers.get_sample_metadata(
                 run=run_name, chain=chain, json_path=metadata_json_path
             )
             protein = meta["protein"]
-            protein_norm = helpers.get_normalized_protein(protein)
+            protein_norm = preprocessing.normalize_sequence(protein)
             logger.info("Reference protein loaded and normalized successfully.")
 
         except Exception as e:
@@ -790,10 +1037,11 @@ def main(
         max_mismatches=max_mismatches,
     )
 
-    scaffolds = assembler.run(sequences=sequences)
+    scaffolds = assembler.run(sequences=sequences, df_full=df)
 
     output_path = Path(output_scaffolds_path)
-    output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    #output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
 
     records = [
         Bio.SeqRecord.SeqRecord(
@@ -856,13 +1104,13 @@ def cli():
     parser.add_argument(
         "--metadata-json-path",
         type=str,
-        default=None,  # Optional, but required by --reference
+        default=None,
         help="Path to sample_metadata.json (required for --reference).",
     )
     parser.add_argument(
         "--assembly-mode",
         type=str,
-        choices=["greedy", "dbg"],
+        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg"],
         default="greedy",
         help="Assembly mode to use: greedy or dbg.",
     )
@@ -912,7 +1160,7 @@ def cli():
     args = parser.parse_args()
 
     # in case of non-DBG mode, ignore kmer_size
-    if args.assembly_mode != "dbg":
+    if args.assembly_mode == "greedy":
         args.kmer_size = 0
         logger.info("Ignoring kmer_size (used only for DBG mode).")
 
