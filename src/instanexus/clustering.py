@@ -154,7 +154,7 @@ def process_fasta_and_clusters(fasta_file: Path, scaffolds_folder: Path):
             else:
                 logger.warning(f"Contig ID {contig_id} not found in {fasta_file.name}")
 
-        cluster_name = f"scaffold_{str(i+1).zfill(width)}.fasta"
+        cluster_name = f"scaffold_{str(i + 1).zfill(width)}.fasta"
         SeqIO.write(contig_records, cluster_fasta_dir / cluster_name, "fasta")
 
     logger.info(f"All cluster FASTA files created in: {cluster_fasta_dir}")
@@ -171,7 +171,7 @@ def main(input_scaffolds_folder: str, min_seq_id: float, coverage: float):
     fasta_input_path = scaffolds_folder_path / "scaffolds.fasta"
 
     logger.info(f"Scaffolds Folder (Input): {scaffolds_folder_path}")
-    logger.info(f"Clustering Folder (Output): {clustering_out_path  }")
+    logger.info(f"Clustering Folder (Output): {clustering_out_path}")
 
     if not scaffolds_folder_path.exists():
         logger.error(f"Scaffolds folder does not exist: {scaffolds_folder_path}")

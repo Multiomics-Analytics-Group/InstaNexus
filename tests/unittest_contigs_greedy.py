@@ -6,14 +6,11 @@ import greedy_method
 class TestOverlap(
     unittest.TestCase
 ):  # testcase class indicates that this is a test case
-
     def test_no_overlap(self):
-
         peptides1 = ["AAAA", "BBBB", "CCCC", "DDDD"]
         self.assertEqual(greedy_method.find_peptide_overlaps(peptides1, 2), {})
 
     def test_single_overlap(self):
-
         peptides1 = ["ABCD", "CDEF"]
         self.assertEqual(
             greedy_method.find_peptide_overlaps(peptides1, 2), {0: [(1, 2), (1, 2)]}
@@ -31,9 +28,7 @@ class TestOverlap(
 
 
 class TestAssemble(unittest.TestCase):
-
     def test_two_peptides(self):
-
         peptides1 = ["ABCD", "CDEF"]
         self.assertEqual(
             greedy_method.assemble_contigs(peptides1, min_overlap=2), ["ABCDEF"]
@@ -70,7 +65,6 @@ class TestAssemble(unittest.TestCase):
 
 
 class TestFindContigOverlap(unittest.TestCase):
-
     def test_overlap_found(self):
         # using two sequences with a clear overlap "CCC"
         # setting the minimum overlap to 2 even though the overlap is 3

@@ -24,7 +24,7 @@ __status__ = Dev
 import argparse
 import logging
 import math
-import ast 
+import ast
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import combinations
@@ -51,7 +51,6 @@ def find_peptide_overlaps(peptides, min_overlap):
     for index_a, peptide_a in tqdm(enumerate(peptides), desc="Finding overlaps"):
         for index_b, peptide_b in enumerate(peptides):
             if index_a != index_b:  # Skip comparing the same peptide
-
                 max_possible_overlap = min(len(peptide_a), len(peptide_b))
 
                 for overlap_length in range(min_overlap, max_possible_overlap):
@@ -72,7 +71,7 @@ def assemble_contigs_greedy(peptides, min_overlap):
     iteration = 0
     MAX_ITERATIONS = 50
 
-    while iteration <MAX_ITERATIONS:
+    while iteration < MAX_ITERATIONS:
         iteration += 1
         overlaps = find_peptide_overlaps(assembled_contigs, min_overlap)
         if not overlaps:
@@ -107,7 +106,9 @@ def assemble_contigs_greedy(peptides, min_overlap):
             break
 
     if iteration >= MAX_ITERATIONS:
-        logger.warning(f"Greedy assembly stopped after max iterations ({MAX_ITERATIONS}).")
+        logger.warning(
+            f"Greedy assembly stopped after max iterations ({MAX_ITERATIONS})."
+        )
 
     return assembled_contigs
 
@@ -150,10 +151,8 @@ def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm
     MAX_ROUNDS = 10
 
     logger.info(f"Starting iterative scaffolding (Max rounds: {MAX_ROUNDS})...")
-    
 
     for i in range(MAX_ROUNDS):
-        prev = current
         next_round = combine_seqs_into_scaffolds(current, min_overlap)
         next_round = merge_contigs_greedy(next_round)
         next_round = clean(next_round)
@@ -162,15 +161,20 @@ def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm
             break
 
         current = next_round
-        logger.info(f"  Round {i+1}: {len(current)} contigs")
+        logger.info(f"  Round {i + 1}: {len(current)} contigs")
 
     return current
 
 
-def get_weighted_kmers_from_df(df: pd.DataFrame, kmer_size: int, use_abundance: bool = True, use_quality: bool = True) -> Counter:
+def get_weighted_kmers_from_df(
+    df: pd.DataFrame,
+    kmer_size: int,
+    use_abundance: bool = True,
+    use_quality: bool = True,
+) -> Counter:
     """
     Generates k-mer weights integrating multiple data modalities.
-    
+
     SCORING LOGIC:
     1. Sequence Confidence (Deep Learning): Geometric Mean of 'instanovo_token_log_probabilities'.
     2. Abundance (MS1): Logarithmic scaling of 'peptide_abundance'.
@@ -178,35 +182,35 @@ def get_weighted_kmers_from_df(df: pd.DataFrame, kmer_size: int, use_abundance: 
     4. Physics (iRT): Exponential penalty for 'iRT error'.
     """
     kmer_weights = Counter()
-    
+
     # Column mapping
     col_tokens = "instanovo_token_log_probabilities"
-    col_ms1_abundance = "peptide_abundance"   # MS1 Area
-    col_ms2_intensity = "ion_match_intensity" # MS2 Quality (0-1)
+    col_ms1_abundance = "peptide_abundance"  # MS1 Area
+    col_ms2_intensity = "ion_match_intensity"  # MS2 Quality (0-1)
     col_irt = "iRT error"
 
     for _, row in df.iterrows():
-        sequence = row.get('cleaned_preds')
-        
+        sequence = row.get("cleaned_preds")
+
         # Skip invalid sequences
         if not isinstance(sequence, str) or len(sequence) < kmer_size:
             continue
-            
+
         # --- 1. PARSE TOKEN PROBABILITIES (Keep in Log-Space) ---
-        log_probs = [] 
+        log_probs = []
         raw_probs_str = row.get(col_tokens)
-        
-        if isinstance(raw_probs_str, str) and raw_probs_str.startswith('['):
+
+        if isinstance(raw_probs_str, str) and raw_probs_str.startswith("["):
             try:
                 parsed_log_probs = ast.literal_eval(raw_probs_str)
-                
+
                 # Handle Start/End Tokens [SOS, A, B, C, EOS] -> [A, B, C]
                 if len(parsed_log_probs) == len(sequence) + 2:
-                    log_probs = parsed_log_probs[1:-1] 
+                    log_probs = parsed_log_probs[1:-1]
                 elif len(parsed_log_probs) == len(sequence):
-                    log_probs = parsed_log_probs 
+                    log_probs = parsed_log_probs
                 else:
-                    log_probs = [0.0] * len(sequence) # Fallback: 100% prob
+                    log_probs = [0.0] * len(sequence)  # Fallback: 100% prob
             except Exception:
                 log_probs = [0.0] * len(sequence)
         else:
@@ -214,7 +218,7 @@ def get_weighted_kmers_from_df(df: pd.DataFrame, kmer_size: int, use_abundance: 
 
         # --- 2. CALCULATE GLOBAL PEPTIDE SCORE ---
         global_multiplier = 1.0
-        
+
         if use_abundance:
             # A. Base Weight: MS1 Abundance (Log Scale)
             ms1_val = row.get(col_ms1_abundance, 0)
@@ -222,17 +226,17 @@ def get_weighted_kmers_from_df(df: pd.DataFrame, kmer_size: int, use_abundance: 
                 # log10(1e6) = 6.0. Adding 10 ensures we don't get log(small number) issues.
                 base_weight = math.log10(float(ms1_val) + 10)
             else:
-                base_weight = 1.0 # Default if MS1 missing
-            
+                base_weight = 1.0  # Default if MS1 missing
+
             # B. Quality Boost: MS2 Intensity (0-1 range)
             ms2_val = row.get(col_ms2_intensity, 0)
             ms2_boost = 1.0
             if pd.notnull(ms2_val):
                 # Linear boost: 0.1 -> 1.3x, 0.9 -> 3.7x
                 ms2_boost = 1.0 + (float(ms2_val) * 3.0)
-            
+
             global_multiplier = base_weight * ms2_boost
-        
+
         # C. Quality Penalty: iRT Error
         if use_quality:
             irt_err = row.get(col_irt, None)
@@ -251,11 +255,11 @@ def get_weighted_kmers_from_df(df: pd.DataFrame, kmer_size: int, use_abundance: 
         # --- 3. K-MER WEIGHTING (Geometric Mean) ---
         for i in range(len(sequence) - kmer_size + 1):
             kmer = sequence[i : i + kmer_size]
-            
+
             # Extract log-probs for this specific k-mer
             if i + kmer_size <= len(log_probs):
                 sub_logs = log_probs[i : i + kmer_size]
-                
+
                 # Geometric Mean Calculation
                 # Math: GeoMean(p1...pn) = exp( average(ln(p1)...ln(pn)) )
                 if sub_logs:
@@ -265,10 +269,10 @@ def get_weighted_kmers_from_df(df: pd.DataFrame, kmer_size: int, use_abundance: 
                     local_confidence = 1.0
             else:
                 local_confidence = 1.0
-            
+
             # Final Weight = Global (MS1/MS2/iRT) * Local (Token Prob)
             weight = global_multiplier * local_confidence
-            
+
             kmer_weights[kmer] += weight
 
     return kmer_weights
@@ -408,6 +412,7 @@ def get_kmer_counts(kmers: Iterable[str]) -> Counter:
     """Return a Counter of k-mer frequencies."""
     return Counter(kmers)
 
+
 def build_dbg_from_kmers(kmers: Iterable[str], weights: Counter = None) -> nx.DiGraph:
     """
     Build a De Bruijn graph.
@@ -415,11 +420,11 @@ def build_dbg_from_kmers(kmers: Iterable[str], weights: Counter = None) -> nx.Di
     Otherwise, counts occurrences from the list.
     """
     G = nx.DiGraph()
-    
+
     if weights:
-        iterator = weights.items() # (kmer, calculated_weight)
+        iterator = weights.items()  # (kmer, calculated_weight)
     else:
-        iterator = Counter(kmers).items() # (kmer, count)
+        iterator = Counter(kmers).items()  # (kmer, count)
 
     for kmer, weight in iterator:
         prefix, suffix = kmer[:-1], kmer[1:]
@@ -576,7 +581,7 @@ def scaffold_iterative_dbgx(
     best: List[str] = list(seqs)
     no_improve = 0
 
-    for rnd in range(1, max_rounds + 1):
+    for _rnd in range(1, max_rounds + 1):
         kmers = get_kmers(seqs, kmer_size)
         if not kmers:
             break
@@ -704,7 +709,14 @@ class Assembler:
         alpha_cov: float = 1.0,
         alpha_min: float = 0.2,
     ):
-        if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg"]:
+        if mode not in [
+            "greedy",
+            "dbg",
+            "dbg_weighted",
+            "dbgX",
+            "fusion",
+            "multimodal_dbg",
+        ]:
             raise ValueError(
                 "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion' or 'multimodal_dbg'"
             )
@@ -723,7 +735,6 @@ class Assembler:
         self.alpha_min = alpha_min
 
     def assemble_greedy(self, sequences):
-
         logger.info(
             f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})"
         )
@@ -830,24 +841,29 @@ class Assembler:
         fused = sorted(set(fused), key=len, reverse=True)
 
         return fused
-    
 
-    def assemble_multimodal_dbg(self, sequences: List[str], df_full: Optional[pd.DataFrame] = None) -> List[str]:
+    def assemble_multimodal_dbg(
+        self, sequences: List[str], df_full: Optional[pd.DataFrame] = None
+    ) -> List[str]:
         """
         Multimodal Heuristic Assembly Strategy.
-        
+
         Logic:
         1. Landscape Construction: Weights nodes by MS1 Abundance, MS2 Intensity, iRT, and AI Confidence.
         2. Seed Selection: Picks the 'Heaviest Seed' (highest confidence node).
         3. Smart Navigation: Extends forward/backward using Lookahead Score (Edge * Node).
         4. Path Burning: Removes assembled nodes to uncover lower-abundance variants.
         """
-        logger.info(f"[Assembler] Running Multimodal DBG (Heuristic) k={self.kmer_size}")
+        logger.info(
+            f"[Assembler] Running Multimodal DBG (Heuristic) k={self.kmer_size}"
+        )
 
         # --- 1. WEIGHT CALCULATION (NODES & EDGES) ---
         if df_full is not None:
-            logger.info("Using Multimodal Features (Token Probs, MS1/MS2, iRT) for weighting.")
-            
+            logger.info(
+                "Using Multimodal Features (Token Probs, MS1/MS2, iRT) for weighting."
+            )
+
             # Nodes are (k-1)-mers
             node_weights = get_weighted_kmers_from_df(
                 df_full, self.kmer_size - 1, use_abundance=True, use_quality=True
@@ -860,35 +876,39 @@ class Assembler:
             G = build_dbg_from_kmers([], weights=edge_weights)
         else:
             # Fallback: Simple counts (if no dataframe provided)
-            logger.warning("No DataFrame provided for Multimodal DBG. Falling back to raw counts.")
+            logger.warning(
+                "No DataFrame provided for Multimodal DBG. Falling back to raw counts."
+            )
             node_kmers = get_kmers(sequences, self.kmer_size - 1)
             node_weights = Counter(node_kmers)
-            
+
             edge_kmers = get_kmers(sequences, self.kmer_size)
-            G = build_dbg_from_kmers(edge_kmers) 
+            G = build_dbg_from_kmers(edge_kmers)
 
         # Apply weights to nodes
-        nx.set_node_attributes(G, node_weights, name='weight')
+        nx.set_node_attributes(G, node_weights, name="weight")
 
         # --- 2. FILTERING ---
         if self.min_weight > 1:
             # Note: With multimodal weights (floats), min_weight might need tuning (e.g. 5.0)
             # but usually >1 filters out single-observation errors effectively.
-            nodes_to_remove = [n for n, w in node_weights.items() if w < self.min_weight]
+            nodes_to_remove = [
+                n for n, w in node_weights.items() if w < self.min_weight
+            ]
             G.remove_nodes_from(nodes_to_remove)
 
         contigs = []
-        
+
         # --- 3. ASSEMBLY LOOP (Heaviest Seed + Smart Greedy) ---
         while G.number_of_nodes() > 0:
             # Find Seed: Node with highest weight
             try:
-                seed_node = max(G.nodes, key=lambda n: G.nodes[n].get('weight', 0))
+                seed_node = max(G.nodes, key=lambda n: G.nodes[n].get("weight", 0))
             except ValueError:
-                break 
-            
+                break
+
             # Stop if seed is too weak
-            if G.nodes[seed_node].get('weight', 0) < self.min_weight:
+            if G.nodes[seed_node].get("weight", 0) < self.min_weight:
                 break
 
             # Helper for Smart Greedy Decision
@@ -897,17 +917,17 @@ class Assembler:
                     neighbors = list(G.successors(current_node))
                 else:
                     neighbors = list(G.predecessors(current_node))
-                
+
                 if not neighbors:
                     return None
-                
+
                 # Heuristic Score = EdgeWeight * DestNodeWeight
                 def score(n):
                     if direction == "successors":
-                        edge_w = G.get_edge_data(current_node, n).get('weight', 1)
+                        edge_w = G.get_edge_data(current_node, n).get("weight", 1)
                     else:
-                        edge_w = G.get_edge_data(n, current_node).get('weight', 1)
-                    node_w = G.nodes[n].get('weight', 1)
+                        edge_w = G.get_edge_data(n, current_node).get("weight", 1)
+                    node_w = G.nodes[n].get("weight", 1)
                     return edge_w * node_w
 
                 return max(neighbors, key=score)
@@ -917,7 +937,7 @@ class Assembler:
             curr = seed_node
             while True:
                 best_next = get_best_neighbor(curr, direction="successors")
-                if not best_next or best_next in path_fwd: 
+                if not best_next or best_next in path_fwd:
                     break
                 path_fwd.append(best_next)
                 curr = best_next
@@ -934,7 +954,7 @@ class Assembler:
 
             # Reconstruct
             full_path_nodes = path_bwd[::-1] + path_fwd
-            
+
             if not full_path_nodes:
                 G.remove_node(seed_node)
                 continue
@@ -942,7 +962,7 @@ class Assembler:
             sequence = full_path_nodes[0]
             for kmer in full_path_nodes[1:]:
                 sequence += kmer[-1]
-            
+
             if len(sequence) >= self.size_threshold:
                 contigs.append(sequence)
 
@@ -950,7 +970,6 @@ class Assembler:
             G.remove_nodes_from(full_path_nodes)
 
         return contigs
-    
 
     def run(self, sequences: List[str], df_full: Optional[pd.DataFrame] = None):
         """
@@ -1041,11 +1060,11 @@ def main(
 
     output_path = Path(output_scaffolds_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    #output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
+    # output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
 
     records = [
         Bio.SeqRecord.SeqRecord(
-            Bio.Seq.Seq(seq), id=f"scaffold_{i+1}", description=f"length: {len(seq)}"
+            Bio.Seq.Seq(seq), id=f"scaffold_{i + 1}", description=f"length: {len(seq)}"
         )
         for i, seq in enumerate(scaffolds)
     ]

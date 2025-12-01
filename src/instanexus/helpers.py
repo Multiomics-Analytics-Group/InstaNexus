@@ -116,7 +116,7 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
 
     # Create a set of covered positions (adjusting for 0-based indexing)
     covered_positions = set()
-    for start, end in zip(df["start"], df["end"]):
+    for start, end in zip(df["start"], df["end"], strict=False):
         covered_positions.update(
             range(start - 1, end)
         )  # Convert 1-based to 0-based indexing

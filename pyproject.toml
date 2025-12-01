@@ -67,7 +67,7 @@ where = ["src"]
 [tool.ruff]
 # Exclude notebooks to avoid linting errors on them
 exclude = ["*.ipynb", "docs/source/tutorials/*"]
-line-length = 88
+line-length = 120
 
 [tool.ruff.lint]
 # Enable common rules: E (pycodestyle errors), W (warnings), F (pyflakes), B (bugbear)

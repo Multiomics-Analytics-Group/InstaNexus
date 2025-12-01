@@ -9,7 +9,6 @@ sys.path.append(os.path.join(script_dir, "../src"))
 
 
 class TestOverlap(unittest.TestCase):
-
     def test_no_overlap(self):
         list1 = ["AAAA", "BBBB", "CCCC", "DDDD"]
         self.assertEqual(scaffolding.find_overlaps(list1, 2), [])
@@ -27,7 +26,6 @@ class TestOverlap(unittest.TestCase):
 
 
 class TestFilterContainedSequences(unittest.TestCase):
-
     def no_sequence_contained(self):
         list1 = ["ABCDEFGHI", "LMNO"]
         self.assertEqual(

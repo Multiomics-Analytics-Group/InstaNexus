@@ -17,7 +17,6 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-
 import json
 import re
 from math import log2
@@ -289,15 +288,15 @@ def build_reference_free_features(df, aa_properties, protease_rules):
 
     df["cterm_matches_protease"] = [
         cterm_matches_any(s, p, protease_rules)
-        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list)
+        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list, strict=False)
     ]
     df["nterm_matches_protease"] = [
         nterm_matches_any(s, p, protease_rules)
-        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list)
+        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list, strict=False)
     ]
     df["internal_expected_sites_min"] = [
         internal_expected_sites_min(s, p, protease_rules)
-        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list)
+        for s, p in zip(df["cleaned_preds"].fillna(""), prots_list, strict=False)
     ]
 
     df["proline_block_at_cterm"] = (

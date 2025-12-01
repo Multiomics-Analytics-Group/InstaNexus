@@ -29,7 +29,6 @@ import sys
 import logging
 import json
 from pathlib import Path
-from Bio import SeqIO
 
 from instanexus.assembly import Assembler
 from instanexus import visualization, helpers, preprocessing
@@ -291,7 +290,7 @@ def main():
 
     g.fig.subplots_adjust(top=0.82, wspace=0.3, hspace=0.4)
     g.fig.suptitle(
-        f"Aggregated assembly performance (Mean ± 95% CI)", fontsize=16, y=0.98
+        "Aggregated assembly performance (Mean ± 95% CI)", fontsize=16, y=0.98
     )
 
     legend_handles = []
@@ -322,7 +321,7 @@ def main():
     g.set(xticks=FDR_THRESHOLDS)
 
     for ax in g.axes.flat:
-        ax.set_xticklabels([f"{int(x*100)}%" for x in FDR_THRESHOLDS])
+        ax.set_xticklabels([f"{int(x * 100)}%" for x in FDR_THRESHOLDS])
 
     g.fig.subplots_adjust(top=0.82, wspace=0.3, hspace=0.4)
 

@@ -20,7 +20,6 @@ __status__ = Dev
 # !pip install kaleido # to export plotly figures as png
 # !pip install --upgrade nbformat # to avoid plotly error
 
-
 import json
 import os
 from pathlib import Path
@@ -60,7 +59,6 @@ def get_sample_metadata(run, chain="", json_path=JSON_DIR / "sample_metadata.jso
 def run_pipeline_greedy(
     conf, min_overlap, max_mismatches, min_identity, size_threshold
 ):
-
     ass_method = "greedy"
     run = "ma1"
 
@@ -121,7 +119,7 @@ def run_pipeline_greedy(
     records = [
         Bio.SeqRecord.SeqRecord(
             Bio.Seq.Seq(contig),
-            id=f"contig_{idx+1}",
+            id=f"contig_{idx + 1}",
             description=f"length: {len(contig)}",
         )
         for idx, contig in enumerate(assembled_contigs)
@@ -175,7 +173,7 @@ def run_pipeline_greedy(
     records = []
     for i, seq in enumerate(assembled_scaffolds):
         record = Bio.SeqRecord.SeqRecord(
-            Bio.Seq.Seq(seq), id=f"scaffold_{i+1}", description=f"length: {len(seq)}"
+            Bio.Seq.Seq(seq), id=f"scaffold_{i + 1}", description=f"length: {len(seq)}"
         )
         records.append(record)
 

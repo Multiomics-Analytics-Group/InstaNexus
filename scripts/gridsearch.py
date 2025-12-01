@@ -45,9 +45,9 @@ method = "greedy"  # Change to "greedy" for greedy method
 
 selected_grid = all_grids[method]
 
-keys, values = zip(*selected_grid.items())
+keys, values = zip(*selected_grid.items(), strict=False)
 
-combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+combinations = [dict(zip(keys, v, strict=False)) for v in itertools.product(*values)]
 total_combinations = len(combinations)
 
 os.makedirs("logs", exist_ok=True)

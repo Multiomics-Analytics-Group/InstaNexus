@@ -34,7 +34,6 @@ from tqdm import tqdm
 
 
 def missing_values_barplot(run, dataframe, folder):
-
     dataframe["missing_preds"] = dataframe["preds"].isna()
 
     missing_counts_df = dataframe["missing_preds"].value_counts().reset_index()
@@ -124,7 +123,6 @@ def missing_values_barplot(run, dataframe, folder):
 
 
 def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=False):
-
     df = df[df["conf"] >= conf_lim]
 
     df["mapped"] = df["cleaned_preds"].apply(
@@ -197,7 +195,6 @@ def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=Fals
 
 
 def fdr_ratio_mapped_unmapped(run, df, folder):
-
     bin_centers = []
     ratios = []
 
@@ -315,7 +312,6 @@ def fdr_ratio_mapped_unmapped(run, df, folder):
 
 
 def plot_relative_map_distribution(run, df, reference, folder, title=False):
-
     df = df[df["conf"] >= 0].copy()
     df["mapped"] = df["cleaned_preds"].apply(
         lambda x: "mapped" if x in reference else "unmapped"
@@ -443,7 +439,6 @@ def plot_relative_map_distribution(run, df, reference, folder, title=False):
 
 
 def plot_map_distribution(run, df, reference, folder, threshold, title=False):
-
     df = df[df["conf"] >= threshold].copy()
 
     df["mapped"] = df["cleaned_preds"].apply(
@@ -679,7 +674,7 @@ def write_mapped_contigs(mapped_contigs, folder, filename_prefix):
         start, end, mismatches, identity = mapping
         record = Bio.SeqRecord.SeqRecord(
             Bio.Seq.Seq(contig),
-            id=f"Contig {idx+1}",
+            id=f"Contig {idx + 1}",
             description=f"length: {len(contig)}, start: {start}, end: {end}, mismatches: {len(mismatches)}, identity: {identity:.2f}",
         )
         records.append(record)
@@ -757,7 +752,7 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
     ax.set_title(title)
 
     handles, labels = ax.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
+    by_label = dict(zip(labels, handles, strict=False))
     ax.legend(
         by_label.values(),
         by_label.keys(),
@@ -901,7 +896,6 @@ def mapping_substitutions(
     match_color="#6baed6",
     show_figure=False,
 ):
-
     default_colors = {
         "match": match_color,
         "mismatch": "#b30000",
@@ -1074,7 +1068,6 @@ def mapping_psms_protease_associated(
     output_file,
     show_figure=False,
 ):
-
     fig = go.Figure()
 
     fig.add_shape(

@@ -150,10 +150,10 @@ def clean_winnow_rescored(df):
         "instanovo_token_log_probabilities",
         "ion_match_intensity",
         "ion_matches",
-        'iRT',
+        "iRT",
         "iRT error",
-        'is_missing_irt_error',
-        'predicted iRT',
+        "is_missing_irt_error",
+        "predicted iRT",
         "margin",
         "entropy",
         "z-score",
@@ -222,27 +222,33 @@ def filter_contaminants(seqs, run, contaminants_fasta):
 
 def add_quantification_data(df_main, run_name, inputs_folder="inputs"):
     quant_file_path = Path(inputs_folder) / f"{run_name}_quant_scores.csv"
-    
+
     if not quant_file_path.exists():
         return df_main
 
     try:
         df_quant = pd.read_csv(quant_file_path)
-        
+
         required_cols = ["cleaned_preds", "total_abundance_norm"]
         if not all(col in df_quant.columns for col in required_cols):
             return df_main
 
-        valid_peptides = set(df_main['cleaned_preds'].unique())
-        df_quant = df_quant[df_quant['cleaned_preds'].isin(valid_peptides)]
+        valid_peptides = set(df_main["cleaned_preds"].unique())
+        df_quant = df_quant[df_quant["cleaned_preds"].isin(valid_peptides)]
 
-        df_quant_summed = df_quant.groupby('cleaned_preds', as_index=False)['total_abundance_norm'].sum()
-        df_quant_summed.rename(columns={'total_abundance_norm': 'peptide_abundance'}, inplace=True)
-        
-        df_merged = pd.merge(df_main, df_quant_summed, on='cleaned_preds', how='left')
-        df_merged['peptide_abundance'] = df_merged['peptide_abundance'].fillna(0)
-        
-        logger.info(f"Quantification merged. Rows with abundance: {len(df_quant_summed)}")
+        df_quant_summed = df_quant.groupby("cleaned_preds", as_index=False)[
+            "total_abundance_norm"
+        ].sum()
+        df_quant_summed.rename(
+            columns={"total_abundance_norm": "peptide_abundance"}, inplace=True
+        )
+
+        df_merged = pd.merge(df_main, df_quant_summed, on="cleaned_preds", how="left")
+        df_merged["peptide_abundance"] = df_merged["peptide_abundance"].fillna(0)
+
+        logger.info(
+            f"Quantification merged. Rows with abundance: {len(df_quant_summed)}"
+        )
         return df_merged
 
     except Exception as e:
