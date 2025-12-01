@@ -20,18 +20,19 @@ __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
-import pandas as pd
-import seaborn as sns
+import json
+import logging
 import os
 import sys
-import logging
-import json
 from pathlib import Path
 
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+from instanexus import helpers, preprocessing, visualization
 from instanexus.assembly import Assembler
-from instanexus import visualization, helpers, preprocessing
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
@@ -116,7 +117,7 @@ def load_custom_palette():
             color = colors_data.get(json_key, {}).get("scaffold", "#333333")
             custom_palette[category_label] = color
         return custom_palette
-    except:
+    except Exception:
         return default_palette
 
 

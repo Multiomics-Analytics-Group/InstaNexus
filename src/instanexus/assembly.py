@@ -22,9 +22,9 @@ __status__ = Dev
 
 # import libraries
 import argparse
+import ast
 import logging
 import math
-import ast
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import combinations
@@ -36,9 +36,8 @@ import networkx as nx
 import pandas as pd
 from tqdm import tqdm
 
-from . import helpers
+from . import helpers, preprocessing
 from . import visualization as viz
-from . import preprocessing
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
