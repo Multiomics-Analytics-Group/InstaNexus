@@ -92,20 +92,20 @@ def cli():
     parser.add_argument(
         "--assembly-mode",
         type=str,
-        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion"],
+        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg"],
         default="greedy",
         help="Assembly algorithm to use.",
     )
     parser.add_argument(
         "--kmer-size",
         type=int,
-        default=6,
+        default=7,
         help="K-mer size (only used if --assembly-mode dbg*).",
     )
     parser.add_argument(
         "--min-overlap",
         type=int,
-        default=4,
+        default=3,
         help="Minimum overlap size between reads.",
     )
     parser.add_argument(
@@ -123,7 +123,7 @@ def cli():
     parser.add_argument(
         "--max-mismatches",
         type=int,
-        default=14,
+        default=100,
         help="Maximum allowed mismatches (only used if --reference).",
     )
     parser.add_argument(
@@ -152,7 +152,7 @@ def run_pipeline(args):
 
     logger.info("--- InstaNexus Pipeline started ---")
 
-    run_name = Path(args.input_csv).stem  # e.g., 'bsa'
+    run_name = Path(args.input_csv).stem
     base_output_folder = Path(args.folder_outputs) / run_name  # e.g., 'outputs/bsa'
 
     # Build the experiment folder name based on parameters
