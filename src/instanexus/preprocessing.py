@@ -185,9 +185,7 @@ def clean_dataframe(df):
         return clean_instanovo_raw(df)
 
     else:
-        logger.warning(
-            "Unknown data format! Could not detect specific columns. Returning dataframe as is."
-        )
+        logger.warning("Unknown data format! Could not detect specific columns. Returning dataframe as is.")
         return df
 
 
@@ -236,19 +234,13 @@ def add_quantification_data(df_main, run_name, inputs_folder="inputs"):
         valid_peptides = set(df_main["cleaned_preds"].unique())
         df_quant = df_quant[df_quant["cleaned_preds"].isin(valid_peptides)]
 
-        df_quant_summed = df_quant.groupby("cleaned_preds", as_index=False)[
-            "total_abundance_norm"
-        ].sum()
-        df_quant_summed.rename(
-            columns={"total_abundance_norm": "peptide_abundance"}, inplace=True
-        )
+        df_quant_summed = df_quant.groupby("cleaned_preds", as_index=False)["total_abundance_norm"].sum()
+        df_quant_summed.rename(columns={"total_abundance_norm": "peptide_abundance"}, inplace=True)
 
         df_merged = pd.merge(df_main, df_quant_summed, on="cleaned_preds", how="left")
         df_merged["peptide_abundance"] = df_merged["peptide_abundance"].fillna(0)
 
-        logger.info(
-            f"Quantification merged. Rows with abundance: {len(df_quant_summed)}"
-        )
+        logger.info(f"Quantification merged. Rows with abundance: {len(df_quant_summed)}")
         return df_merged
 
     except Exception as e:
@@ -256,9 +248,7 @@ def add_quantification_data(df_main, run_name, inputs_folder="inputs"):
         return df_main
 
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -292,9 +282,7 @@ def main(
     df = pd.read_csv(input_csv)
 
     if "experiment_name" in df.columns:
-        df["protease"] = df["experiment_name"].apply(
-            lambda name: extract_protease(name, proteases)
-        )
+        df["protease"] = df["experiment_name"].apply(lambda name: extract_protease(name, proteases))
 
     if "preds" in df.columns:
         df["cleaned_preds"] = df["preds"].apply(remove_modifications)
@@ -311,9 +299,7 @@ def main(
     df = df[df["cleaned_preds"].isin(filtered_psms)]
 
     if reference:
-        df["mapped"] = df["cleaned_preds"].apply(
-            lambda x: True if x in protein_norm else False
-        )
+        df["mapped"] = df["cleaned_preds"].apply(lambda x: True if x in protein_norm else False)
 
     if conf is not None:
         logger.info(f"Applying confidence threshold: > {conf}")
@@ -325,9 +311,7 @@ def main(
         if "psm_q_value" in df.columns:
             df = df[df["psm_q_value"] <= fdr]
         else:
-            logger.warning(
-                "FDR filter requested but 'psm_q_value' column not found (V1 data?)."
-            )
+            logger.warning("FDR filter requested but 'psm_q_value' column not found (V1 data?).")
 
     if conf is None and fdr is None:
         logger.info("No filters (Conf/FDR) applied.")
@@ -349,9 +333,7 @@ def cli():
     """Command-line interface for the preprocessing script."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Preprocess peptide-spectrum match (PSM) data."
-    )
+    parser = argparse.ArgumentParser(description="Preprocess peptide-spectrum match (PSM) data.")
     parser.add_argument(
         "--input-csv",
         type=str,

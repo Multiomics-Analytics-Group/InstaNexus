@@ -31,9 +31,7 @@ import pandas as pd
 from Bio import SeqIO
 from tqdm import tqdm
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -127,13 +125,9 @@ def process_fasta_and_clusters(fasta_file: Path, scaffolds_folder: Path):
         return
 
     try:
-        cluster_df = pd.read_csv(
-            cluster_tsv, sep="\t", header=None, names=["cluster", "contig"]
-        )
+        cluster_df = pd.read_csv(cluster_tsv, sep="\t", header=None, names=["cluster", "contig"])
     except pd.errors.EmptyDataError:
-        logger.warning(
-            f"Cluster TSV file is empty: {cluster_tsv}. No clusters to process."
-        )
+        logger.warning(f"Cluster TSV file is empty: {cluster_tsv}. No clusters to process.")
         return
 
     records = list(SeqIO.parse(fasta_file, "fasta"))
@@ -175,9 +169,7 @@ def main(input_scaffolds_folder: str, min_seq_id: float, coverage: float):
 
     if not scaffolds_folder_path.exists():
         logger.error(f"Scaffolds folder does not exist: {scaffolds_folder_path}")
-        raise FileNotFoundError(
-            f"Scaffolds folder does not exist: {scaffolds_folder_path}"
-        )
+        raise FileNotFoundError(f"Scaffolds folder does not exist: {scaffolds_folder_path}")
 
     logger.info("Running cluster_fasta_files...")
     cluster_fasta_files(
@@ -189,9 +181,7 @@ def main(input_scaffolds_folder: str, min_seq_id: float, coverage: float):
 
     # --- Step 2: Process the cluster results (split FASTA) ---
     logger.info("Running process_fasta_and_clusters...")
-    process_fasta_and_clusters(
-        fasta_file=fasta_input_path, scaffolds_folder=scaffolds_folder_path
-    )
+    process_fasta_and_clusters(fasta_file=fasta_input_path, scaffolds_folder=scaffolds_folder_path)
 
     logger.info("--- Step 3: Clustering Completed ---")
 
@@ -200,9 +190,7 @@ def cli():
     """
     Command-line interface (CLI) for the clustering script.
     """
-    parser = argparse.ArgumentParser(
-        description="Clustering script for assembled scaffolds."
-    )
+    parser = argparse.ArgumentParser(description="Clustering script for assembled scaffolds.")
 
     parser.add_argument(
         "--input-scaffolds-folder",

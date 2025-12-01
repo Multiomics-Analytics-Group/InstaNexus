@@ -28,9 +28,7 @@ class TestOverlap(unittest.TestCase):
 class TestFilterContainedSequences(unittest.TestCase):
     def no_sequence_contained(self):
         list1 = ["ABCDEFGHI", "LMNO"]
-        self.assertEqual(
-            scaffolding.filter_contained_sequences(list1), ["ABCDEFGHI", "LMNO"]
-        )
+        self.assertEqual(scaffolding.filter_contained_sequences(list1), ["ABCDEFGHI", "LMNO"])
 
 
 if __name__ == "__main__":

@@ -55,13 +55,9 @@ def find_peptide_overlaps(peptides, min_overlap):
 
                 for overlap_length in range(min_overlap, max_possible_overlap):
                     if peptide_a[-overlap_length:] == peptide_b[:overlap_length]:
-                        overlaps[index_a].append(
-                            (index_b, overlap_length)
-                        )  # Add the overlap to the dictionary
+                        overlaps[index_a].append((index_b, overlap_length))  # Add the overlap to the dictionary
                     if peptide_b[-overlap_length:] == peptide_a[:overlap_length]:
-                        overlaps[index_b].append(
-                            (index_a, overlap_length)
-                        )  # Add the overlap to the dictionary
+                        overlaps[index_b].append((index_a, overlap_length))  # Add the overlap to the dictionary
     return overlaps
 
 
@@ -90,25 +86,17 @@ def assemble_contigs_greedy(peptides, min_overlap):
             if best_match:
                 j, overlap_len = best_match
                 if j not in used_indices:
-                    new_contig = (
-                        assembled_contigs[i] + assembled_contigs[j][overlap_len:]
-                    )
+                    new_contig = assembled_contigs[i] + assembled_contigs[j][overlap_len:]
                     new_contigs.append(new_contig)
                     used_indices.update([i, j])
         # Add unused peptides
-        remaining_contigs = [
-            contig
-            for idx, contig in enumerate(assembled_contigs)
-            if idx not in used_indices
-        ]
+        remaining_contigs = [contig for idx, contig in enumerate(assembled_contigs) if idx not in used_indices]
         assembled_contigs = new_contigs + remaining_contigs
         if len(new_contigs) == 0:
             break
 
     if iteration >= MAX_ITERATIONS:
-        logger.warning(
-            f"Greedy assembly stopped after max iterations ({MAX_ITERATIONS})."
-        )
+        logger.warning(f"Greedy assembly stopped after max iterations ({MAX_ITERATIONS}).")
 
     return assembled_contigs
 
@@ -328,12 +316,8 @@ def find_overlaps(contigs, min_overlap, disable_tqdm=False):
     overlaps = []
     total_pairs = sum(1 for _ in combinations(contigs, 2))
     with tqdm(total=total_pairs, desc="Finding overlaps", disable=disable_tqdm) as pbar:
-        for a, b in combinations(
-            contigs, 2
-        ):  # combinations() generates all pairs of contigs
-            for i in range(
-                min_overlap, min(len(a), len(b)) + 1
-            ):  # Check overlaps of different lengths
+        for a, b in combinations(contigs, 2):  # combinations() generates all pairs of contigs
+            for i in range(min_overlap, min(len(a), len(b)) + 1):  # Check overlaps of different lengths
                 if a[-i:] == b[:i]:
                     overlaps.append((a, b, i))
                 if b[-i:] == a[:i]:
@@ -345,13 +329,9 @@ def find_overlaps(contigs, min_overlap, disable_tqdm=False):
 
 def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
     """Create scaffolds from a list of contigs by merging overlapping sequences."""
-    overlaps = find_overlaps(
-        contigs, min_overlap=min_overlap, disable_tqdm=disable_tqdm
-    )
+    overlaps = find_overlaps(contigs, min_overlap=min_overlap, disable_tqdm=disable_tqdm)
     combined_contigs = []
-    for a, b, overlap in tqdm(
-        overlaps, desc="Merging overlaps", total=len(overlaps), disable=disable_tqdm
-    ):
+    for a, b, overlap in tqdm(overlaps, desc="Merging overlaps", total=len(overlaps), disable=disable_tqdm):
         combined = a + b[overlap:]
         combined_contigs.append(combined)
 
@@ -424,9 +404,7 @@ def build_dbg_from_kmers(kmers: Iterable[str], weights: Counter = None) -> nx.Di
 
 def filter_low_weight_edges(G: nx.DiGraph, min_weight: int = 2) -> nx.DiGraph:
     """Remove edges with weight < min_weight (light error correction)."""
-    to_remove = [
-        (u, v) for u, v, d in G.edges(data=True) if d.get("weight", 0) < min_weight
-    ]
+    to_remove = [(u, v) for u, v, d in G.edges(data=True) if d.get("weight", 0) < min_weight]
     G.remove_edges_from(to_remove)
     # drop isolated nodes
     iso = [n for n in G.nodes if G.in_degree(n) == 0 and G.out_degree(n) == 0]
@@ -583,9 +561,7 @@ def scaffold_iterative_dbgx(
         seqs_new = [r.seq for r in ranked]
 
         # improvement heuristic: fewer contigs or longer top contig
-        improved = (len(seqs_new) < len(best)) or (
-            seqs_new and best and len(seqs_new[0]) > len(best[0])
-        )
+        improved = (len(seqs_new) < len(best)) or (seqs_new and best and len(seqs_new[0]) > len(best[0]))
         if improved:
             best = seqs_new
             no_improve = 0
@@ -704,9 +680,7 @@ class Assembler:
             "fusion",
             "multimodal_dbg",
         ]:
-            raise ValueError(
-                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion' or 'multimodal_dbg'"
-            )
+            raise ValueError("mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion' or 'multimodal_dbg'")
 
         self.mode = mode
         self.min_overlap = min_overlap
@@ -722,16 +696,12 @@ class Assembler:
         self.alpha_min = alpha_min
 
     def assemble_greedy(self, sequences):
-        logger.info(
-            f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})"
-        )
+        logger.info(f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})")
         contigs = assemble_contigs_greedy(sequences, self.min_overlap)
         contigs = list(set(contigs))
         contigs = sorted(contigs, key=len, reverse=True)
 
-        scaffolds = scaffold_iterative_greedy(
-            contigs, self.min_overlap, self.size_threshold
-        )
+        scaffolds = scaffold_iterative_greedy(contigs, self.min_overlap, self.size_threshold)
 
         return scaffolds
 
@@ -745,9 +715,7 @@ class Assembler:
         contigs = sorted(contigs, key=len, reverse=True)
         contigs = [seq for seq in contigs if len(seq) > self.size_threshold]
 
-        scaffolds = scaffold_iterative_dbg(
-            contigs, self.min_overlap, self.size_threshold
-        )
+        scaffolds = scaffold_iterative_dbg(contigs, self.min_overlap, self.size_threshold)
 
         return scaffolds
 
@@ -769,9 +737,7 @@ class Assembler:
             logger.warning("No contigs assembled from DBGX; returning empty result.")
             return []
 
-        ranked = rank_contigs_by_score(
-            contigs_cp, self.alpha_len, self.alpha_cov, self.alpha_min
-        )
+        ranked = rank_contigs_by_score(contigs_cp, self.alpha_len, self.alpha_cov, self.alpha_min)
         contigs = [r.seq for r in ranked]
 
         if self.refine_rounds and self.refine_rounds > 0:
@@ -802,9 +768,7 @@ class Assembler:
         contigs = [c.seq for c in contigs_cp]
 
         logger.info("Extending contigs using DBG paths (coverage-aware)...")
-        extended_contigs = [
-            extend_path_dbg(G, c, self.kmer_size, self.min_weight) for c in contigs
-        ]
+        extended_contigs = [extend_path_dbg(G, c, self.kmer_size, self.min_weight) for c in contigs]
         extended_contigs = sorted(set(extended_contigs), key=len, reverse=True)
 
         return extended_contigs
@@ -829,9 +793,7 @@ class Assembler:
 
         return fused
 
-    def assemble_multimodal_dbg(
-        self, sequences: List[str], df_full: Optional[pd.DataFrame] = None
-    ) -> List[str]:
+    def assemble_multimodal_dbg(self, sequences: List[str], df_full: Optional[pd.DataFrame] = None) -> List[str]:
         """
         Multimodal Heuristic Assembly Strategy.
 
@@ -841,31 +803,21 @@ class Assembler:
         3. Smart Navigation: Extends forward/backward using Lookahead Score (Edge * Node).
         4. Path Burning: Removes assembled nodes to uncover lower-abundance variants.
         """
-        logger.info(
-            f"[Assembler] Running Multimodal DBG (Heuristic) k={self.kmer_size}"
-        )
+        logger.info(f"[Assembler] Running Multimodal DBG (Heuristic) k={self.kmer_size}")
 
         # --- 1. WEIGHT CALCULATION (NODES & EDGES) ---
         if df_full is not None:
-            logger.info(
-                "Using Multimodal Features (Token Probs, MS1/MS2, iRT) for weighting."
-            )
+            logger.info("Using Multimodal Features (Token Probs, MS1/MS2, iRT) for weighting.")
 
             # Nodes are (k-1)-mers
-            node_weights = get_weighted_kmers_from_df(
-                df_full, self.kmer_size - 1, use_abundance=True, use_quality=True
-            )
+            node_weights = get_weighted_kmers_from_df(df_full, self.kmer_size - 1, use_abundance=True, use_quality=True)
             # Edges are k-mers
-            edge_weights = get_weighted_kmers_from_df(
-                df_full, self.kmer_size, use_abundance=True, use_quality=True
-            )
+            edge_weights = get_weighted_kmers_from_df(df_full, self.kmer_size, use_abundance=True, use_quality=True)
             # Build graph using calculated edge weights
             G = build_dbg_from_kmers([], weights=edge_weights)
         else:
             # Fallback: Simple counts (if no dataframe provided)
-            logger.warning(
-                "No DataFrame provided for Multimodal DBG. Falling back to raw counts."
-            )
+            logger.warning("No DataFrame provided for Multimodal DBG. Falling back to raw counts.")
             node_kmers = get_kmers(sequences, self.kmer_size - 1)
             node_weights = Counter(node_kmers)
 
@@ -879,9 +831,7 @@ class Assembler:
         if self.min_weight > 1:
             # Note: With multimodal weights (floats), min_weight might need tuning (e.g. 5.0)
             # but usually >1 filters out single-observation errors effectively.
-            nodes_to_remove = [
-                n for n, w in node_weights.items() if w < self.min_weight
-            ]
+            nodes_to_remove = [n for n, w in node_weights.items() if w < self.min_weight]
             G.remove_nodes_from(nodes_to_remove)
 
         contigs = []
@@ -1002,17 +952,13 @@ def main(
     if reference:
         logger.info("Reference mode enabled. Loading reference protein...")
         if not metadata_json_path:
-            raise ValueError(
-                "metadata_json_path is required when reference mode is enabled."
-            )
+            raise ValueError("metadata_json_path is required when reference mode is enabled.")
 
         try:
             run_stem = Path(input_csv_path).stem  # extract run name from input file
             run_name = run_stem.replace("_cleaned", "")
 
-            meta = helpers.get_sample_metadata(
-                run=run_name, chain=chain, json_path=metadata_json_path
-            )
+            meta = helpers.get_sample_metadata(run=run_name, chain=chain, json_path=metadata_json_path)
             protein = meta["protein"]
             protein_norm = preprocessing.normalize_sequence(protein)
             logger.info("Reference protein loaded and normalized successfully.")
@@ -1050,9 +996,7 @@ def main(
     # output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
 
     records = [
-        Bio.SeqRecord.SeqRecord(
-            Bio.Seq.Seq(seq), id=f"scaffold_{i + 1}", description=f"length: {len(seq)}"
-        )
+        Bio.SeqRecord.SeqRecord(Bio.Seq.Seq(seq), id=f"scaffold_{i + 1}", description=f"length: {len(seq)}")
         for i, seq in enumerate(scaffolds)
     ]
 
@@ -1062,9 +1006,7 @@ def main(
         "fasta",
     )
 
-    logger.info(
-        f"Assembly completed — {len(scaffolds)} scaffolds saved to {output_path}"
-    )
+    logger.info(f"Assembly completed — {len(scaffolds)} scaffolds saved to {output_path}")
 
     if protein_norm:
         logger.info("Reference mode: calculating statistics...")
@@ -1077,9 +1019,7 @@ def main(
             max_mismatches=max_mismatches,
             min_identity=min_identity,
         )
-        df_scaffolds_mapped = viz.create_dataframe_from_mapped_sequences(
-            data=mapped_scaffolds
-        )
+        df_scaffolds_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped_scaffolds)
         helpers.compute_assembly_statistics(
             df=df_scaffolds_mapped,
             sequence_type="scaffolds",
@@ -1092,9 +1032,7 @@ def main(
 def cli():
     """Command-line interface for the assembly module."""
 
-    parser = argparse.ArgumentParser(
-        description="Run Greedy or DBG assembly on peptide sequences."
-    )
+    parser = argparse.ArgumentParser(description="Run Greedy or DBG assembly on peptide sequences.")
     parser.add_argument(
         "--input-csv-path",
         type=str,

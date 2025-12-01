@@ -27,9 +27,7 @@ from pathlib import Path
 from . import alignment, assembly, clustering, consensus, preprocessing
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logging.getLogger("instanexus.preprocessing").setLevel(logging.WARNING)
 logging.getLogger("instanexus.assembly").setLevel(logging.WARNING)
 logging.getLogger("instanexus.clustering").setLevel(logging.WARNING)
@@ -41,9 +39,7 @@ logger = logging.getLogger(__name__)
 def cli():
     """Command-line interface for the master pipeline."""
 
-    parser = argparse.ArgumentParser(
-        description="Run the full InstaNexus preprocessing and assembly pipeline."
-    )
+    parser = argparse.ArgumentParser(description="Run the full InstaNexus preprocessing and assembly pipeline.")
 
     # --- INPUT ARGUMENTS ---
     parser.add_argument(
@@ -177,9 +173,7 @@ def run_pipeline(args):
         folder_name_parts.extend([f"mi{args.min_identity}", f"mm{args.max_mismatches}"])
 
     run_folder_name = "_".join(folder_name_parts)
-    experiment_folder = (
-        base_output_folder / run_folder_name
-    )  # e.g., 'outputs/bsa/greedy_c0.9_mo4_ts10'
+    experiment_folder = base_output_folder / run_folder_name  # e.g., 'outputs/bsa/greedy_c0.9_mo4_ts10'
 
     cleaned_csv_path = experiment_folder / "cleaned.csv"
 
