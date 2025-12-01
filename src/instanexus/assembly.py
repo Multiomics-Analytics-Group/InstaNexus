@@ -278,19 +278,6 @@ def get_weighted_kmers_from_df(
     return kmer_weights
 
 
-def get_kmer_counts(kmers):
-    """Count occurrences of each k-mer in a list of k-mers; it takes a list of k-mers and returns a dictionary where the keys
-    are unique k-mers and the values are the counts of each k-mer's occurrence.
-    """
-    kmer_counts = {}
-    for kmer in kmers:
-        if kmer in kmer_counts:
-            kmer_counts[kmer] += 1
-        else:
-            kmer_counts[kmer] = 1
-    return kmer_counts
-
-
 def get_debruijn_edges_from_kmers(kmers):
     """Generate edges of a De Bruijn graph from a list of k-mers."""
     edges = set()
