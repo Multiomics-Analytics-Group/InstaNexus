@@ -656,7 +656,7 @@ def get_hybrid_kmer_weights(
     3. AI Confidence (Token Probabilities)
     """
     kmer_weights = Counter()
-    
+
     col_tokens = "instanovo_token_log_probabilities"
     col_abundance = "peptide_abundance"
 
@@ -667,8 +667,8 @@ def get_hybrid_kmer_weights(
 
         # --- 1. AI Confidence (Token Probs) ---
         raw_probs_str = row.get(col_tokens)
-        log_probs = [0.0] * len(sequence) # Default neutral
-        
+        log_probs = [0.0] * len(sequence)  # Default neutral
+
         if isinstance(raw_probs_str, str) and raw_probs_str.startswith("["):
             try:
                 parsed = ast.literal_eval(raw_probs_str)
@@ -678,10 +678,10 @@ def get_hybrid_kmer_weights(
                 elif len(parsed) == len(sequence):
                     log_probs = parsed
             except Exception:
-                pass # Keep default
+                pass  # Keep default
 
         # --- 2. MS1 Abundance Score ---
-        # Log scale: log10(Area + 10). 
+        # Log scale: log10(Area + 10).
         abundance_val = row.get(col_abundance, 0)
         if pd.notnull(abundance_val) and abundance_val > 0:
             abundance_score = math.log10(float(abundance_val) + 10)
@@ -691,7 +691,7 @@ def get_hybrid_kmer_weights(
         # --- 3. Accumulate Weights ---
         for i in range(len(sequence) - kmer_size + 1):
             kmer = sequence[i : i + kmer_size]
-            
+
             # Calculate local AI confidence for this specific k-mer
             sub_logs = log_probs[i : i + kmer_size] if i + kmer_size <= len(log_probs) else []
             if sub_logs:
@@ -704,7 +704,7 @@ def get_hybrid_kmer_weights(
             # Final Weight: Abundance * AI Confidence
             # Frequency is handled implicitly because we += this value every time we see the k-mer
             weight = abundance_score * ai_score
-            
+
             kmer_weights[kmer] += weight
 
     return kmer_weights
@@ -736,16 +736,10 @@ class Assembler:
         alpha_cov: float = 1.0,
         alpha_min: float = 0.2,
     ):
-        if mode not in [
-            "greedy",
-            "dbg",
-            "dbg_weighted",
-            "dbgX",
-            "fusion",
-            "multimodal_dbg",
-            "hybrid_dbg"
-        ]:
-            raise ValueError("mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion', 'multimodal_dbg' or 'hybrid_dbg'")
+        if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"]:
+            raise ValueError(
+                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion', 'multimodal_dbg' or 'hybrid_dbg'"
+            )
 
         self.mode = mode
         self.min_overlap = min_overlap
@@ -972,7 +966,7 @@ class Assembler:
             G.remove_nodes_from(full_path_nodes)
 
         return contigs
-    
+
     def assemble_hybrid_dbg(self, sequences: List[str], df_full: pd.DataFrame) -> List[str]:
         """
         Streamlined Weighted DBG using only Abundance + AI Confidence + Frequency.
@@ -1003,21 +997,26 @@ class Assembler:
         while G.number_of_nodes() > 0:
             try:
                 seed_node = max(G.nodes, key=lambda n: G.nodes[n].get("weight", 0))
-            except ValueError: 
+            except ValueError:
                 break
-            
+
             if G.nodes[seed_node].get("weight", 0) < self.min_weight:
                 break
 
             # Helper to pick best neighbor based on Edge * Node weight
             def get_best_neighbor(curr, direction="successors"):
                 neighbors = list(G.successors(curr)) if direction == "successors" else list(G.predecessors(curr))
-                if not neighbors: return None
-                
+                if not neighbors:
+                    return None
+
                 def score(n):
-                    edge_w = G.get_edge_data(curr, n)["weight"] if direction == "successors" else G.get_edge_data(n, curr)["weight"]
+                    edge_w = (
+                        G.get_edge_data(curr, n)["weight"]
+                        if direction == "successors"
+                        else G.get_edge_data(n, curr)["weight"]
+                    )
                     return edge_w * G.nodes[n].get("weight", 0)
-                
+
                 return max(neighbors, key=score)
 
             # Extend Forward
@@ -1025,7 +1024,8 @@ class Assembler:
             curr = seed_node
             while True:
                 nxt = get_best_neighbor(curr, "successors")
-                if not nxt or nxt in path_fwd: break
+                if not nxt or nxt in path_fwd:
+                    break
                 path_fwd.append(nxt)
                 curr = nxt
 
@@ -1034,7 +1034,8 @@ class Assembler:
             curr = seed_node
             while True:
                 prev = get_best_neighbor(curr, "predecessors")
-                if not prev or prev in path_bwd or prev in path_fwd: break
+                if not prev or prev in path_bwd or prev in path_fwd:
+                    break
                 path_bwd.append(prev)
                 curr = prev
 
@@ -1055,7 +1056,6 @@ class Assembler:
             G.remove_nodes_from(full_path)
 
         return contigs
-    
 
     def run(self, sequences: List[str], df_full: Optional[pd.DataFrame] = None):
         """

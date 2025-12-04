@@ -202,14 +202,23 @@ def main():
                     input_seqs = subset["cleaned_preds"].tolist()
 
                     # Helper function to add empty/zero results
-                    def add_result(cov=0, scaf_count=0):
+                    def add_result(
+                        cov=0,
+                        scaf_count=0,
+                        # Capture loop variables here:
+                        cat=category,
+                        samp=sample_label,
+                        run=clean_run_name,
+                        ch=chain_type,
+                        f=fdr,
+                    ):
                         all_results.append(
                             {
-                                "Category": category,
-                                "Sample": sample_label,  # Use the label with chain info
-                                "Run": clean_run_name,
-                                "Chain": chain_type,
-                                "FDR": fdr,
+                                "Category": cat,
+                                "Sample": samp,
+                                "Run": run,
+                                "Chain": ch,
+                                "FDR": f,
                                 "Coverage": cov,
                                 "Scaffolds": scaf_count,
                             }
