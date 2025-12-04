@@ -49,12 +49,11 @@ def get_sample_metadata(run, chain="", json_path=None):
 
     if len(entries) == 1:
         return entries[0]
-    
+
     if not chain:
         available_chains = [e.get("chain", "unknown") for e in entries]
         raise ValueError(
-            f"Multiple entries found for run '{run}'. "
-            f"Available chains: {available_chains}. Please specify a chain."
+            f"Multiple entries found for run '{run}'. " f"Available chains: {available_chains}. Please specify a chain."
         )
 
     for entry in entries:

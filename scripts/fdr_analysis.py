@@ -26,7 +26,6 @@ import os
 import sys
 from pathlib import Path
 
-import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -63,7 +62,7 @@ CATEGORY_COLOR_MAP = {
 FDR_THRESHOLDS = [0.01, 0.05, 0.10, 0.20, 0.40]
 ASSEMBLY_MODE = "dbg_weighted"
 KMER_SIZE = 7
-MIN_OVERLAP = 4
+MIN_OVERLAP = 3
 SIZE_THRESHOLD = 10
 MIN_IDENTITY = 0.8
 MAX_MISMATCHES = 100
@@ -164,11 +163,11 @@ def main():
 
                 # Create a unique label for the report (e.g., "ma1 (heavy)")
                 sample_label = f"{clean_run_name} ({chain_type})" if chain_type else clean_run_name
-                
+
                 logger.info(f"      Target: {sample_label}")
 
                 protein_norm = preprocessing.normalize_sequence(target_protein)
-                
+
                 # Work on a copy of the dataframe
                 df = df_original.copy()
 
@@ -204,15 +203,17 @@ def main():
 
                     # Helper function to add empty/zero results
                     def add_result(cov=0, scaf_count=0):
-                        all_results.append({
-                            "Category": category,
-                            "Sample": sample_label,  # Use the label with chain info
-                            "Run": clean_run_name,
-                            "Chain": chain_type,
-                            "FDR": fdr,
-                            "Coverage": cov,
-                            "Scaffolds": scaf_count,
-                        })
+                        all_results.append(
+                            {
+                                "Category": category,
+                                "Sample": sample_label,  # Use the label with chain info
+                                "Run": clean_run_name,
+                                "Chain": chain_type,
+                                "FDR": fdr,
+                                "Coverage": cov,
+                                "Scaffolds": scaf_count,
+                            }
+                        )
 
                     if not input_seqs:
                         add_result()
@@ -281,7 +282,7 @@ def main():
         legend="full",  # Enable automatic legend to see chains
     )
 
-    g.fig.suptitle("Aggregated assembly performance (Mean ± 95% CI)", fontsize=16, y=1.02)
+    g.fig.suptitle(f"{ASSEMBLY_MODE} aggregated assembly performance (Mean ± 95% CI)", fontsize=16, y=1.02)
     g.fig.subplots_adjust(top=0.85, wspace=0.3, hspace=0.4)
 
     g.set_axis_labels("FDR threshold", "Sequence coverage (%)")
@@ -291,7 +292,7 @@ def main():
 
     for ax in g.axes.flat:
         ax.set_xticklabels([f"{int(x * 100)}%" for x in FDR_THRESHOLDS])
-        ax.grid(True, which='major', color='#dddddd', linewidth=0.8)
+        ax.grid(True, which="major", color="#dddddd", linewidth=0.8)
 
     sns.move_legend(
         g,
