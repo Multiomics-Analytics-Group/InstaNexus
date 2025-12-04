@@ -14,7 +14,7 @@ r"""Pipeline script for InstaNexus.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 14 Nov 2025
+__date__ = 01 Dec 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -92,7 +92,7 @@ def cli():
     parser.add_argument(
         "--assembly-mode",
         type=str,
-        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg"],
+        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"],
         default="greedy",
         help="Assembly algorithm to use.",
     )

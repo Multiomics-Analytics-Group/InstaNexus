@@ -645,6 +645,71 @@ def extend_path_dbg(G, contig, k, min_weight=1):
     return seq
 
 
+def get_hybrid_kmer_weights(
+    df: pd.DataFrame,
+    kmer_size: int,
+) -> Counter:
+    """
+    Calculates k-mer weights using ONLY:
+    1. Frequency (Implicit via accumulation)
+    2. MS1 Abundance (Peptide Area)
+    3. AI Confidence (Token Probabilities)
+    """
+    kmer_weights = Counter()
+
+    col_tokens = "instanovo_token_log_probabilities"
+    col_abundance = "peptide_abundance"
+
+    for _, row in df.iterrows():
+        sequence = row.get("cleaned_preds")
+        if not isinstance(sequence, str) or len(sequence) < kmer_size:
+            continue
+
+        # --- 1. AI Confidence (Token Probs) ---
+        raw_probs_str = row.get(col_tokens)
+        log_probs = [0.0] * len(sequence)  # Default neutral
+
+        if isinstance(raw_probs_str, str) and raw_probs_str.startswith("["):
+            try:
+                parsed = ast.literal_eval(raw_probs_str)
+                # Adjust for SOS/EOS tokens if present
+                if len(parsed) == len(sequence) + 2:
+                    log_probs = parsed[1:-1]
+                elif len(parsed) == len(sequence):
+                    log_probs = parsed
+            except Exception:
+                pass  # Keep default
+
+        # --- 2. MS1 Abundance Score ---
+        # Log scale: log10(Area + 10).
+        abundance_val = row.get(col_abundance, 0)
+        if pd.notnull(abundance_val) and abundance_val > 0:
+            abundance_score = math.log10(float(abundance_val) + 10)
+        else:
+            abundance_score = 1.0
+
+        # --- 3. Accumulate Weights ---
+        for i in range(len(sequence) - kmer_size + 1):
+            kmer = sequence[i : i + kmer_size]
+
+            # Calculate local AI confidence for this specific k-mer
+            sub_logs = log_probs[i : i + kmer_size] if i + kmer_size <= len(log_probs) else []
+            if sub_logs:
+                # Geometric mean of probabilities in the k-mer
+                avg_log_prob = sum(sub_logs) / len(sub_logs)
+                ai_score = math.exp(avg_log_prob)
+            else:
+                ai_score = 1.0
+
+            # Final Weight: Abundance * AI Confidence
+            # Frequency is handled implicitly because we += this value every time we see the k-mer
+            weight = abundance_score * ai_score
+
+            kmer_weights[kmer] += weight
+
+    return kmer_weights
+
+
 class Assembler:
     """
     Unified assembler supporting:
@@ -671,15 +736,10 @@ class Assembler:
         alpha_cov: float = 1.0,
         alpha_min: float = 0.2,
     ):
-        if mode not in [
-            "greedy",
-            "dbg",
-            "dbg_weighted",
-            "dbgX",
-            "fusion",
-            "multimodal_dbg",
-        ]:
-            raise ValueError("mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion' or 'multimodal_dbg'")
+        if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"]:
+            raise ValueError(
+                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion', 'multimodal_dbg' or 'hybrid_dbg'"
+            )
 
         self.mode = mode
         self.min_overlap = min_overlap
@@ -907,6 +967,96 @@ class Assembler:
 
         return contigs
 
+    def assemble_hybrid_dbg(self, sequences: List[str], df_full: pd.DataFrame) -> List[str]:
+        """
+        Streamlined Weighted DBG using only Abundance + AI Confidence + Frequency.
+        Uses heuristic traversal (smart greedy) to resolve branches based on score.
+        """
+        logger.info(f"[Assembler] Running Hybrid DBG (Freq + Abundance + AI) k={self.kmer_size}")
+
+        if df_full is None or df_full.empty:
+            logger.warning("No DataFrame provided for Hybrid DBG. Falling back to standard DBG.")
+            return self.assemble_dbg(sequences)
+
+        # 1. Calculate Weights (Node & Edge)
+        node_weights = get_hybrid_kmer_weights(df_full, self.kmer_size - 1)
+        edge_weights = get_hybrid_kmer_weights(df_full, self.kmer_size)
+
+        # 2. Build Graph
+        G = build_dbg_from_kmers([], weights=edge_weights)
+        nx.set_node_attributes(G, node_weights, name="weight")
+
+        # 3. Filter Noise
+        if self.min_weight > 1:
+            to_remove = [n for n, w in node_weights.items() if w < self.min_weight]
+            G.remove_nodes_from(to_remove)
+
+        contigs = []
+
+        # 4. Assembly Loop (Heuristic Traversal - Heaviest Path)
+        while G.number_of_nodes() > 0:
+            try:
+                seed_node = max(G.nodes, key=lambda n: G.nodes[n].get("weight", 0))
+            except ValueError:
+                break
+
+            if G.nodes[seed_node].get("weight", 0) < self.min_weight:
+                break
+
+            # Helper to pick best neighbor based on Edge * Node weight
+            def get_best_neighbor(curr, direction="successors"):
+                neighbors = list(G.successors(curr)) if direction == "successors" else list(G.predecessors(curr))
+                if not neighbors:
+                    return None
+
+                def score(n):
+                    edge_w = (
+                        G.get_edge_data(curr, n)["weight"]
+                        if direction == "successors"
+                        else G.get_edge_data(n, curr)["weight"]
+                    )
+                    return edge_w * G.nodes[n].get("weight", 0)
+
+                return max(neighbors, key=score)
+
+            # Extend Forward
+            path_fwd = [seed_node]
+            curr = seed_node
+            while True:
+                nxt = get_best_neighbor(curr, "successors")
+                if not nxt or nxt in path_fwd:
+                    break
+                path_fwd.append(nxt)
+                curr = nxt
+
+            # Extend Backward
+            path_bwd = []
+            curr = seed_node
+            while True:
+                prev = get_best_neighbor(curr, "predecessors")
+                if not prev or prev in path_bwd or prev in path_fwd:
+                    break
+                path_bwd.append(prev)
+                curr = prev
+
+            # Reconstruct Sequence
+            full_path = path_bwd[::-1] + path_fwd
+            if not full_path:
+                G.remove_node(seed_node)
+                continue
+
+            seq = full_path[0]
+            for node in full_path[1:]:
+                seq += node[-1]
+
+            if len(seq) >= self.size_threshold:
+                contigs.append(seq)
+
+            # Burn Path
+            G.remove_nodes_from(full_path)
+
+        return contigs
+
     def run(self, sequences: List[str], df_full: Optional[pd.DataFrame] = None):
         """
         Main entry point.
@@ -930,6 +1080,8 @@ class Assembler:
             return self.assemble_fusion(sequences)
         elif self.mode == "multimodal_dbg":
             return self.assemble_multimodal_dbg(sequences, df_full=df_full)
+        elif self.mode == "hybrid_dbg":
+            return self.assemble_hybrid_dbg(sequences, df_full=df_full)
 
 
 def main(

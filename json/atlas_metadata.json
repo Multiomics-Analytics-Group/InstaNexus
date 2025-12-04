@@ -1,0 +1,14 @@
+{
+    "sample_1_preds": [
+        {
+            "protein": "EVQLVESGGGLVKPGGSLKLSCAAS--------MSWVRQTPEKRLEWVAT--------SYPDSMKGRFTVSRDSAKNTLYLQMSSLRSEDTAMYY------------GQGTTLTVSSAKTTPPSV",
+            "chain": "heavy",
+            "proteases": ["Papain", "Chymotrypsin", "ProteinaseK", "GluC", "Thermolysin", "Elastase", "Trypsin", "Krakatoa", "Vesuvius"]
+        },
+        {
+            "protein": "DVVLTQTPLSLPVNLGDQASLSCKST-----------LDWYVQKPGQSPQPLLY---NRFSGVPDRFSGSGSGTDFTLKLTRVEAEDLGLYY-----------GSGTNLELRRADAAPTVS",
+            "chain": "light",
+            "proteases": ["Papain", "Chymotrypsin", "ProteinaseK", "GluC", "Thermolysin", "Elastase", "Trypsin", "Krakatoa", "Vesuvius"]
+        }
+    ]
+}
