@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-r"""FDR analysis script: Aggregated Categories.
+r"""FDR analysis.
 
  ██████████   ███████████ █████  █████
 ░░███░░░░███ ░█░░░███░░░█░░███  ░░███
@@ -9,17 +9,18 @@ r"""FDR analysis script: Aggregated Categories.
  ░███    ░███    ░███     ░███   ░███
  ░███    ███     ░███     ░███   ░███
  ██████████      █████    ░░████████
-░░░░░░░░░░      ░░░░░      ░░░░░░░░
+░░░░░░░D░░      ░░░░░      ░░░░░░░░
 
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 01 Dec 2025
+__date__ = 09 Dec 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
 """
 
+import argparse
 import json
 import logging
 import os
@@ -33,6 +34,7 @@ import seaborn as sns
 from instanexus import helpers, preprocessing, visualization
 from instanexus.assembly import Assembler
 
+# --- SETUP PATHS ---
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -42,12 +44,12 @@ INPUTS_FOLDER = PROJECT_ROOT / "inputs"
 METADATA_JSON = PROJECT_ROOT / "json/sample_metadata.json"
 COLORS_JSON = PROJECT_ROOT / "json" / "colors.json"
 CONTAMINANTS_FASTA = PROJECT_ROOT / "fasta/contaminants.fasta"
-OUTPUT_FOLDER = PROJECT_ROOT / "outputs" / "_fdr_analysis"
+BASE_OUTPUT_FOLDER = PROJECT_ROOT / "outputs" / "_fdr_analysis"
 
 # Define sample groups
 SAMPLE_GROUPS = {
     "BSA": ["bsa.csv"],
-    "Nanobodies": [f"nb{i}.csv" for i in range(1, 11)],  # Generates nb1..nb10
+    "Nanobodies": [f"nb{i}.csv" for i in range(1, 11)],
     "Antibodies": ["ma1.csv", "ma2.csv", "ma3.csv"],
     "Binders": ["bind1.csv", "bind2.csv", "bind3.csv"],
 }
@@ -60,12 +62,13 @@ CATEGORY_COLOR_MAP = {
 }
 
 FDR_THRESHOLDS = [0.01, 0.05, 0.10, 0.20, 0.40]
-ASSEMBLY_MODE = "dbg_weighted"
-KMER_SIZE = 7
+
+DEFAULT_KMER = 7
 MIN_OVERLAP = 3
 SIZE_THRESHOLD = 10
 MIN_IDENTITY = 0.8
 MAX_MISMATCHES = 100
+MAX_REFINE_ROUNDS = 10  # Safety limit for refinement rounds
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -111,79 +114,89 @@ def load_custom_palette():
 
 
 def main():
-    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Run FDR Analysis with specific Assembler.")
+    parser.add_argument(
+        "--mode", type=str, default="dbg_weighted", help="Assembly mode (e.g., greedy, dbg_weighted, multimodal_dbg)"
+    )
+    parser.add_argument("--refine", action="store_true", help="Enable iterative refinement (Overlap Graph)")
+    parser.add_argument("--kmer", type=int, default=DEFAULT_KMER, help="K-mer size")
 
-    # 1. Load the full metadata JSON to handle it manually
+    args = parser.parse_args()
+
+    assembly_mode = args.mode
+    kmer_size = args.kmer
+    refine_rounds = MAX_REFINE_ROUNDS if args.refine else 0
+
+    folder_suffix = assembly_mode
+    if args.refine:
+        folder_suffix += "_refined"
+
+    current_output_folder = BASE_OUTPUT_FOLDER / folder_suffix
+    os.makedirs(current_output_folder, exist_ok=True)
+
+    logger.info("--- Configuration ---")
+    logger.info(f"Mode:   {assembly_mode}")
+    logger.info(f"Refine: {'Enabled' if args.refine else 'Disabled'}")
+    logger.info(f"Output: {current_output_folder}")
+    logger.info("---------------------")
+
     with open(METADATA_JSON, "r") as f:
         FULL_METADATA = json.load(f)
 
     assembler = Assembler(
-        mode=ASSEMBLY_MODE,
-        kmer_size=KMER_SIZE,
+        mode=assembly_mode,
+        kmer_size=kmer_size,
         min_overlap=MIN_OVERLAP,
         size_threshold=SIZE_THRESHOLD,
         min_identity=MIN_IDENTITY,
         max_mismatches=MAX_MISMATCHES,
+        refine_rounds=refine_rounds,
     )
 
     all_results = []
 
     for category, file_list in SAMPLE_GROUPS.items():
-        logger.info(f"=== Processing Category: {category} ({len(file_list)} samples) ===")
+        logger.info(f"=== Processing Category: {category} ===")
 
         for filename in file_list:
             csv_path = INPUTS_FOLDER / filename
             run_name = csv_path.stem
             clean_run_name = run_name.replace("_cleaned", "")
 
-            logger.info(f"   -> Sample File: {run_name}")
-
             if not csv_path.exists():
-                logger.warning(f"File not found: {csv_path}. Skipping.")
                 continue
 
-            # 2. Retrieve the LIST of entries (to handle antibodies with 2 chains)
-            # We access the JSON directly instead of using the strict get_sample_metadata
             meta_entries = FULL_METADATA.get(clean_run_name, [])
             if isinstance(meta_entries, dict):
-                meta_entries = [meta_entries]  # Normalize to list if it is a single dict
-
+                meta_entries = [meta_entries]
             if not meta_entries:
-                logger.warning(f"Metadata not found for {clean_run_name}. Skipping.")
                 continue
 
-            # Read CSV once per Run
             df_original = pd.read_csv(csv_path)
 
-            # 3. Iterate over EACH target (Chain) available for this Run
             for meta in meta_entries:
                 target_protein = meta.get("protein", "")
                 chain_type = meta.get("chain", "")
                 proteases = meta.get("proteases", [])
-
-                # Create a unique label for the report (e.g., "ma1 (heavy)")
                 sample_label = f"{clean_run_name} ({chain_type})" if chain_type else clean_run_name
-
-                logger.info(f"      Target: {sample_label}")
-
                 protein_norm = preprocessing.normalize_sequence(target_protein)
 
-                # Work on a copy of the dataframe
                 df = df_original.copy()
 
                 if "experiment_name" in df.columns:
-                    # Use default argument binding (p=proteases) to fix the variable in lambda
                     df["protease"] = df["experiment_name"].apply(
                         lambda x, p=proteases: preprocessing.extract_protease(x, p)
                     )
 
-                df = preprocessing.clean_dataframe(df)
+                try:
+                    df = preprocessing.clean_dataframe(df)
+                except Exception:
+                    continue
 
                 if "cleaned_preds" in df.columns:
                     df["cleaned_preds"] = df["cleaned_preds"].apply(preprocessing.remove_modifications)
                     df = df.dropna(subset=["cleaned_preds"])
                 else:
-                    logger.warning("No cleaned_preds column. Skipping.")
                     continue
 
                 df = add_quantification_data(df, clean_run_name, inputs_folder=INPUTS_FOLDER)
@@ -192,7 +205,6 @@ def main():
                 filtered = preprocessing.filter_contaminants(clean_list, clean_run_name, CONTAMINANTS_FASTA)
                 df = df[df["cleaned_preds"].isin(filtered)]
 
-                # Loop FDR
                 for fdr in FDR_THRESHOLDS:
                     if "psm_q_value" in df.columns:
                         subset = df[df["psm_q_value"] <= fdr].copy()
@@ -201,24 +213,22 @@ def main():
 
                     input_seqs = subset["cleaned_preds"].tolist()
 
-                    # Helper function to add empty/zero results
                     def add_result(
                         cov=0,
                         scaf_count=0,
-                        # Capture loop variables here:
-                        cat=category,
-                        samp=sample_label,
-                        run=clean_run_name,
-                        ch=chain_type,
-                        f=fdr,
+                        category=category,
+                        sample_label=sample_label,
+                        clean_run_name=clean_run_name,
+                        chain_type=chain_type,
+                        fdr=fdr,
                     ):
                         all_results.append(
                             {
-                                "Category": cat,
-                                "Sample": samp,
-                                "Run": run,
-                                "Chain": ch,
-                                "FDR": f,
+                                "Category": category,
+                                "Sample": sample_label,
+                                "Run": clean_run_name,
+                                "Chain": chain_type,
+                                "FDR": fdr,
                                 "Coverage": cov,
                                 "Scaffolds": scaf_count,
                             }
@@ -229,7 +239,6 @@ def main():
                         continue
 
                     try:
-                        # Assembly is always the same (Reference-free)
                         scaffolds = assembler.run(sequences=input_seqs, df_full=subset)
                     except Exception:
                         scaffolds = []
@@ -238,7 +247,6 @@ def main():
                         add_result()
                         continue
 
-                    # Mapping: Here we match scaffolds against the SPECIFIC current chain
                     mapped = visualization.process_protein_contigs_scaffold(
                         scaffolds, protein_norm, MAX_MISMATCHES, MIN_IDENTITY
                     )
@@ -249,7 +257,7 @@ def main():
                         stats = helpers.compute_assembly_statistics(
                             df=df_map,
                             sequence_type="temp",
-                            output_folder=str(OUTPUT_FOLDER),
+                            output_folder=str(current_output_folder),
                             reference=protein_norm,
                         )
                         cov = stats["coverage"] * 100
@@ -261,17 +269,13 @@ def main():
         return
 
     results_df = pd.DataFrame(all_results)
-    results_df.to_csv(OUTPUT_FOLDER / "aggregated_results.csv", index=False)
+    results_df.to_csv(current_output_folder / "aggregated_results.csv", index=False)
 
-    # --- PLOTTING ---
     custom_palette = load_custom_palette()
-    mode_output = OUTPUT_FOLDER / ASSEMBLY_MODE
-    os.makedirs(mode_output, exist_ok=True)
 
     sns.set_style("whitegrid")
     sns.set_context("paper", font_scale=1.2)
 
-    # Plotting: use 'style' to differentiate chains if present
     g = sns.relplot(
         data=results_df,
         x="FDR",
@@ -280,7 +284,7 @@ def main():
         col_wrap=2,
         kind="line",
         hue="Category",
-        style="Chain",  # Differentiate Heavy/Light with different line styles
+        style="Chain",
         markers=True,
         dashes=True,
         linewidth=2.5,
@@ -288,10 +292,14 @@ def main():
         markersize=8,
         height=4,
         aspect=1.5,
-        legend="full",  # Enable automatic legend to see chains
+        legend="full",
     )
 
-    g.fig.suptitle(f"{ASSEMBLY_MODE} aggregated assembly performance (Mean ± 95% CI)", fontsize=16, y=1.02)
+    title_str = f"{assembly_mode}"
+    if args.refine:
+        title_str += " (Refined)"
+
+    g.fig.suptitle(f"{title_str} assembly performance (Mean ± 95% CI)", fontsize=16, y=1.02)
     g.fig.subplots_adjust(top=0.85, wspace=0.3, hspace=0.4)
 
     g.set_axis_labels("FDR threshold", "Sequence coverage (%)")
@@ -312,10 +320,10 @@ def main():
         frameon=False,
     )
 
-    plt.savefig(mode_output / "aggregated_coverage_faceted.svg", bbox_inches="tight")
-    plt.savefig(mode_output / "aggregated_coverage_faceted.png", dpi=300, bbox_inches="tight")
+    plt.savefig(current_output_folder / "aggregated_coverage_faceted.svg", bbox_inches="tight")
+    plt.savefig(current_output_folder / "aggregated_coverage_faceted.png", dpi=300, bbox_inches="tight")
 
-    logger.info(f"Aggregated plots saved to: {mode_output}")
+    logger.info(f"Aggregated plots saved to: {current_output_folder}")
 
 
 if __name__ == "__main__":

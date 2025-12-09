@@ -130,18 +130,38 @@ def clean_instanovo_raw(df):
 
 
 def clean_winnow_rescored(df):
-    """V2 Strategy: 'prediction_untokenised' -> 'cleaned_preds', 'calibrated_confidence' -> 'conf'."""
-    logger.info("Detected V2 format (Winnow/Updated).")
+    """
+    V2 Strategy (Robust):
+    - Detects sequence column flexibly ('prediction_untokenised', 'prediction', etc.) -> 'cleaned_preds'
+    - Maps 'calibrated_confidence' -> 'conf'
+    - Handles missing columns gracefully (assigns None or skips).
+    """
+    logger.info("Detected V2 format (Winnow/Updated). Cleaning aggressively...")
 
-    rename_map = {"calibrated_confidence": "conf"}
-    df = df.rename(columns=rename_map)
+    if "calibrated_confidence" in df.columns:
+        df = df.rename(columns={"calibrated_confidence": "conf"})
 
-    if "prediction_untokenised" in df.columns:
-        df = df.dropna(subset=["prediction_untokenised"])
-        df["cleaned_preds"] = df["prediction_untokenised"].apply(remove_modifications)
+    seq_candidates = ["prediction_untokenised", "prediction", "Peptide", "sequence", "cleaned_preds"]
+    found_seq_col = None
+
+    for col in seq_candidates:
+        if col in df.columns:
+            found_seq_col = col
+            break
+
+    if found_seq_col:
+        logger.info(f"Using '{found_seq_col}' as sequence column.")
+        df = df.dropna(subset=[found_seq_col])
+        df["cleaned_preds"] = df[found_seq_col].apply(remove_modifications)
     else:
-        logger.error("V2 Error: 'prediction_untokenised' column missing!")
+        logger.error("V2 Critical Error: No sequence column found (checked: prediction_untokenised, prediction, etc.)!")
         return pd.DataFrame()
+
+    optional_cols = ["instanovo_token_log_probabilities", "ion_match_intensity", "iRT", "iRT error"]
+    for col in optional_cols:
+        if col not in df.columns:
+            logger.warning(f"Optional column '{col}' missing. Filling with None.")
+            df[col] = None
 
     cols_of_interest = [
         "experiment_name",
@@ -166,6 +186,7 @@ def clean_winnow_rescored(df):
         "protease",
         "mapped",
     ]
+
     existing_cols = [c for c in cols_of_interest if c in df.columns]
     df = df[existing_cols]
 
@@ -183,15 +204,19 @@ def clean_dataframe(df):
     df = df.copy()
 
     # Auto-detection logic
-    if "calibrated_confidence" in df.columns:
+    if "calibrated_confidence" in df.columns or "prediction_untokenised" in df.columns:
         return clean_winnow_rescored(df)
 
     elif "log_probs" in df.columns:
         return clean_instanovo_raw(df)
 
     else:
-        logger.warning("Unknown data format! Could not detect specific columns. Returning dataframe as is.")
-        return df
+        logger.warning("Unknown data format! Attempting generic cleaning via V2 logic.")
+        try:
+            return clean_winnow_rescored(df)
+        except Exception as e:
+            logger.error(f"Generic cleaning failed: {e}. Returning dataframe as is.")
+            return df
 
 
 def filter_contaminants(seqs, run, contaminants_fasta):
