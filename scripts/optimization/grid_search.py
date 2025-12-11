@@ -41,7 +41,7 @@ import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
@@ -55,16 +55,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Import InstaNexus modules
 try:
-    from instanexus.assembly import Assembler
     from instanexus import helpers, preprocessing, visualization
+    from instanexus.assembly import Assembler
 except ImportError as e:
     sys.exit(f"Error importing InstaNexus modules: {e}. Run from project root.")
 
 # Setup Logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
@@ -78,8 +76,8 @@ def load_grid_params(json_path: Path, mode: str) -> List[Dict[str, Any]]:
         raise ValueError(f"Mode '{mode}' not found in {json_path}")
 
     grid = all_grids[mode]
-    keys, values = zip(*grid.items())
-    combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    keys, values = zip(*grid.items(), strict=False)
+    combinations = [dict(zip(keys, v, strict=False)) for v in itertools.product(*values)]
     return combinations
 
 
@@ -127,12 +125,7 @@ def compute_final_ranking(df_results: pd.DataFrame) -> pd.DataFrame:
     df_scaled["scaffolds_count"] = 1 - df_scaled["scaffolds_count"]
 
     # Define Weights
-    weights = {
-        "coverage": 0.35,
-        "N50": 0.25,
-        "scaffolds_count": 0.25,
-        "mean_identity": 0.15
-    }
+    weights = {"coverage": 0.35, "N50": 0.25, "scaffolds_count": 0.25, "mean_identity": 0.15}
 
     # Calculate Weighted Sum
     composite_scores = df_scaled[list(weights.keys())].dot(pd.Series(weights))
@@ -150,7 +143,7 @@ def evaluate_combination(
     df_original: pd.DataFrame,
     protein_norm: str,
     assembly_mode: str,
-    mapping_cfg: Dict[str, Any]
+    mapping_cfg: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Worker function:
@@ -192,19 +185,19 @@ def evaluate_combination(
             assembled_contigs=scaffolds,
             target_protein=protein_norm,
             max_mismatches=mapping_cfg["max_mismatches"],
-            min_identity=mapping_cfg["min_identity"]
+            min_identity=mapping_cfg["min_identity"],
         )
 
         if not mapped_scaffolds:
-             return {**params, "scaffolds_count": len(scaffolds), "coverage": 0, "error": "Mapping failed"}
+            return {**params, "scaffolds_count": len(scaffolds), "coverage": 0, "error": "Mapping failed"}
 
         df_mapped = visualization.create_dataframe_from_mapped_sequences(mapped_scaffolds)
 
         stats = helpers.compute_assembly_statistics(
             df=df_mapped,
             sequence_type="scaffolds",
-            output_folder="", # We don't save individual JSONs to save IO/Time
-            reference=protein_norm
+            output_folder="",  # We don't save individual JSONs to save IO/Time
+            reference=protein_norm,
         )
 
         return {
@@ -216,7 +209,7 @@ def evaluate_combination(
             "total_mismatches": stats.get("total_mismatches", 0),
             "duration_sec": round(duration, 2),
             "input_sequences": len(sequences),
-            "error": None
+            "error": None,
         }
 
     except Exception as e:
@@ -263,23 +256,13 @@ def main():
         return
 
     results = []
-    mapping_cfg = {
-        "min_identity": args.eval_min_identity,
-        "max_mismatches": args.eval_max_mismatches
-    }
+    mapping_cfg = {"min_identity": args.eval_min_identity, "max_mismatches": args.eval_max_mismatches}
 
     logger.info(f"Starting execution with {args.workers} workers...")
 
     with ProcessPoolExecutor(max_workers=args.workers) as executor:
         futures = {
-            executor.submit(
-                evaluate_combination,
-                params,
-                df,
-                protein_norm,
-                args.mode,
-                mapping_cfg
-            ): params
+            executor.submit(evaluate_combination, params, df, protein_norm, args.mode, mapping_cfg): params
             for params in combinations
         }
 
@@ -309,8 +292,10 @@ def main():
 
             best = df_ranked.iloc[0]
             logger.info(f" BEST CONFIG | Score: {best['composite_score']:.3f}")
-            logger.info(f"   Cov: {best['coverage']*100:.1f}% | N50: {best['N50']} | Scaffolds: {best['scaffolds_count']}")
-            
+            logger.info(
+                f"   Cov: {best['coverage']*100:.1f}% | N50: {best['N50']} | Scaffolds: {best['scaffolds_count']}"
+            )
+
             best_params = {k: best[k] for k in combinations[0].keys() if k in best}
             logger.info(f"   Params: {json.dumps(best_params, indent=2)}")
         else:
@@ -319,6 +304,7 @@ def main():
             df_results.to_csv(csv_out, index=False)
     else:
         logger.error("No results produced.")
+
 
 if __name__ == "__main__":
     main()
