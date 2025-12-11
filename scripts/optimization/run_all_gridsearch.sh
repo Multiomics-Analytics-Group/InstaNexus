@@ -3,24 +3,24 @@
 MODES=("greedy" "dbg_weighted" "multimodal_dbg")
 METADATA="json/sample_metadata.json"
 GRID_PARAMS="json/gridsearch_params.json"
-WORKERS=6
+WORKERS=32
 
 # antibody samples (Light and Heavy chains)
-#ANTIBODIES=("ma1" "ma2" "ma3") 
+ANTIBODIES=("ma1" "ma2" "ma3")
 
-ANTIBODIES=("ma1") 
+#ANTIBODIES=("ma1")
 
 # single chain (Nanobodies, Binders, BSA, etc.)
-#OTHERS=("nb1" "nb2" "nb3" "nb4" "nb5" "nb6" "nb7" "nb8" "nb9" "nb10" "bsa" "bind1" "bind2" "bind3")
-OTHERS=("nb1" "bsa" "bind1")
+OTHERS=("nb1" "nb2" "nb3" "nb4" "nb5" "nb6" "nb7" "nb8" "nb9" "nb10" "bsa" "bind1" "bind2" "bind3")
+#OTHERS=("nb1" "bsa" "bind1")
 
 run_grid() {
     local run=$1
     local chain=$2
     local mode=$3
-    
+
     local input_file="inputs/cleaned/${run}_cleaned.csv"
-    
+
     local output_dir="outputs/_grid_search/${mode}"  
 
     if [ -f "$input_file" ]; then

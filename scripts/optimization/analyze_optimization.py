@@ -59,11 +59,11 @@ HEATMAP_CONFIG = {
 }
 
 THEME_MAP = {
-    "BSA": [[0.0, "#fdbb84"], [0.6, "#fdbb84"], [1.0, "#e34a33"]],
-    "Antibodies": [[0.0, "#8dd3c7"], [0.6, "#8dd3c7"], [1.0, "#1b9e77"]],
-    "Nanobodies": [[0.0, "#a6cee3"], [0.6, "#a6cee3"], [1.0, "#1f78b4"]],
-    "Binders": [[0.0, "#F8ECA9"], [0.6, "#F8ECA9"], [1.0, "#FFC72C"]],
-    "Other": [[0.0, "lightgrey"], [0.6, "lightgrey"], [1.0, "black"]],
+    "BSA": [[0.0, "#fdbb84"], [0.7, "#fdbb84"], [1.0, "#e34a33"]],
+    "Antibodies": [[0.0, "#8dd3c7"], [0.7, "#8dd3c7"], [1.0, "#1b9e77"]],
+    "Nanobodies": [[0.0, "#a6cee3"], [0.7, "#a6cee3"], [1.0, "#1f78b4"]],
+    "Binders": [[0.0, "#F8ECA9"], [0.7, "#F8ECA9"], [1.0, "#FFC72C"]],
+    "Other": [[0.0, "lightgrey"], [0.7, "lightgrey"], [1.0, "black"]],
 }
 
 PARAM_CONFIG = {

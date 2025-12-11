@@ -23,6 +23,8 @@ __status__ = Dev
 import os
 
 import Bio.SeqIO
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np

@@ -7,6 +7,7 @@ channels:
 dependencies:
   # core runtime dependencies
   - python=3.11
+  - scikit-learn
   - biopython=1.85
   - pandas=2.3.1
   - upsetplot
@@ -41,3 +42,4 @@ dependencies:
       - hatchling
       - wheel
       - sphinx
+      - kaleido==0.2.1
