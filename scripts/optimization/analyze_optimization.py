@@ -16,7 +16,7 @@ and generates manuscript-ready figures comparing Contigs vs Scaffolds.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 09 Dec 2025
+__date__ = 10 Dec 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -30,7 +30,7 @@ import plotly.graph_objects as go
 from sklearn.preprocessing import MinMaxScaler
 from pathlib import Path
 
-INPUT_DIR = Path("outputs/grid_search")
+INPUT_DIR = Path("outputs/_grid_search")
 OUTPUT_DIR = Path("outputs/_optimisation_figures")
 SUMMARY_DIR = Path("outputs/_summary_tables")
 
@@ -204,24 +204,21 @@ def main():
         except Exception as e:
             print(f"Skipped {f}: {e}")
 
-    full_df = pd.concat(dfs, ignore_index=True)
-    
-    # 2. Pre-processing
+    full_df = pd.concat(dfs, ignore_index=True)    
     full_df["category"] = full_df["run"].apply(get_category)
     full_df["seq_type"] = full_df.apply(classify_sequence_type, axis=1)
 
-    # 3. Compute Scores (Global Normalization)
+    mask = (full_df["chain"].notna()) & (full_df["chain"] != "N/A") & (full_df["chain"] != "") & (full_df["chain"].str.lower() != "nan")
+    full_df.loc[mask, "run"] = full_df.loc[mask, "run"] + " (" + full_df.loc[mask, "chain"] + ")"
+    
     print("Computing Composite Scores...")
     full_df = compute_composite_score_global(full_df)
 
-    # 4. Select Best Runs
-    # We need the BEST single result for each combination of: Run + Mode + Type
     best_runs = full_df.loc[
         full_df.groupby(["run", "mode", "seq_type"])["composite_score"].idxmax()
     ]
     
-    # 5. Generate Plots
-    print("Generating Plots...")
+    print("Generating plots...")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     
     modes_to_plot = best_runs["mode"].unique()
@@ -244,7 +241,7 @@ def main():
         SUMMARY_DIR / "full_benchmark_ranked.csv", index=False
     )
 
-    print("--- Analysis Complete ---")
+    print("--- Analysis completed ---")
 
 if __name__ == "__main__":
     main()

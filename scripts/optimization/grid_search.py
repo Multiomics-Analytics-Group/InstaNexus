@@ -159,17 +159,14 @@ def evaluate_combination(
     3. Computes statistics.
     """
     try:
-        # --- STEP 1: DYNAMIC DATA FILTERING ---
         df_subset = df_original.copy()
 
-        # Apply FDR filter (Standard scientific metric)
         if "fdr" in params:
             if "psm_q_value" in df_subset.columns:
                 df_subset = df_subset[df_subset["psm_q_value"] <= params["fdr"]]
             else:
                 return {**params, "error": "FDR requested but 'psm_q_value' column missing"}
 
-        # Extract sequences (Assembler expects a list for sequences)
         if "cleaned_preds" in df_subset.columns:
             sequences = df_subset["cleaned_preds"].dropna().tolist()
         else:
@@ -178,13 +175,11 @@ def evaluate_combination(
         if not sequences:
             return {**params, "scaffolds_count": 0, "coverage": 0, "error": "No sequences after filtering"}
 
-        # --- STEP 2: PREPARE ASSEMBLER PARAMS ---
         # Exclude 'fdr' from params passed to Assembler class init
         assembler_params = {k: v for k, v in params.items() if k != "fdr"}
 
         assembler = Assembler(mode=assembly_mode, **assembler_params)
 
-        # --- STEP 3: RUN ASSEMBLY ---
         start_time = time.time()
         # Note: We pass df_subset (filtered) because multimodal/weighted modes use it
         scaffolds = assembler.run(sequences=sequences, df_full=df_subset)
@@ -193,7 +188,6 @@ def evaluate_combination(
         if not scaffolds:
             return {**params, "scaffolds_count": 0, "coverage": 0, "error": "No scaffolds produced"}
 
-        # --- STEP 4: MAPPING & STATS ---
         mapped_scaffolds = visualization.process_protein_contigs_scaffold(
             assembled_contigs=scaffolds,
             target_protein=protein_norm,
@@ -235,17 +229,15 @@ def main():
     parser.add_argument("--metadata-json", required=True, help="Path to sample_metadata.json.")
     parser.add_argument("--grid-json", required=True, help="Path to gridsearch_params.json.")
     parser.add_argument("--mode", required=True, help="Assembly mode (greedy, dbg_weighted, etc.)")
-    parser.add_argument("--output-dir", default="outputs/grid_search", help="Directory to save results.")
+    parser.add_argument("--output-dir", default="outputs/_grid_search", help="Directory to save results.")
     parser.add_argument("--chain", default="", help="Chain type (light/heavy).")
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel workers.")
 
-    # Mapping constraints (fixed for evaluation, not optimized)
     parser.add_argument("--eval-min-identity", type=float, default=0.8, help="Min identity for evaluation mapping.")
     parser.add_argument("--eval-max-mismatches", type=int, default=100, help="Max mismatches for evaluation mapping.")
 
     args = parser.parse_args()
 
-    # Paths
     input_path = Path(args.input_csv)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -306,9 +298,11 @@ def main():
 
             df_errors = df_results[df_results["error"].notnull()]
             df_final = pd.concat([df_ranked, df_errors])
-
+            df_final["chain"] = args.chain if args.chain else "N/A"
+            chain_suffix = f"_{args.chain}" if args.chain else ""
             timestamp = time.strftime("%Y%m%d-%H%M%S")
-            csv_out = output_dir / f"grid_{args.mode}_{run_name}_{timestamp}.csv"
+
+            csv_out = output_dir / f"grid_{args.mode}_{run_name}{chain_suffix}_{timestamp}.csv"
             df_final.to_csv(csv_out, index=False)
 
             logger.info(f"Results saved to: {csv_out}")

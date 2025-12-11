@@ -1,7 +1,7 @@
 {
   "greedy": {
     "fdr": [0.05, 0.10, 0.20],
-    "min_overlap": [3, 4],
+    "min_overlap": [3, 4, 5],
     "size_threshold": [0, 5, 10],
     "refine_rounds": [0, 5]
   },
@@ -10,7 +10,7 @@
     "fdr": [0.05, 0.10, 0.20],
     "kmer_size": [5, 6, 7],
     "min_weight": [2, 3],
-    "min_overlap": [3, 4],
+    "min_overlap": [3, 4, 5],
     "size_threshold": [0, 5, 10],
     "refine_rounds": [0, 5],
     "alpha_len": [1.0],

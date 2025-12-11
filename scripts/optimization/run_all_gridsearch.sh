@@ -6,25 +6,27 @@ GRID_PARAMS="json/gridsearch_params.json"
 WORKERS=6
 
 # antibody samples (Light and Heavy chains)
-ANTIBODIES=("ma1" "ma2" "ma3") 
+#ANTIBODIES=("ma1" "ma2" "ma3") 
+
+ANTIBODIES=("ma1") 
 
 # single chain (Nanobodies, Binders, BSA, etc.)
-OTHERS=("nb1" "nb2" "nb3" "nb4" "nb5" "nb6" "nb7" "nb8" "nb9" "nb10" "bsa" "bind1" "bind2" "bind3")
+#OTHERS=("nb1" "nb2" "nb3" "nb4" "nb5" "nb6" "nb7" "nb8" "nb9" "nb10" "bsa" "bind1" "bind2" "bind3")
+OTHERS=("nb1" "bsa" "bind1")
 
 run_grid() {
     local run=$1
     local chain=$2
     local mode=$3
     
-    local input_file="inputs/${run}_cleaned.csv"
-    if [ ! -f "$input_file" ]; then
-        input_file="inputs/${run}.csv"
-    fi
+    local input_file="inputs/cleaned/${run}_cleaned.csv"
+    
+    local output_dir="outputs/_grid_search/${mode}"  
 
     if [ -f "$input_file" ]; then
         echo ">>> [${mode}] Launching: ${run} (Chain: '${chain}')"
         
-        python scripts/gridsearch.py \
+        python scripts/optimization/grid_search.py \
             --input-csv "$input_file" \
             --metadata-json "$METADATA" \
             --grid-json "$GRID_PARAMS" \
@@ -57,4 +59,4 @@ for mode in "${MODES[@]}"; do
 done
 
 echo "----------------------------------------"
-echo "All grid search jobs completed."s
+echo "All grid search jobs completed."
