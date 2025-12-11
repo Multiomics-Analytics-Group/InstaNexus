@@ -28,3 +28,4 @@ docs/source/tutorials/case_studies/notebook_results/
 docs/source/tutorials/case_studies/summary_tables/*
 grid_master.log
 inputs.tar.gz
+scaffolds_stats.json
