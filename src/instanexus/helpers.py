@@ -150,7 +150,12 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     statistics["N90"] = int(n90)
 
     file_name = f"{sequence_type}_stats.json"
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
     output_path = os.path.join(output_folder, file_name)
+
     with open(output_path, "w") as file:
         json.dump(statistics, file, indent=4)
 

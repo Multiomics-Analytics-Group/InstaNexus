@@ -769,7 +769,7 @@ def get_hybrid_kmer_weights(
         if not isinstance(sequence, str) or len(sequence) < kmer_size:
             continue
 
-        # --- 1. AI Confidence (Token Probs) ---
+        
         raw_probs_str = row.get(col_tokens)
         log_probs = [0.0] * len(sequence)  # Default neutral
 
@@ -910,8 +910,8 @@ class Assembler:
             logger.info("Refining contigs using Overlap Graph (Bird's Eye View)...")
 
             # Use a slightly safer/larger overlap for this final merge to avoid false positives
-            # e.g., max(min_overlap, 5) or just self.min_overlap
-            safe_overlap = max(self.min_overlap, 5)
+            # e.g., max(min_overlap, 2) or just self.min_overlap
+            safe_overlap = max(self.min_overlap, 2)
             iteration = 0
 
             while iteration < self.refine_rounds:

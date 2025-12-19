@@ -35,89 +35,48 @@ import seaborn as sns
 from tqdm import tqdm
 
 
-def missing_values_barplot(run, dataframe, folder):
-    dataframe["missing_preds"] = dataframe["preds"].isna()
+def set_publication_style():
+    sns.set_theme(style="ticks")
+    
+    plt.rcParams.update({
+        "font.family": "sans-serif",
+        "font.sans-serif": ["Arial"],
+        "font.size": 14,
+        "axes.titlesize": 16,
+        "axes.labelsize": 15,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
+        "axes.linewidth": 1.5,
+        "figure.dpi": 300,
+        "legend.fontsize": 13,
+        "legend.frameon": False,
+        "legend.columnspacing": 1.5,
+        "xtick.major.width": 1,
+        "ytick.major.width": 1,
+        "axes.linewidth": 1,
+    })
 
-    missing_counts_df = dataframe["missing_preds"].value_counts().reset_index()
-    missing_counts_df.columns = ["PSMs", "Count"]
-    missing_counts_df["PSMs"] = missing_counts_df["PSMs"].map({True: "Missing", False: "Valid"})
 
-    missing_counts_df = missing_counts_df.sort_values("PSMs", key=lambda x: x.map({"Valid": 0, "Missing": 1}))
-
-    valid_count = (
-        missing_counts_df.loc[missing_counts_df["PSMs"] == "Valid", "Count"].values[0]
-        if "Valid" in missing_counts_df["PSMs"].values
-        else 0
-    )
-    missing_count = (
-        missing_counts_df.loc[missing_counts_df["PSMs"] == "Missing", "Count"].values[0]
-        if "Missing" in missing_counts_df["PSMs"].values
-        else 0
-    )
-
-    total = valid_count + missing_count
-    valid_pct = (valid_count / total * 100) if total > 0 else 0
-    missing_pct = (missing_count / total * 100) if total > 0 else 0
-
-    print(f"Valid PSMs: {valid_count} ({valid_pct:.2f}%)")
-    print(f"Missing PSMs: {missing_count} ({missing_pct:.2f}%)")
-    print(f"Total PSMs: {total}")
-
-    color_map = {"Valid": "#337AB7", "Missing": "#FF5733"}
-
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Bar(
-            x=["Valid"],
-            y=[valid_count],
-            marker_color=color_map["Valid"],
-            width=[0.4],
-            name="Valid",
-        )
-    )
-
-    fig.add_trace(
-        go.Bar(
-            x=["Missing"],
-            y=[missing_count],
-            marker_color=color_map["Missing"],
-            width=[0.4],
-            name="Missing",
-        )
-    )
-
-    fig.update_layout(
-        title="",
-        xaxis_title="PSMs",
-        yaxis_title="Count",
-        barmode="group",
-        width=800,
-        height=600,
-        margin=dict(t=50, l=10, r=10, b=10),
-        legend_title_text="",
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(size=22, family="Arial, sans-serif", color="black"),
-    )
-
-    fig.update_xaxes(
-        showline=True,
-        linewidth=1,
-        linecolor="black",
-        title_font=dict(size=20),
-        tickfont=dict(size=18),
-    )
-
-    fig.update_yaxes(
-        showline=True,
-        linewidth=1,
-        linecolor="black",
-        title_font=dict(size=20),
-        tickfont=dict(size=18),
-    )
-
-    fig.write_image(f"{folder}/{run}_missing_value_bar.svg")
+def get_figsize(width_ratio=1, total_width_inch=14.0):
+    """
+    Calculates figsize based on a standard A4 width.
+    Ratios: 
+    3: 3x1 (Full width, short height)
+    2: 2x1 (Medium)
+    1: 1x1 (Square)
+    """
+    ratios = {
+        1: (1, 1),
+        2: (2, 1),
+        3: (3, 1),
+    }
+    
+    w_mult, h_mult = ratios.get(width_ratio, (1, 1))
+    
+    actual_width = (total_width_inch / 3) * w_mult
+    actual_height = (actual_width / w_mult)
+    
+    return (actual_width, actual_height)
 
 
 def plot_map_unmap_distribution(df, reference, run, folder, conf_lim, title=False):
@@ -847,8 +806,8 @@ def mapping_substitutions(
     bar_colors=None,
     output_file=None,
     output_folder=".",
-    contig_colors="#6baed6",
-    match_color="#6baed6",
+    contig_colors="#fdbb84",
+    match_color="#fdbb84",
     show_figure=False,
 ):
     default_colors = {
@@ -1001,9 +960,9 @@ def mapping_substitutions(
         font=dict(size=14, family="Arial, sans-serif", color="black"),
     )
 
-    if output_file:
-        os.makedirs(output_folder, exist_ok=True)
-        fig.write_image(os.path.join(output_folder, output_file), scale=2)
+    #if output_file:
+    #    os.makedirs(output_folder, exist_ok=True)
+    #    fig.write_image(os.path.join(output_folder, output_file), scale=2)
 
     if show_figure:
         fig.show()
