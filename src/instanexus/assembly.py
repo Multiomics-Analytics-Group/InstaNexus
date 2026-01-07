@@ -45,59 +45,93 @@ logger = logging.getLogger(__name__)
 MAX_REFINE_ROUNDS = 10
 
 
-def find_peptide_overlaps(peptides, min_overlap):
-    """Finds overlaps between peptide sequences using a greedy approach."""
-    overlaps = defaultdict(list)
+# def find_peptide_overlaps(peptides, min_overlap):
+#     """Finds overlaps between peptide sequences using a greedy approach."""
+#     overlaps = defaultdict(list)
 
-    for index_a, peptide_a in tqdm(enumerate(peptides), desc="Finding overlaps"):
-        for index_b, peptide_b in enumerate(peptides):
-            if index_a != index_b:  # Skip comparing the same peptide
-                max_possible_overlap = min(len(peptide_a), len(peptide_b))
+#     for index_a, peptide_a in tqdm(enumerate(peptides), desc="Finding overlaps"):
+#         for index_b, peptide_b in enumerate(peptides):
+#             if index_a != index_b:  # Skip comparing the same peptide
+#                 max_possible_overlap = min(len(peptide_a), len(peptide_b))
 
-                for overlap_length in range(min_overlap, max_possible_overlap):
-                    if peptide_a[-overlap_length:] == peptide_b[:overlap_length]:
-                        overlaps[index_a].append((index_b, overlap_length))  # Add the overlap to the dictionary
-                    if peptide_b[-overlap_length:] == peptide_a[:overlap_length]:
-                        overlaps[index_b].append((index_a, overlap_length))  # Add the overlap to the dictionary
+#                 for overlap_length in range(min_overlap, max_possible_overlap):
+#                     if peptide_a[-overlap_length:] == peptide_b[:overlap_length]:
+#                         overlaps[index_a].append((index_b, overlap_length))  # Add the overlap to the dictionary
+#                     if peptide_b[-overlap_length:] == peptide_a[:overlap_length]:
+#                         overlaps[index_b].append((index_a, overlap_length))  # Add the overlap to the dictionary
+#     return overlaps
+
+
+def find_sliding_overlaps(sequences: list, min_overlap: int):
+    overlaps = []
+    for i, seq_a in enumerate(sequences):
+        for j, seq_b in enumerate(sequences):
+            if i == j: continue
+                        
+            max_search = min(len(seq_a), len(seq_b))
+            for length in range(max_search, min_overlap - 1, -1):
+                s1 = seq_a[-length:]
+                s2 = seq_b[:length]
+                
+                if s1 == s2:
+                    overlaps.append((i, j, length))
+                    break
+                
+                diff = sum(1 for a, b in zip(s1, s2) if a != b)
+                if diff == 1 and length >= 5: 
+                    logger.info(f"POTENTIAL OVERLAP MISSED: {s1} vs {s2}")
     return overlaps
 
 
+def merge_with_overhang(seq_a, seq_b, overlap_len):
+    """
+    Finds the exact alignment point and merges.
+    This handles: A='...KGR', B='SVKGR...' -> Result: 'SVKGR...' 
+    (if B contains A) or the correct concatenation.
+    """
+    if seq_a in seq_b:
+        return seq_b
+    if seq_b in seq_a:
+        return seq_a
+        
+    for i in range(len(seq_a) - overlap_len + 1):
+        suffix = seq_a[i:]
+        if seq_b.startswith(suffix):
+            return seq_a[:i] + seq_b
+            
+    return seq_a + seq_b[overlap_len:]
+
+
 def assemble_contigs_greedy(peptides, min_overlap):
-    """Assembles contigs from peptide sequences using a greedy approach."""
     assembled_contigs = peptides[:]
     iteration = 0
     MAX_ITERATIONS = 50
 
     while iteration < MAX_ITERATIONS:
         iteration += 1
-        overlaps = find_peptide_overlaps(assembled_contigs, min_overlap)
-        if not overlaps:
+        overlaps_list = find_sliding_overlaps(assembled_contigs, min_overlap)
+        
+        if not overlaps_list:
             break
+            
+        overlaps_list.sort(key=lambda x: x[2], reverse=True)
+        
         new_contigs = []
         used_indices = set()
 
-        # Process overlaps deterministically
-        for i in sorted(overlaps.keys()):  # ensure deterministic order
-            if i in used_indices:
+        for i, j, overlap_len in overlaps_list:
+            if i in used_indices or j in used_indices:
                 continue
-            # Sort overlaps_list deterministically: prioritize longer overlap, then lower index
-            overlaps_list = sorted(overlaps[i], key=lambda x: (-x[1], x[0]))
-            best_match = overlaps_list[0] if overlaps_list else None
+            
+            new_contig = merge_with_overhang(assembled_contigs[i], assembled_contigs[j], overlap_len)
+            new_contigs.append(new_contig)
+            used_indices.update([i, j])
 
-            if best_match:
-                j, overlap_len = best_match
-                if j not in used_indices:
-                    new_contig = assembled_contigs[i] + assembled_contigs[j][overlap_len:]
-                    new_contigs.append(new_contig)
-                    used_indices.update([i, j])
-        # Add unused peptides
-        remaining_contigs = [contig for idx, contig in enumerate(assembled_contigs) if idx not in used_indices]
-        assembled_contigs = new_contigs + remaining_contigs
-        if len(new_contigs) == 0:
+        if not new_contigs:
             break
 
-    if iteration >= MAX_ITERATIONS:
-        logger.warning(f"Greedy assembly stopped after max iterations ({MAX_ITERATIONS}).")
+        remaining = [c for idx, c in enumerate(assembled_contigs) if idx not in used_indices]
+        assembled_contigs = new_contigs + remaining
 
     return assembled_contigs
 
@@ -115,13 +149,28 @@ def merge_contigs_greedy(contigs):
     return list(merged)
 
 
+# def combine_seqs_into_scaffolds(contigs, min_overlap):
+#     """Combine contigs based on a minimum overlap length."""
+#     overlaps = find_overlaps(contigs, min_overlap=min_overlap, disable_tqdm=True)
+#     combined_contigs = []
+
+#     for a, b, overlap in overlaps:
+#         combined = a + b[overlap:]
+#         combined_contigs.append(combined)
+
+#     return combined_contigs + contigs
+
 def combine_seqs_into_scaffolds(contigs, min_overlap):
-    """Combine contigs based on a minimum overlap length."""
-    overlaps = find_overlaps(contigs, min_overlap=min_overlap, disable_tqdm=True)
+    """Combine contigs using the new sliding logic and overhang-aware merging."""
+    # CAMBIO 1: Usa la logica sliding del tuo branch
+    overlaps = find_sliding_overlaps(contigs, min_overlap=min_overlap)
     combined_contigs = []
 
-    for a, b, overlap in overlaps:
-        combined = a + b[overlap:]
+    for i, j, overlap_len in overlaps:
+        # CAMBIO 2: Usa il merger intelligente che abbiamo scritto
+        a = contigs[i]
+        b = contigs[j]
+        combined = merge_with_overhang(a, b, overlap_len)
         combined_contigs.append(combined)
 
     return combined_contigs + contigs
@@ -172,20 +221,17 @@ def get_weighted_kmers_from_df(
     """
     kmer_weights = Counter()
 
-    # Column mapping
     col_tokens = "instanovo_token_log_probabilities"
-    col_ms1_abundance = "peptide_abundance"  # MS1 Area
-    col_ms2_intensity = "ion_match_intensity"  # MS2 Quality (0-1)
+    col_ms1_abundance = "peptide_abundance" 
+    col_ms2_intensity = "ion_match_intensity"
     col_irt = "iRT error"
 
     for _, row in df.iterrows():
         sequence = row.get("cleaned_preds")
 
-        # Skip invalid sequences
         if not isinstance(sequence, str) or len(sequence) < kmer_size:
             continue
 
-        # --- 1. PARSE TOKEN PROBABILITIES (Keep in Log-Space) ---
         log_probs = []
         raw_probs_str = row.get(col_tokens)
 
@@ -193,31 +239,26 @@ def get_weighted_kmers_from_df(
             try:
                 parsed_log_probs = ast.literal_eval(raw_probs_str)
 
-                # Handle Start/End Tokens [SOS, A, B, C, EOS] -> [A, B, C]
                 if len(parsed_log_probs) == len(sequence) + 2:
                     log_probs = parsed_log_probs[1:-1]
                 elif len(parsed_log_probs) == len(sequence):
                     log_probs = parsed_log_probs
                 else:
-                    log_probs = [0.0] * len(sequence)  # Fallback: 100% prob
+                    log_probs = [0.0] * len(sequence)
             except Exception:
                 log_probs = [0.0] * len(sequence)
         else:
             log_probs = [0.0] * len(sequence)
 
-        # --- 2. CALCULATE GLOBAL PEPTIDE SCORE ---
         global_multiplier = 1.0
 
         if use_abundance:
-            # A. Base Weight: MS1 Abundance (Log Scale)
             ms1_val = row.get(col_ms1_abundance, 0)
             if pd.notnull(ms1_val) and ms1_val > 0:
-                # log10(1e6) = 6.0. Adding 10 ensures we don't get log(small number) issues.
                 base_weight = math.log10(float(ms1_val) + 10)
             else:
-                base_weight = 1.0  # Default if MS1 missing
+                base_weight = 1.0
 
-            # B. Quality Boost: MS2 Intensity (0-1 range)
             ms2_val = row.get(col_ms2_intensity, 0)
             ms2_boost = 1.0
             if pd.notnull(ms2_val):
@@ -329,11 +370,18 @@ def find_overlaps(contigs, min_overlap, disable_tqdm=False):
 
 
 def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
-    """Create scaffolds from a list of contigs by merging overlapping sequences."""
-    overlaps = find_overlaps(contigs, min_overlap=min_overlap, disable_tqdm=disable_tqdm)
+    """
+    Improved version: uses sliding overlaps and overhang-aware merging.
+    """
+    # Usa find_sliding_overlaps che restituisce (i, j, overlap_len)
+    overlaps = find_sliding_overlaps(contigs, min_overlap=min_overlap)
     combined_contigs = []
-    for a, b, overlap in tqdm(overlaps, desc="Merging overlaps", total=len(overlaps), disable=disable_tqdm):
-        combined = a + b[overlap:]
+    
+    for i, j, overlap_len in tqdm(overlaps, desc="Merging overlaps", disable=disable_tqdm):
+        a = contigs[i]
+        b = contigs[j]
+        # Usa il merger intelligente che gestisce gli overhangs
+        combined = merge_with_overhang(a, b, overlap_len)
         combined_contigs.append(combined)
 
     return combined_contigs + contigs
@@ -529,10 +577,6 @@ def rank_contigs_by_score(
 
 
 def build_overlap_graph(contigs: List[str], min_overlap: int) -> nx.DiGraph:
-    """
-    Builds a directed graph where nodes are contigs and edges represent
-    valid suffix-prefix overlaps.
-    """
     G = nx.DiGraph()
     for i, seq in enumerate(contigs):
         G.add_node(i, seq=seq, length=len(seq))
@@ -540,25 +584,22 @@ def build_overlap_graph(contigs: List[str], min_overlap: int) -> nx.DiGraph:
     n_contigs = len(contigs)
     for i in range(n_contigs):
         for j in range(n_contigs):
-            if i == j:
-                continue
+            if i == j: continue
 
-            seq_a = contigs[i]
-            seq_b = contigs[j]
-
-            max_ov = min(len(seq_a), len(seq_b))
-            if max_ov < min_overlap:
-                continue
-
+            seq_a, seq_b = contigs[i], contigs[j]
+            # Cerchiamo l'overlap usando la logica sliding che abbiamo validato
+            # Questo permette a A='...KGR' di connettersi a B='SVKGR...'
             best_overlap = 0
+            max_ov = min(len(seq_a), len(seq_b))
+            
             for k in range(max_ov, min_overlap - 1, -1):
-                if seq_a.endswith(seq_b[:k]):
+                # Caso 1: La fine di A è contenuta nell'inizio di B (Sliding)
+                if seq_b.startswith(seq_a[-k:]) or seq_a.endswith(seq_b[:k]):
                     best_overlap = k
                     break
 
             if best_overlap > 0:
                 G.add_edge(i, j, weight=best_overlap)
-
     return G
 
 
@@ -604,7 +645,7 @@ def merge_paths_from_overlap_graph(G: nx.DiGraph) -> List[str]:
                 u, v = path[i], path[i + 1]
                 overlap_len = G_work[u][v]["weight"]
                 seq_v = G_work.nodes[v]["seq"]
-                super_seq += seq_v[overlap_len:]
+                super_seq = merge_with_overhang(super_seq, seq_v, overlap_len)
 
             merged_contigs.append(super_seq)
 
@@ -621,7 +662,11 @@ def refine_using_overlap_graph(contigs: List[str], min_overlap: int) -> List[str
         return []
 
     G = build_overlap_graph(contigs, min_overlap)
-
+    logger.info(f"DEBUG: Overlap Graph has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
+    
+    if G.number_of_edges() == 0:
+        logger.warning("No overlaps found between scaffolds! Check sliding logic.")    
+    
     refined = merge_paths_from_overlap_graph(G)
 
     refined = sorted(list(set(refined)), key=len, reverse=True)
@@ -911,7 +956,9 @@ class Assembler:
 
             # Use a slightly safer/larger overlap for this final merge to avoid false positives
             # e.g., max(min_overlap, 2) or just self.min_overlap
-            safe_overlap = max(self.min_overlap, 2)
+            #safe_overlap = max(self.min_overlap, 2)
+            safe_overlap = self.min_overlap
+            
             iteration = 0
 
             while iteration < self.refine_rounds:

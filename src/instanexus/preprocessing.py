@@ -14,7 +14,7 @@ r"""Preprocessing module for InstaNexus.
 __authors__ = Marco Reverenna
 __copyright__ = Copyright 2025-2026
 __research-group__ = DTU Biosustain (Multi-omics Network Analytics) and DTU Bioengineering
-__date__ = 25 Nov 2025
+__date__ = 20 Dec 2025
 __maintainer__ = Marco Reverenna
 __email__ = marcor@dtu.dk
 __status__ = Dev
@@ -217,6 +217,50 @@ def clean_dataframe(df):
         except Exception as e:
             logger.error(f"Generic cleaning failed: {e}. Returning dataframe as is.")
             return df
+
+
+# def add_quantification_data(df_main, run_name, fdr_threshold, inputs_folder="inputs"):
+#     """
+#     Filters df_main by FDR, then looks for a quantification file ({run_name}_quant_scores.csv).
+#     Merges the abundance data into the filtered dataframe.
+#     """
+#     if fdr_threshold is not None:
+#         if "psm_q_value" in df_main.columns:
+#             initial_len = len(df_main)
+#             df_main = df_main[df_main['psm_q_value'] <= fdr_threshold].copy()
+#             logger.info(f"FDR Filter applied inside merge function: {initial_len} -> {len(df_main)} rows (<= {fdr_threshold})")
+#         else:
+#             logger.warning("FDR threshold provided but 'psm_q_value' column missing. Skipping filter.")
+
+#     # 2. Gestione Path
+#     quant_file_name = f"{run_name}_quant_scores.csv"
+#     quant_file_path = Path(inputs_folder) / quant_file_name
+    
+#     if not quant_file_path.exists():
+#         logger.warning(f"Quantification file NOT FOUND: {quant_file_path}")
+#         logger.warning("Skipping abundance merging. 'peptide_abundance' will be missing.")
+#         return df_main
+
+#     logger.info(f"Found quantification file: {quant_file_path}")
+    
+#     try:
+#         df_quant = pd.read_csv(quant_file_path)
+        
+#         if "cleaned_preds" not in df_quant.columns or "total_abundance_norm" not in df_quant.columns:
+#             logger.warning(f"Quantification file format error. Missing columns in {quant_file_path}")
+#             return df_main
+
+#         df_quant_summed = df_quant.groupby('cleaned_preds', as_index=False)['total_abundance_norm'].sum()  
+#         df_quant_summed.rename(columns={'total_abundance_norm': 'peptide_abundance'}, inplace=True) 
+#         df_merged = pd.merge(df_main, df_quant_summed, on='cleaned_preds', how='left')
+#         df_merged['peptide_abundance'] = df_merged['peptide_abundance'].fillna(0)
+        
+#         logger.info(f"Quantification data merged successfully. Output rows: {len(df_merged)}")
+#         return df_merged
+
+#     except Exception as e:
+#         logger.error(f"Error merging quantification data: {e}")
+#         return df_main
 
 
 def filter_contaminants(seqs, run, contaminants_fasta):
