@@ -1,0 +1,134 @@
+{
+    "ma1": [
+        {
+            "chain": "heavy",
+            "id": "TPL0197_01_C08",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "SYGIS",
+                    "start": 31,
+                    "end": 35
+                },
+                "cdr2": {
+                    "sequence": "WISAYNGNTNYAQKLQG",
+                    "start": 50,
+                    "end": 66
+                },
+                "cdr3": {
+                    "sequence": "EEYCSSTSCYVGNYYGMDV",
+                    "start": 99,
+                    "end": 117
+                }
+            }
+        },
+        {
+            "chain": "light",
+            "id": "TPL0197_01_C08",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "QASQDISNYLN",
+                    "start": 24,
+                    "end": 34
+                },
+                "cdr2": {
+                    "sequence": "AASSLES",
+                    "start": 50,
+                    "end": 56
+                },
+                "cdr3": {
+                    "sequence": "QRYDSNFA",
+                    "start": 89,
+                    "end": 96
+                }
+            }
+        }
+    ],
+    "ma2": [
+        {
+            "chain": "heavy",
+            "id": "2554_01_D11",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "SYAIS",
+                    "start": 31,
+                    "end": 35
+                },
+                "cdr2": {
+                    "sequence": "GIIPIFGTANYAQKFQG",
+                    "start": 50,
+                    "end": 66
+                },
+                "cdr3": {
+                    "sequence": "DNLGYCSGGSCYSDYYYYYMDV",
+                    "start": 99,
+                    "end": 120
+                }
+            }
+        },
+        {
+            "chain": "light",
+            "id": "2554_01_D11",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "TRSSGSIGSDYVH",
+                    "start": 23,
+                    "end": 35
+                },
+                "cdr2": {
+                    "sequence": "EDNQRPS",
+                    "start": 51,
+                    "end": 57
+                },
+                "cdr3": {
+                    "sequence": "QSYDRSNHEVV",
+                    "start": 92,
+                    "end": 102
+                }
+            }
+        }
+    ],
+    "ma3": [
+        {
+            "chain": "heavy",
+            "id": "2555_01_A01",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "SYAIS",
+                    "start": 31,
+                    "end": 35
+                },
+                "cdr2": {
+                    "sequence": "GIIPIFGTANYAQKFQG",
+                    "start": 50,
+                    "end": 66
+                },
+                "cdr3": {
+                    "sequence": "DNLGYCSGGSCYSDYYYYYMDV",
+                    "start": 99,
+                    "end": 120
+                }
+            }
+        },
+        {
+            "chain": "light",
+            "id": "2555_01_A01",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "EGDNIGQQIVH",
+                    "start": 23,
+                    "end": 33
+                },
+                "cdr2": {
+                    "sequence": "SDSDRPS",
+                    "start": 49,
+                    "end": 55
+                },
+                "cdr3": {
+                    "sequence": "QVWDSGSDHVV",
+                    "start": 88,
+                    "end": 98
+                }
+            }
+        }
+    ]
+}
