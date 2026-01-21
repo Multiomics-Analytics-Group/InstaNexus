@@ -884,6 +884,8 @@ class Assembler:
         alpha_len: float = 1.0,
         alpha_cov: float = 1.0,
         alpha_min: float = 0.2,
+        reference_protein: str = None,
+        stats_output_folder: str = None,
     ):
         if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"]:
             raise ValueError(
@@ -902,12 +904,37 @@ class Assembler:
         self.alpha_len = alpha_len
         self.alpha_cov = alpha_cov
         self.alpha_min = alpha_min
+        self.reference_protein = reference_protein
+        self.stats_output_folder = stats_output_folder
+
+    def _compute_intermediate_stats(self, contigs, label):
+        """Internal wrapper for statistics."""
+        if self.reference_protein and self.stats_output_folder:
+            logger.info(f"Computing intermediate statistics for {label}...")
+            try:
+                mapped = viz.process_protein_contigs_scaffold(
+                    assembled_contigs=contigs,
+                    target_protein=self.reference_protein,
+                    max_mismatches=self.max_mismatches,
+                    min_identity=self.min_identity
+                )
+                df_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped)
+                if not df_mapped.empty:
+                    helpers.compute_assembly_statistics(
+                        df=df_mapped,
+                        sequence_type=label,
+                        output_folder=self.stats_output_folder,
+                        reference=self.reference_protein,
+                    )
+            except Exception as e:
+                logger.warning(f"Could not compute intermediate stats: {e}")
 
     def assemble_greedy(self, sequences):
         logger.info(f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})")
         contigs = assemble_contigs_greedy(sequences, self.min_overlap)
         contigs = list(set(contigs))
         contigs = sorted(contigs, key=len, reverse=True)
+        self._compute_intermediate_stats(contigs, label="contig")
 
         scaffolds = scaffold_iterative_greedy(contigs, self.min_overlap, self.size_threshold)
 
@@ -948,6 +975,8 @@ class Assembler:
         contigs = [r.seq for r in ranked]
 
         logger.info(f"DBG produced {len(contigs)} initial contigs.")
+
+        self._compute_intermediate_stats(contigs, label="contig")
 
         # 2. OVERLAP GRAPH REFINEMENT (The new logic)
         # Only runs if refine_rounds is > 0
@@ -1265,21 +1294,29 @@ def main(
     refine_rounds: int = 0,
 ):
     """Main function for standalone assembly."""
+    output_path = Path(output_scaffolds_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    stats_folder = output_path.parent / "statistics"
 
     protein_norm = None  # None means no reference mode
+
     if reference:
         logger.info("Reference mode enabled. Loading reference protein...")
         if not metadata_json_path:
-            raise ValueError("metadata_json_path is required when reference mode is enabled.")
-
+            raise ValueError("metadata_json_path is required.")
         try:
-            run_stem = Path(input_csv_path).stem  # extract run name from input file
-            run_name = run_stem.replace("_cleaned", "")
-
+            path_obj = Path(input_csv_path)
+            
+            if path_obj.name == "cleaned.csv":
+                run_name = path_obj.parent.parent.name
+            else:
+                run_name = path_obj.stem.replace("_cleaned", "")
+    
             meta = helpers.get_sample_metadata(run=run_name, chain=chain, json_path=metadata_json_path)
             protein = meta["protein"]
             protein_norm = preprocessing.normalize_sequence(protein)
             logger.info("Reference protein loaded and normalized successfully.")
+            stats_folder.mkdir(parents=True, exist_ok=True)
 
         except Exception as e:
             logger.error(f"Failed to get reference protein: {e}")
@@ -1306,6 +1343,8 @@ def main(
         min_identity=min_identity,
         max_mismatches=max_mismatches,
         refine_rounds=refine_rounds,
+        reference_protein=protein_norm,
+        stats_output_folder=str(stats_folder) if protein_norm else None
     )
 
     scaffolds = assembler.run(sequences=sequences, df_full=df)

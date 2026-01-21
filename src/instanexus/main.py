@@ -22,9 +22,10 @@ __status__ = Dev
 
 import argparse
 import logging
+import pandas as pd
 from pathlib import Path
 
-from . import alignment, assembly, clustering, consensus, preprocessing
+from . import alignment, assembly, clustering, consensus, preprocessing, helpers, visualization as viz
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -164,6 +165,9 @@ def run_pipeline(args):
     # Build the experiment folder name based on parameters
     folder_name_parts = [f"{args.assembly_mode}"]
 
+    if args.chain:
+        folder_name_parts.append(f"{args.chain}")
+
     if args.fdr is not None:
         folder_name_parts.append(f"fdr{args.fdr}")
     elif args.conf is not None:
@@ -172,11 +176,11 @@ def run_pipeline(args):
     if "dbg" in args.assembly_mode:
         folder_name_parts.append(f"ks{args.kmer_size}")
 
-    folder_name_parts.append(f"mo{args.min_overlap}")
-    folder_name_parts.append(f"ts{args.size_threshold}")
+    # folder_name_parts.append(f"mo{args.min_overlap}")
+    # folder_name_parts.append(f"ts{args.size_threshold}")
 
-    if args.reference:
-        folder_name_parts.extend([f"mi{args.min_identity}", f"mm{args.max_mismatches}"])
+    # if args.reference:
+    #     folder_name_parts.extend([f"mi{args.min_identity}", f"mm{args.max_mismatches}"])
 
     run_folder_name = "_".join(folder_name_parts)
     experiment_folder = base_output_folder / run_folder_name  # e.g., 'outputs/bsa/greedy_c0.9_mo4_ts10'
@@ -186,6 +190,8 @@ def run_pipeline(args):
     scaffolds_folder = experiment_folder / "scaffolds"
     scaffolds_fasta_path = scaffolds_folder / "scaffolds.fasta"
 
+    statistics_folder = scaffolds_folder / "statistics"
+
     clustering_folder = scaffolds_folder / "clustering"  # Clustering output
     cluster_fasta_folder = clustering_folder / "cluster_fasta"  # Input for alignment
 
@@ -193,7 +199,6 @@ def run_pipeline(args):
 
     consensus_folder = scaffolds_folder / "consensus"
 
-    # ID for logs (optional)
     run_id_str = f"[{run_name} @ {run_folder_name}]"
 
     logger.info(f"Starting pipeline for run: {run_id_str}")
@@ -214,6 +219,40 @@ def run_pipeline(args):
     except Exception as e:
         logger.error(f"Preprocessing failed: {e}")
         return
+    
+    if args.reference:
+        logger.info("--- [Statistics] Computing INPUT Statistics ---")
+        try:
+            meta = helpers.get_sample_metadata(run=run_name, chain=args.chain, json_path=args.metadata_json_path)
+            protein_seq = meta.get("protein", "")
+            
+            if protein_seq:
+                protein_norm = preprocessing.normalize_sequence(protein_seq)
+                statistics_folder.mkdir(parents=True, exist_ok=True)
+
+                if cleaned_csv_path.exists():
+                    df_input = pd.read_csv(cleaned_csv_path)
+                    if "cleaned_preds" in df_input.columns:
+                        input_seqs = df_input["cleaned_preds"].dropna().unique().tolist()
+                        
+                        mapped_contigs = viz.process_protein_contigs_scaffold(
+                            assembled_contigs=input_seqs,
+                            target_protein=protein_norm,
+                            max_mismatches=args.max_mismatches,
+                            min_identity=args.min_identity
+                        )
+                        df_contigs_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped_contigs)
+                        
+                        if not df_contigs_mapped.empty:
+                            helpers.compute_assembly_statistics(
+                                df=df_contigs_mapped,
+                                sequence_type="peptide", 
+                                output_folder=str(statistics_folder),
+                                reference=protein_norm,
+                            )
+                            logger.info(f"[Statistics] Saved: peptide_stats.json")
+        except Exception as e:
+            logger.error(f"[Statistics] Failed to compute peptide stats: {e}")
 
     try:
         logger.info("--- [Step 2/5] Running Assembly ---")
