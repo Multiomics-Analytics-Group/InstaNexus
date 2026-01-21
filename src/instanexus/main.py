@@ -41,7 +41,6 @@ def cli():
 
     parser = argparse.ArgumentParser(description="Run the full InstaNexus preprocessing and assembly pipeline.")
 
-    # --- INPUT ARGUMENTS ---
     parser.add_argument(
         "--input-csv",
         type=str,
@@ -138,6 +137,11 @@ def cli():
         default=0.8,
         help="Coverage parameter (-c) for mmseqs (default: 0.8).",
     )
+    parser.add_argument(
+        "--refine",
+        action="store_true",
+        help="Enables iterative refinement (Overlap Graph) to merge assembled contigs.",
+    )
 
     args = parser.parse_args()
 
@@ -149,6 +153,8 @@ def run_pipeline(args):
     """
     Orchestrates the full pipeline, calling each refactored module.
     """
+    MAX_REFINE_ROUNDS = 10
+    current_refine_rounds = MAX_REFINE_ROUNDS if args.refine else 0
 
     logger.info("--- InstaNexus Pipeline started ---")
 
@@ -223,6 +229,7 @@ def run_pipeline(args):
             chain=args.chain,
             min_identity=args.min_identity,
             max_mismatches=args.max_mismatches,
+            refine_rounds=current_refine_rounds,
         )
     except Exception as e:
         logger.error(f"Assembly failed: {e}")

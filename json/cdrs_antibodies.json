@@ -43,6 +43,50 @@
             }
         }
     ],
+    "ma1_all": [
+        {
+            "chain": "heavy",
+            "id": "TPL0197_01_C08",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "SYGIS",
+                    "start": 31,
+                    "end": 35
+                },
+                "cdr2": {
+                    "sequence": "WISAYNGNTNYAQKLQG",
+                    "start": 50,
+                    "end": 66
+                },
+                "cdr3": {
+                    "sequence": "EEYCSSTSCYVGNYYGMDV",
+                    "start": 99,
+                    "end": 117
+                }
+            }
+        },
+        {
+            "chain": "light",
+            "id": "TPL0197_01_C08",
+            "cdrs": {
+                "cdr1": {
+                    "sequence": "QASQDISNYLN",
+                    "start": 24,
+                    "end": 34
+                },
+                "cdr2": {
+                    "sequence": "AASSLES",
+                    "start": 50,
+                    "end": 56
+                },
+                "cdr3": {
+                    "sequence": "QRYDSNFA",
+                    "start": 89,
+                    "end": 96
+                }
+            }
+        }
+    ],
     "ma2": [
         {
             "chain": "heavy",
