@@ -293,7 +293,7 @@ def main():
             best = df_ranked.iloc[0]
             logger.info(f" BEST CONFIG | Score: {best['composite_score']:.3f}")
             logger.info(
-                f"   Cov: {best['coverage']*100:.1f}% | N50: {best['N50']} | Scaffolds: {best['scaffolds_count']}"
+                f"   Cov: {best['coverage'] * 100:.1f}% | N50: {best['N50']} | Scaffolds: {best['scaffolds_count']}"
             )
 
             best_params = {k: best[k] for k in combinations[0].keys() if k in best}

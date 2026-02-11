@@ -46,8 +46,11 @@ docs = [
   "sphinx-copybutton",
 ]
 
+# linting and type-checking
+lint = ["mypy", "ruff", "codespell"]
+
 # local development options
-dev = ["black[jupyter]", "ruff", "pytest", "isort", "jupytext"]
+dev = ["ruff", "pytest", "jupytext", "pre-commit"]
 
 [project.urls]
 Homepage = "https://github.com/Multiomics-Analytics-Group/InstaNexus"
@@ -74,9 +77,19 @@ line-length = 120
 extend-select = ["E", "W", "F", "B"]
 ignore = ["E501"]
 
-[tool.black]
-line-length = 120
-target-version = ['py311']
+[tool.codespell]
+skip = "fasta/*,*.fasta,outputs/*,inputs/*,uv.lock,*.svg"
+ignore-words-list = "caf,ser,hda,aas,te,fof,yot,dne,celle"
 
-[tool.isort]
-profile = "black"
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["instanexus"]
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "instanexus.__main__"
+ignore_errors = true

@@ -5,9 +5,10 @@
 <p align="center"><em>A de novo protein sequencing workflow</em></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/environment-conda-blue" alt="Conda">
+  <a href="https://github.com/pre-commit/pre-commit"><img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit" alt="pre-commit"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/python-3.9+-blue" alt="Python">
+  <img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python">
 </p>
 
 ---
@@ -75,69 +76,56 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 | `src/instanexus/consensus.py` | Module for consensus generation |
 | `src/instanexus/opt/` | Grid search and optimization workflows |
 | `tests/` | Pytest unit and integration tests |
-| `environment.linux.yml` | Conda environment for Linux |
-| `environment.osx-arm64.yaml` | Conda environment for macOS |
 | `pyproject.toml` | Package metadata, dependencies, and entry point |
+| `.pre-commit-config.yaml` | Pre-commit hook configuration |
 
 ---
 
 ## Installation
 
-InstaNexus requires Python 3.11+, Conda, **MMseqs2**, and **Clustal Omega**.
+InstaNexus requires Python 3.10+, [uv](https://docs.astral.sh/uv/), **MMseqs2**, and **Clustal Omega**.
 
-We strongly recommend installing these dependencies in a dedicated conda environment.
-
-- [Conda](https://docs.conda.io/en/latest/)
+- [uv](https://docs.astral.sh/uv/) — fast Python package manager
 - [MMseqs2](https://github.com/soedinglab/MMseqs2)
 - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
-
-> [!IMPORTANT]
-> MMseqs2 and Clustal Omega are available through Conda, but compatibility depends on your system architecture.
-> - 🔍 [Clustal Omega on Anaconda.org](https://anaconda.org/search?q=clustalo)   
 
 ---
 
 ## Getting Started
 
-Follow these steps to clone the repository and set up the environment using Conda:
-
 ### Option 1: Install from PyPI
-
-1.  Create and activate your conda environment.
-2.  Install the package directly from PyPI:
 
 ```bash
 pip install instanexus
 ```
 
 ### Option 2: Install from Source (for Developers)
-If you want to modify or contribute to the code, you can install it from the source repository:
 
 #### Clone the repository:
 
 ```bash
 git clone git@github.com:Multiomics-Analytics-Group/InstaNexus.git
-cd instanexus
+cd InstaNexus
 ```
 
-#### Create and activate the Conda environment:
+#### Install uv (if not already installed):
 ```bash
-# For Linux
-conda env create -f environment.linux.yml
-# For macOS (Apple Silicon)
-conda env create -f environment.osx-arm64.yaml
-
-conda activate instanexus
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-#### Install the package in editable mode:
+#### Sync the environment:
 ```bash
-pip install -e .
+uv sync --all-extras
 ```
 
-#### Verify the installation
+#### Set up pre-commit hooks:
 ```bash
-instanexus --help
+uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
+```
+
+#### Verify the installation:
+```bash
+uv run instanexus --help
 ```
 
 ---

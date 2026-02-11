@@ -219,13 +219,13 @@ def run_pipeline(args):
     except Exception as e:
         logger.error(f"Preprocessing failed: {e}")
         return
-    
+
     if args.reference:
         logger.info("--- [Statistics] Computing INPUT Statistics ---")
         try:
             meta = helpers.get_sample_metadata(run=run_name, chain=args.chain, json_path=args.metadata_json_path)
             protein_seq = meta.get("protein", "")
-            
+
             if protein_seq:
                 protein_norm = preprocessing.normalize_sequence(protein_seq)
                 statistics_folder.mkdir(parents=True, exist_ok=True)
@@ -234,23 +234,23 @@ def run_pipeline(args):
                     df_input = pd.read_csv(cleaned_csv_path)
                     if "cleaned_preds" in df_input.columns:
                         input_seqs = df_input["cleaned_preds"].dropna().unique().tolist()
-                        
+
                         mapped_contigs = viz.process_protein_contigs_scaffold(
                             assembled_contigs=input_seqs,
                             target_protein=protein_norm,
                             max_mismatches=args.max_mismatches,
-                            min_identity=args.min_identity
+                            min_identity=args.min_identity,
                         )
                         df_contigs_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped_contigs)
-                        
+
                         if not df_contigs_mapped.empty:
                             helpers.compute_assembly_statistics(
                                 df=df_contigs_mapped,
-                                sequence_type="peptide", 
+                                sequence_type="peptide",
                                 output_folder=str(statistics_folder),
                                 reference=protein_norm,
                             )
-                            logger.info(f"[Statistics] Saved: peptide_stats.json")
+                            logger.info("[Statistics] Saved: peptide_stats.json")
         except Exception as e:
             logger.error(f"[Statistics] Failed to compute peptide stats: {e}")
 
