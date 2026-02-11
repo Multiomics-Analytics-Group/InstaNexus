@@ -1,0 +1,7 @@
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+# Types: build, ci, docs, feat, fix, perf, refactor, style, test
+# Subject: imperative, present tense, no capital first letter, no dot.
