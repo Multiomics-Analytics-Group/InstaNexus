@@ -53,7 +53,7 @@ def get_sample_metadata(run, chain="", json_path=None):
     if not chain:
         available_chains = [e.get("chain", "unknown") for e in entries]
         raise ValueError(
-            f"Multiple entries found for run '{run}'. " f"Available chains: {available_chains}. Please specify a chain."
+            f"Multiple entries found for run '{run}'. Available chains: {available_chains}. Please specify a chain."
         )
 
     for entry in entries:
@@ -235,26 +235,26 @@ def clean_dataframe(df):
 #     # 2. Gestione Path
 #     quant_file_name = f"{run_name}_quant_scores.csv"
 #     quant_file_path = Path(inputs_folder) / quant_file_name
-    
+
 #     if not quant_file_path.exists():
 #         logger.warning(f"Quantification file NOT FOUND: {quant_file_path}")
 #         logger.warning("Skipping abundance merging. 'peptide_abundance' will be missing.")
 #         return df_main
 
 #     logger.info(f"Found quantification file: {quant_file_path}")
-    
+
 #     try:
 #         df_quant = pd.read_csv(quant_file_path)
-        
+
 #         if "cleaned_preds" not in df_quant.columns or "total_abundance_norm" not in df_quant.columns:
 #             logger.warning(f"Quantification file format error. Missing columns in {quant_file_path}")
 #             return df_main
 
-#         df_quant_summed = df_quant.groupby('cleaned_preds', as_index=False)['total_abundance_norm'].sum()  
-#         df_quant_summed.rename(columns={'total_abundance_norm': 'peptide_abundance'}, inplace=True) 
+#         df_quant_summed = df_quant.groupby('cleaned_preds', as_index=False)['total_abundance_norm'].sum()
+#         df_quant_summed.rename(columns={'total_abundance_norm': 'peptide_abundance'}, inplace=True)
 #         df_merged = pd.merge(df_main, df_quant_summed, on='cleaned_preds', how='left')
 #         df_merged['peptide_abundance'] = df_merged['peptide_abundance'].fillna(0)
-        
+
 #         logger.info(f"Quantification data merged successfully. Output rows: {len(df_merged)}")
 #         return df_merged
 
@@ -337,9 +337,9 @@ def main(
     output_csv_path: str,
 ):
     """Main function to run the preprocessing script."""
-    input_csv = Path(input_csv)
+    input_csv_path = Path(input_csv)
 
-    run = input_csv.stem  # stem gives the filename without suffix
+    run = input_csv_path.stem  # stem gives the filename without suffix
 
     # load metadata
     if chain:
@@ -353,7 +353,7 @@ def main(
         protein = meta["protein"]
         protein_norm = normalize_sequence(protein)
 
-    df = pd.read_csv(input_csv)
+    df = pd.read_csv(input_csv_path)
 
     if "experiment_name" in df.columns:
         df["protease"] = df["experiment_name"].apply(lambda name: extract_protease(name, proteases))
@@ -390,7 +390,7 @@ def main(
     if conf is None and fdr is None:
         logger.info("No filters (Conf/FDR) applied.")
 
-    input_dir = Path(input_csv).parent
+    input_dir = input_csv_path.parent
     df = add_quantification_data(df, run, inputs_folder=input_dir)
 
     df.reset_index(drop=True, inplace=True)

@@ -24,7 +24,8 @@ import os
 import json
 import Bio.SeqIO
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -43,37 +44,38 @@ def set_publication_style():
     Docstring for set_publication_style
     """
     sns.set_theme(style="ticks")
-    
-    plt.rcParams.update({
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Arial"],
-        "font.size": 14,
-        "axes.titlesize": 16,
-        "axes.labelsize": 15,
-        "xtick.labelsize": 12,
-        "ytick.labelsize": 12,
-        "axes.linewidth": 1.5,
-        "figure.dpi": 300,
-        "legend.fontsize": 13,
-        "legend.frameon": False,
-        "legend.columnspacing": 1.5,
-        "xtick.major.width": 1,
-        "ytick.major.width": 1,
-        "axes.linewidth": 1,
-    })
+
+    plt.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Arial"],
+            "font.size": 14,
+            "axes.titlesize": 16,
+            "axes.labelsize": 15,
+            "xtick.labelsize": 12,
+            "ytick.labelsize": 12,
+            "axes.linewidth": 1.5,
+            "figure.dpi": 300,
+            "legend.fontsize": 13,
+            "legend.frameon": False,
+            "legend.columnspacing": 1.5,
+            "xtick.major.width": 1,
+            "ytick.major.width": 1,
+        }
+    )
 
 
 def get_figsize(width_ratio=1, total_width_inch=14.0):
     """
     Calculates figsize based on a standard A4 width.
-    Ratios: 
+    Ratios:
     3: 3x1 (Full width, short height)
     2: 2x1 (Medium)
-    1: 1x1 (Square)  
+    1: 1x1 (Square)
 
     :param width_ratio: Description
     :param total_width_inch: Description
-    
+
     """
 
     ratios = {
@@ -81,19 +83,19 @@ def get_figsize(width_ratio=1, total_width_inch=14.0):
         2: (2, 1),
         3: (3, 1),
     }
-    
+
     w_mult, h_mult = ratios.get(width_ratio, (1, 1))
-    
+
     actual_width = (total_width_inch / 3) * w_mult
-    actual_height = (actual_width / w_mult)
-    
+    actual_height = actual_width / w_mult
+
     return (actual_width, actual_height)
 
 
 def plot_map_unmap_distribution(df, run, folder, conf_lim, ratio=1, unique_peps=True, title=False):
     """
     Docstring for plot_map_unmap_distribution
-    
+
     :param df: Description
     :param run: Description
     :param folder: Description
@@ -103,40 +105,43 @@ def plot_map_unmap_distribution(df, run, folder, conf_lim, ratio=1, unique_peps=
     :param title: Description
     """
     set_publication_style()
-    
+
     df_filtered = df[df["conf"] >= conf_lim].copy()
     if unique_peps:
         df_filtered = df_filtered.sort_values("conf", ascending=False).drop_duplicates(subset=["cleaned_preds"])
 
     _, ax = plt.subplots(figsize=get_figsize(width_ratio=ratio))
-    
+
     c_maps, c_not = "#4A90E2", "#FF9F1C"
     bins = np.arange(0, 1.01, 0.01)
 
     sns.histplot(
-        data=df_filtered, x="conf", hue="mapped",
+        data=df_filtered,
+        x="conf",
+        hue="mapped",
         palette={True: c_maps, False: c_not},
-        bins=bins, element="bars", fill=True, alpha=0.8,
-        multiple="layer", ax=ax, legend=False
+        bins=bins,
+        element="bars",
+        fill=True,
+        alpha=0.8,
+        multiple="layer",
+        ax=ax,
+        legend=False,
     )
 
     overlap_color = "#8c7c6d"
     handles = [
-        patches.Patch(color=c_maps, alpha=0.8, label='Maps in protein'),
-        patches.Patch(color=c_not, alpha=0.8, label='Not in protein'),
-        patches.Patch(color=overlap_color, alpha=0.8, label='Overlap')
+        patches.Patch(color=c_maps, alpha=0.8, label="Maps in protein"),
+        patches.Patch(color=c_not, alpha=0.8, label="Not in protein"),
+        patches.Patch(color=overlap_color, alpha=0.8, label="Overlap"),
     ]
-    ax.legend(
-        handles=handles, loc='lower center', 
-        bbox_to_anchor=(0.5, 1.02), ncol=3, borderaxespad=0.,
-        frameon=False
-    )
+    ax.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=3, borderaxespad=0.0, frameon=False)
 
     ax.set_xlim(0, 1)
     ax.set_yscale("log")
     ax.set_xlabel("Confidence (calibrated)")
     ax.set_ylabel("Unique peptides" if unique_peps else "PSMs counts")
-    
+
     if title:
         ax.set_title("Sequence distribution by confidence", pad=30)
 
@@ -145,43 +150,38 @@ def plot_map_unmap_distribution(df, run, folder, conf_lim, ratio=1, unique_peps=
     Path(folder).mkdir(parents=True, exist_ok=True)
     suffix = "unique" if unique_peps else "all"
     output_path = f"{folder}/fig2a_{run}_distribution_psm_{suffix}.svg"
-    
+
     plt.savefig(output_path, format="svg", bbox_inches="tight")
     plt.close()
 
     return output_path
 
 
-
 def plot_ratios_mapped_unmapped_threshold_set(run, df, reference, folder, ratio=1):
     """
     Plots confidence and FDR distributions using a square ratio (1:1).
-    
+
     :param run: Description
     :param df: Description
     :param reference: Description
     :param folder: Description
     :param ratio: Description
     """
-    
-    
+
     set_publication_style()
-    
+
     df_processed = df.copy()
     df_processed["mapped_status"] = df_processed["cleaned_preds"].apply(
         lambda x: "Maps to protein" if isinstance(x, str) and x in reference else "Not in protein"
     )
-    
-    palette = {
-        "Maps to protein": "#4A90E2",
-        "Not in protein": "#FF9F1C"
-    }
+
+    palette = {"Maps to protein": "#4A90E2", "Not in protein": "#FF9F1C"}
     hue_order = ["Not in protein", "Maps to protein"]
 
     df_conf = df_processed[df_processed["conf"] >= 0.90].copy()
-    
+
     _, ax1 = plt.subplots(figsize=get_figsize(width_ratio=ratio))
-    
+
     sns.histplot(
         data=df_conf,
         x="conf",
@@ -194,36 +194,36 @@ def plot_ratios_mapped_unmapped_threshold_set(run, df, reference, folder, ratio=
         edgecolor="none",
         alpha=0.8,
         ax=ax1,
-        legend=False
+        legend=False,
     )
 
     ax1.set_xlabel("Confidence (calibrated)")
     ax1.set_ylabel("PSMs counts")
     ax1.set_xlim(0.9, 1.0)
-    
+
     ax1.legend(
         handles=[patches.Patch(color=palette[label], label=label) for label in hue_order],
-        loc='lower center', 
-        bbox_to_anchor=(0.5, 1.02), 
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
         ncol=2,
-        frameon=False
+        frameon=False,
     )
-    
+
     sns.despine()
-    
+
     if folder:
         Path(folder).mkdir(parents=True, exist_ok=True)
         plt.savefig(f"{folder}/fig2b_{run}_confidence_barplot.svg", format="svg", bbox_inches="tight")
     plt.show()
 
     df_fdr = df_processed[df_processed["psm_q_value"] <= 0.20].copy()
-    
+
     fdr_bins = [0, 0.01, 0.05, 0.10, 0.20]
     fdr_labels = ["0-1%", "1-5%", "5-10%", "10-20%"]
     df_fdr["fdr_interval"] = pd.cut(df_fdr["psm_q_value"], bins=fdr_bins, labels=fdr_labels, include_lowest=True)
 
     _, ax2 = plt.subplots(figsize=get_figsize(width_ratio=ratio))
-    
+
     sns.histplot(
         data=df_fdr,
         x="fdr_interval",
@@ -236,18 +236,18 @@ def plot_ratios_mapped_unmapped_threshold_set(run, df, reference, folder, ratio=
         alpha=0.8,
         discrete=True,
         ax=ax2,
-        legend=False
+        legend=False,
     )
 
     ax2.set_xlabel("FDR interval (q-value)")
     ax2.set_ylabel("PSMs counts")
-    
+
     ax2.legend(
         handles=[patches.Patch(color=palette[label], label=label) for label in hue_order],
-        loc='lower center', 
-        bbox_to_anchor=(0.5, 1.02), 
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.02),
         ncol=2,
-        frameon=False
+        frameon=False,
     )
 
     sns.despine()
@@ -257,11 +257,10 @@ def plot_ratios_mapped_unmapped_threshold_set(run, df, reference, folder, ratio=
     plt.show()
 
 
-
 def plot_fdr_mapped_unmapped_ratio_across_all_range(run, df, reference, folder, ratio=1, unique_peps=False):
     """
     Plots the Mapped/Unmapped ratio across the full FDR range (0 to 1).
-    
+
     :param run: Description
     :param df: Description
     :param reference: Description
@@ -271,27 +270,28 @@ def plot_fdr_mapped_unmapped_ratio_across_all_range(run, df, reference, folder, 
     """
 
     set_publication_style()
-    
+
     df_copy = df.copy()
-    
+
     df_copy["mapped_status"] = df_copy["cleaned_preds"].apply(
         lambda x: "mapped" if isinstance(x, str) and x in reference else "unmapped"
     )
-    
+
     if unique_peps:
         df_copy = df_copy.sort_values("conf", ascending=False).drop_duplicates(subset=["cleaned_preds"])
-    
+
     thresholds = np.linspace(0.01, 1.0, 50)
     data_points = []
 
     for t in thresholds:
         subset = df_copy[df_copy["psm_q_value"] <= t]
-        if len(subset) == 0: continue
-            
+        if len(subset) == 0:
+            continue
+
         counts = subset["mapped_status"].value_counts()
         n_mapped = counts.get("mapped", 0)
         n_unmapped = counts.get("unmapped", 0)
-        
+
         ratio_val = n_mapped / n_unmapped if n_unmapped > 0 else np.nan
         data_points.append({"fdr": t, "ratio": ratio_val})
 
@@ -301,49 +301,49 @@ def plot_fdr_mapped_unmapped_ratio_across_all_range(run, df, reference, folder, 
 
     VIBRANT_BLUE = "#4A90E2"
     VIBRANT_ORANGE = "#FF9F1C"
-    
-    sns.lineplot(
-        data=plot_df, x='fdr', y='ratio', 
-        color=VIBRANT_BLUE, linewidth=1.5, ax=ax, zorder=2
-    )
+
+    sns.lineplot(data=plot_df, x="fdr", y="ratio", color=VIBRANT_BLUE, linewidth=1.5, ax=ax, zorder=2)
 
     target_thresholds = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
     highlights = []
     for target in target_thresholds:
-        idx = (np.abs(plot_df['fdr'] - target)).argmin()
+        idx = (np.abs(plot_df["fdr"] - target)).argmin()
         highlights.append(plot_df.iloc[idx])
-    
+
     highlights_df = pd.DataFrame(highlights)
-    
+
     ax.scatter(
-        highlights_df['fdr'], highlights_df['ratio'], 
-        s=70, facecolors='white', edgecolors=VIBRANT_ORANGE, 
-        linewidth=1.5, zorder=3
+        highlights_df["fdr"],
+        highlights_df["ratio"],
+        s=70,
+        facecolors="white",
+        edgecolors=VIBRANT_ORANGE,
+        linewidth=1.5,
+        zorder=3,
     )
 
     ax.set_xlabel("FDR Threshold (q-value)")
     ax.set_ylabel("Ratio (Mapped / Unmapped)")
-    
+
     ax.set_xlim(0, 1.0)
     ax.set_xticks(np.arange(0, 1.1, 0.1))
-    
-    ax.grid(True, which='major', axis='both', color='#f0f0f0', linestyle='-', linewidth=0.5)
-    
+
+    ax.grid(True, which="major", axis="both", color="#f0f0f0", linestyle="-", linewidth=0.5)
+
     sns.despine()
 
     if folder:
         Path(folder).mkdir(parents=True, exist_ok=True)
         out_name = f"fig2c_{run}_ratio_full_range.svg"
-        plt.savefig(os.path.join(folder, out_name), format="svg", bbox_inches='tight')
-    
-    plt.show()
+        plt.savefig(os.path.join(folder, out_name), format="svg", bbox_inches="tight")
 
+    plt.show()
 
 
 def plot_coverage_vs_fdr_curve(run, df, reference_protein, folder, min_identity=0.8, chain="Light", ratio=1):
     """
     Plot the PSM coverage across FDR thresholds
-    
+
     :param run: sample run name
     :param df: filtered data
     :param reference_protein: reference protein normalised
@@ -353,7 +353,7 @@ def plot_coverage_vs_fdr_curve(run, df, reference_protein, folder, min_identity=
     :param ratio: set pubblication style
     """
     set_publication_style()
-    
+
     df_copy = df.copy()
     fdr_thresholds = np.linspace(0, 1.0, 50)
     coverage_data = []
@@ -376,7 +376,7 @@ def plot_coverage_vs_fdr_curve(run, df, reference_protein, folder, min_identity=
             stats = helpers.compute_assembly_statistics(
                 df_mapped, f"temp_{chain}_{fdr:.2f}", temp_stats_folder, reference_protein
             )
-            
+
             cov_value = 0
             for k in ["Coverage", "Protein Coverage", "coverage", "protein_coverage"]:
                 if k in stats:
@@ -386,7 +386,7 @@ def plot_coverage_vs_fdr_curve(run, df, reference_protein, folder, min_identity=
                         cov_value *= 100
                     break
             coverage_data.append({"fdr": fdr, "coverage": cov_value})
-        except:
+        except Exception:
             coverage_data.append({"fdr": fdr, "coverage": 0.0})
 
     plot_df = pd.DataFrame(coverage_data).sort_values("fdr")
@@ -394,93 +394,90 @@ def plot_coverage_vs_fdr_curve(run, df, reference_protein, folder, min_identity=
     _, ax = plt.subplots(figsize=get_figsize(width_ratio=ratio))
     VIBRANT_BLUE = "#4A90E2"
 
-    ax.plot(
-        plot_df["fdr"], 
-        plot_df["coverage"], 
-        color=VIBRANT_BLUE, 
-        linestyle='-', 
-        linewidth=2, 
-        zorder=2
-    )
+    ax.plot(plot_df["fdr"], plot_df["coverage"], color=VIBRANT_BLUE, linestyle="-", linewidth=2, zorder=2)
 
     critical_fdr = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
     for val in critical_fdr:
-        idx = (plot_df['fdr'] - val).abs().idxmin()
+        idx = (plot_df["fdr"] - val).abs().idxmin()
         ax.scatter(
-            plot_df.loc[idx, 'fdr'], 
-            plot_df.loc[idx, 'coverage'], 
-            color='white', 
-            edgecolor=VIBRANT_BLUE, 
-            s=40, 
-            zorder=3, 
-            linewidth=1.2
+            plot_df.loc[idx, "fdr"],
+            plot_df.loc[idx, "coverage"],
+            color="white",
+            edgecolor=VIBRANT_BLUE,
+            s=40,
+            zorder=3,
+            linewidth=1.2,
         )
 
-    ax.set_xlabel("FDR Threshold (q-value)", fontweight='normal')
-    ax.set_ylabel("Protein Coverage (%)", fontweight='normal')
+    ax.set_xlabel("FDR Threshold (q-value)", fontweight="normal")
+    ax.set_ylabel("Protein Coverage (%)", fontweight="normal")
     ax.set_xlim(0, 1.0)
     ax.set_ylim(0, 105)
     ax.set_xticks(np.arange(0, 1.1, 0.2))
-    
-    ax.grid(True, which='major', axis='both', color='#f0f0f0', linestyle='-', linewidth=0.5)
+
+    ax.grid(True, which="major", axis="both", color="#f0f0f0", linestyle="-", linewidth=0.5)
     sns.despine()
 
     if folder:
         Path(folder).mkdir(parents=True, exist_ok=True)
-        plt.savefig(os.path.join(folder, f"fig2d_{run}_{chain}_coverage_solid.svg"), format="svg", bbox_inches='tight')
-    
+        plt.savefig(os.path.join(folder, f"fig2d_{run}_{chain}_coverage_solid.svg"), format="svg", bbox_inches="tight")
+
     plt.show()
 
 
-
-def plot_protease_confidence_ridges(df, colors_path='json/protease_colors.json', folder=None):
+def plot_protease_confidence_ridges(df, colors_path="json/protease_colors.json", folder=None):
     """
     Docstring for plot_protease_confidence_ridges
-    
+
     :param df: Description
     :param colors_path: Description
     :param folder: Description
     """
     set_publication_style()
-    
-    with open(colors_path, 'r') as f:
+
+    with open(colors_path, "r") as f:
         protease_colors = json.load(f)
 
-    proteases = sorted(df['protease'].unique())
+    proteases = sorted(df["protease"].unique())
     n_prot = len(proteases)
 
     total_w, total_h = get_figsize(width_ratio=1)
     row_height = total_h / n_prot
 
     sns.set(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
-    
+
     g = sns.FacetGrid(
-        df, row="protease", hue="protease", 
-        aspect=1, 
-        height=row_height, 
-        palette=protease_colors,
-        row_order=proteases
+        df, row="protease", hue="protease", aspect=1, height=row_height, palette=protease_colors, row_order=proteases
     )
 
-    g.map(sns.kdeplot, "conf", log_scale=True, bw_adjust=.7, fill=True, alpha=0.8, linewidth=0)
-    
-    g.map(plt.axhline, y=0, lw=1, clip_on=False, color='#333333', alpha=0.8)
+    g.map(sns.kdeplot, "conf", log_scale=True, bw_adjust=0.7, fill=True, alpha=0.8, linewidth=0)
+
+    g.map(plt.axhline, y=0, lw=1, clip_on=False, color="#333333", alpha=0.8)
 
     def label(x, color, label):
         ax = plt.gca()
-        ax.text(1.02, .1, label, fontweight="normal", color="black",
-                ha="left", va="center", transform=ax.transAxes, fontsize=12)
+        ax.text(
+            1.02,
+            0.1,
+            label,
+            fontweight="normal",
+            color="black",
+            ha="left",
+            va="center",
+            transform=ax.transAxes,
+            fontsize=12,
+        )
 
     g.map(label, "conf")
 
     g.set_titles("")
     g.set(yticks=[], ylabel="")
     g.despine(bottom=True, left=True)
-    
-    g.figure.subplots_adjust(hspace=0.4) 
+
+    g.figure.subplots_adjust(hspace=0.4)
     g.figure.set_size_inches(total_w, total_h)
 
-    tick_vals = [1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1] 
+    tick_vals = [1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1]
     tick_labels = ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
 
     for ax in g.axes.flat:
@@ -488,175 +485,178 @@ def plot_protease_confidence_ridges(df, colors_path='json/protease_colors.json',
         ax.set_xticks(tick_vals)
         ax.set_xticklabels(tick_labels)
         for label in ax.get_xticklabels():
-            label.set_fontweight('normal')
+            label.set_fontweight("normal")
 
-    plt.xlabel("Confidence", fontsize=15, fontweight='normal', labelpad=20)
-    
+    plt.xlabel("Confidence", fontsize=15, fontweight="normal", labelpad=20)
+
     if folder:
         Path(folder).mkdir(parents=True, exist_ok=True)
-        g.savefig(f"{folder}/supp_fig1a_ridges_proteases.svg", format="svg", bbox_inches='tight')
-    
-    plt.show()
+        g.savefig(f"{folder}/supp_fig1a_ridges_proteases.svg", format="svg", bbox_inches="tight")
 
+    plt.show()
 
 
 def plot_sunburst(df, output_folder, output_file, json_colors_path):
     """
     Docstring for plot_sunburst
-    
+
     :param df: Description
     :param output_folder: Description
     :param output_file: Description
     :param json_colors_path: Description
     """
     set_publication_style()
-    
+
     protease_colors_map = {}
     if os.path.exists(json_colors_path):
-        with open(json_colors_path, 'r') as f:
+        with open(json_colors_path, "r") as f:
             protease_colors_map = json.load(f)
-    
-    fallback_palette = ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5']
+
+    fallback_palette = ["#8dd3c7", "#ffffb3", "#bebada", "#fb8072", "#80b1d3", "#fdb462", "#b3de69", "#fccde5"]
 
     df = df.copy()
-    df['is_mapped'] = df['mapped'].astype(str).str.lower().isin(['true', 'mapped', 'yes', '1'])
+    df["is_mapped"] = df["mapped"].astype(str).str.lower().isin(["true", "mapped", "yes", "1"])
 
-    counts = df.groupby(['protease', 'is_mapped']).size().unstack(fill_value=0).reset_index()
+    counts = df.groupby(["protease", "is_mapped"]).size().unstack(fill_value=0).reset_index()
     counts.columns = [str(c) for c in counts.columns]
-    
-    if 'True' not in counts.columns: counts['True'] = 0
-    if 'False' not in counts.columns: counts['False'] = 0
-    counts.rename(columns={'True': 'mapped_count', 'False': 'unmapped_count'}, inplace=True)
-    
-    counts['total'] = counts['mapped_count'] + counts['unmapped_count']
-    total_dataset_psms = counts['total'].sum()
-    counts = counts.sort_values('total', ascending=False).reset_index(drop=True)
+
+    if "True" not in counts.columns:
+        counts["True"] = 0
+    if "False" not in counts.columns:
+        counts["False"] = 0
+    counts.rename(columns={"True": "mapped_count", "False": "unmapped_count"}, inplace=True)
+
+    counts["total"] = counts["mapped_count"] + counts["unmapped_count"]
+    total_dataset_psms = counts["total"].sum()
+    counts = counts.sort_values("total", ascending=False).reset_index(drop=True)
 
     colors_list = []
     for idx, row in counts.iterrows():
-        colors_list.append(protease_colors_map.get(row['protease'], fallback_palette[idx % len(fallback_palette)]))
-    counts['color'] = colors_list
+        colors_list.append(protease_colors_map.get(row["protease"], fallback_palette[idx % len(fallback_palette)]))
+    counts["color"] = colors_list
 
-    inner_sizes = counts['total'].values
-    inner_colors = counts['color'].values
-    inner_labels = [f"{row['total']/total_dataset_psms*100:.1f}%" for _, row in counts.iterrows()]
-    
+    inner_sizes = counts["total"].values
+    inner_colors = counts["color"].values
+    inner_labels = [f"{row['total'] / total_dataset_psms * 100:.1f}%" for _, row in counts.iterrows()]
+
     outer_sizes, outer_colors, outer_labels = [], [], []
     for _, row in counts.iterrows():
-        mapped, unmapped, total, c = row['mapped_count'], row['unmapped_count'], row['total'], row['color']
+        mapped, unmapped, total, c = row["mapped_count"], row["unmapped_count"], row["total"], row["color"]
         outer_sizes.extend([mapped, unmapped])
-        outer_colors.extend([c, (0,0,0,0)])
+        outer_colors.extend([c, (0, 0, 0, 0)])
         eff_pct = (mapped / total * 100) if total > 0 else 0
-        outer_labels.extend([f"{eff_pct:.0f}%" if (mapped/total_dataset_psms > 0.01) else "", ""])
+        outer_labels.extend([f"{eff_pct:.0f}%" if (mapped / total_dataset_psms > 0.01) else "", ""])
 
     _, ax = plt.subplots(figsize=get_figsize(width_ratio=2))
-    
+
     wedges_inner, texts_inner = ax.pie(
-        inner_sizes, radius=0.7, colors=inner_colors, labels=inner_labels,
-        labeldistance=0.5, startangle=90, counterclock=False, 
-        wedgeprops=dict(width=0.4, edgecolor='white', linewidth=1.5) 
+        inner_sizes,
+        radius=0.7,
+        colors=inner_colors,
+        labels=inner_labels,
+        labeldistance=0.5,
+        startangle=90,
+        counterclock=False,
+        wedgeprops=dict(width=0.4, edgecolor="white", linewidth=1.5),
     )
-    
+
     for t in texts_inner:
         t.set_size(9)
         t.set_fontweight("normal")
 
     wedges_outer, texts_outer = ax.pie(
-        outer_sizes, radius=1.0, colors=outer_colors, labels=outer_labels,
-        labeldistance=0.85, startangle=90, counterclock=False,
-        wedgeprops=dict(width=0.25, edgecolor='white', linewidth=1)
+        outer_sizes,
+        radius=1.0,
+        colors=outer_colors,
+        labels=outer_labels,
+        labeldistance=0.85,
+        startangle=90,
+        counterclock=False,
+        wedgeprops=dict(width=0.25, edgecolor="white", linewidth=1),
     )
 
     for i, wedge in enumerate(wedges_outer):
-        if i % 2 != 0: wedge.set_edgecolor('none')
+        if i % 2 != 0:
+            wedge.set_edgecolor("none")
 
     for t in texts_outer:
         t.set_size(9)
         t.set_fontweight("normal")
 
     ax.legend(
-        wedges_inner, counts['protease'],
+        wedges_inner,
+        counts["protease"],
         title="Proteases",
         loc="center left",
         bbox_to_anchor=(1, 0, 0.5, 1),
-        frameon=False
+        frameon=False,
     )
 
-    ax.add_artist(plt.Circle((0,0), 0.3, fc='white'))
-    
+    ax.add_artist(plt.Circle((0, 0), 0.3, fc="white"))
+
     if output_folder and output_file:
         Path(output_folder).mkdir(parents=True, exist_ok=True)
-        plt.savefig(os.path.join(output_folder, output_file), format='svg', bbox_inches='tight')
-    
+        plt.savefig(os.path.join(output_folder, output_file), format="svg", bbox_inches="tight")
+
     plt.show()
 
 
 def plot_barplot_composite_coverage_scores(
-    csv_path, 
-    category, 
-    config_json_path="json/colors.json", 
-    output_file_coverage=None, 
+    csv_path,
+    category,
+    config_json_path="json/colors.json",
+    output_file_coverage=None,
     output_file_composite=None,
-    width_ratio=3
+    width_ratio=3,
 ):
-
     set_publication_style()
     df = pd.read_csv(csv_path)
-    
+
     try:
-        with open(config_json_path, 'r') as f:
+        with open(config_json_path, "r") as f:
             color_data = json.load(f)
         palette = [
             color_data.get(category.lower(), {}).get("contig", "#a6cee3"),
-            color_data.get(category.lower(), {}).get("scaffold", "#1f78b4")
+            color_data.get(category.lower(), {}).get("scaffold", "#1f78b4"),
         ]
     except Exception:
         palette = ["#a6cee3", "#1f78b4"]
 
-    df['Type'] = df['assembly_method'].apply(lambda x: "Contigs" if "Contigs" in x else "Scaffolds")
-    
+    df["Type"] = df["assembly_method"].apply(lambda x: "Contigs" if "Contigs" in x else "Scaffolds")
+
     try:
-        df['sample_num'] = df['sample'].str.extract(r'(\d+)').astype(int)
-        df = df.sort_values('sample_num')
+        df["sample_num"] = df["sample"].str.extract(r"(\d+)").astype(int)
+        df = df.sort_values("sample_num")
     except Exception:
-        pass 
+        pass
 
     plots_to_generate = [
         ("coverage", "Coverage", output_file_coverage),
-        ("composite_score", "Composite score", output_file_composite)
+        ("composite_score", "Composite score", output_file_composite),
     ]
 
     for col_name, y_label, out_file in plots_to_generate:
         fig_width, fig_height = get_figsize(width_ratio=width_ratio)
         plt.figure(figsize=(fig_width, fig_height))
 
-        ax = sns.barplot(
-            data=df,
-            x='sample',
-            y=col_name,
-            hue='Type',
-            palette=palette,
-            edgecolor='black',
-            linewidth=0.8
-        )
+        ax = sns.barplot(data=df, x="sample", y=col_name, hue="Type", palette=palette, edgecolor="black", linewidth=0.8)
 
         ax.set_ylim(0, 1.05)
         ax.set_xlabel("Samples")
         ax.set_ylabel(y_label)
-        
-        plt.legend(title="", loc='upper right', frameon=False)
-        
+
+        plt.legend(title="", loc="upper right", frameon=False)
+
         sns.despine()
         plt.tight_layout()
 
         if out_file:
             os.makedirs(os.path.dirname(out_file), exist_ok=True)
-            plt.savefig(out_file, bbox_inches='tight')
+            plt.savefig(out_file, bbox_inches="tight")
             print(f"Saved {y_label} plot to {out_file}")
-        
+
         plt.show()
         plt.close()
-
 
 
 def fdr_ratio_mapped_unmapped(run, df, folder):
@@ -1194,7 +1194,6 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
     plt.tight_layout(pad=1)
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close()
-      
 
 
 def create_dataframe_from_mapped_sequences(data):
@@ -1221,26 +1220,23 @@ def mapping_sequences(
     show_figure=False,
 ):
     set_publication_style()
-    
+
     try:
-        with open(config_json_path, 'r') as f:
+        with open(config_json_path, "r") as f:
             color_data = json.load(f)
         main_color = color_data.get(category, {}).get("scaffold", "#1f78b4")
-    except Exception as e:
+    except Exception:
         main_color = "#1f78b4"
 
     fig_width, fig_height = get_figsize(width_ratio=3)
-    
+
     common_height = 0.3
     track_spacing = 0.45
     base_y_offset = 0.6
 
     _, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-    ax.add_patch(patches.Rectangle(
-        (0, 0), len(prot_seq), common_height,
-        linewidth=0, facecolor='#e6f0ef', zorder=0
-    ))
+    ax.add_patch(patches.Rectangle((0, 0), len(prot_seq), common_height, linewidth=0, facecolor="#e6f0ef", zorder=0))
 
     tracks = {}
     colors = {
@@ -1252,7 +1248,7 @@ def mapping_sequences(
 
     for seq, mapping in tqdm(mapped_sequences, desc=f"Mapping {category}"):
         start_index, end_index, mismatches, _ = mapping
-        
+
         placed = False
         for track_num in sorted(tracks.keys()):
             if not any(max(s, start_index) < min(e, end_index) for s, e in tracks[track_num]):
@@ -1260,21 +1256,29 @@ def mapping_sequences(
                 current_track_num = track_num
                 placed = True
                 break
-        
+
         if not placed:
             current_track_num = len(tracks)
             tracks[current_track_num] = [(start_index, end_index)]
 
         current_y = base_y_offset + (current_track_num * track_spacing)
-        
-        ax.add_patch(patches.Rectangle(
-            (start_index, current_y), end_index - start_index, common_height,
-            linewidth=0.8, edgecolor='white', facecolor=colors["match"], alpha=0.9
-        ))
+
+        ax.add_patch(
+            patches.Rectangle(
+                (start_index, current_y),
+                end_index - start_index,
+                common_height,
+                linewidth=0.8,
+                edgecolor="white",
+                facecolor=colors["match"],
+                alpha=0.9,
+            )
+        )
         # showing mismatches
         for mismatch in mismatches:
             abs_index = start_index + mismatch
-            if abs_index >= len(prot_seq) or mismatch >= len(seq): continue
+            if abs_index >= len(prot_seq) or mismatch >= len(seq):
+                continue
 
             ref_aa = prot_seq[abs_index]
             query_aa = seq[mismatch]
@@ -1286,27 +1290,25 @@ def mapping_sequences(
             else:
                 mut_color = colors["mismatch"]
 
-            ax.add_patch(patches.Rectangle(
-                (abs_index, current_y), 1, common_height,
-                linewidth=0, facecolor=mut_color, zorder=10 
-            ))
+            ax.add_patch(
+                patches.Rectangle((abs_index, current_y), 1, common_height, linewidth=0, facecolor=mut_color, zorder=10)
+            )
 
     ax.set_xlim(0, len(prot_seq))
     max_y = base_y_offset + (len(tracks) * track_spacing) + 0.2
     ax.set_ylim(-0.1, max_y)
-    
+
     ax.set_xlabel("Residue position")
     ax.set_yticks([])
     sns.despine(left=True)
 
     legend_labels = [
-        patches.Patch(color=colors["match"], label=f"Match"),
+        patches.Patch(color=colors["match"], label="Match"),
         patches.Patch(color=colors["mismatch"], label="Mismatch"),
         patches.Patch(color=colors["D_to_N"], label="D \u2192 N"),
         patches.Patch(color=colors["E_to_Q"], label="E \u2192 Q"),
     ]
-    ax.legend(handles=legend_labels, loc='upper center', 
-              bbox_to_anchor=(0.5, 1.25), ncol=4)
+    ax.legend(handles=legend_labels, loc="upper center", bbox_to_anchor=(0.5, 1.25), ncol=4)
 
     plt.tight_layout()
 
@@ -1314,9 +1316,9 @@ def mapping_sequences(
         try:
             os.makedirs(output_folder, exist_ok=True)
             save_path = os.path.join(output_folder, output_file)
-            plt.savefig(save_path, bbox_inches='tight')
+            plt.savefig(save_path, bbox_inches="tight")
         except PermissionError:
-            plt.savefig(output_file, bbox_inches='tight')
+            plt.savefig(output_file, bbox_inches="tight")
 
     if show_figure:
         plt.show()
@@ -1334,7 +1336,7 @@ def mapping_psms_protease_associated(
 ):
     """
     Docstring for mapping_psms_protease_associated_seaborn
-    
+
     :param mapped_sequences: Description
     :param prot_seq: Description
     :param labels: Description
@@ -1343,30 +1345,25 @@ def mapping_psms_protease_associated(
     :param json_colors_path: Description
     :param show_figure: Description
     """
-    
+
     set_publication_style()
-    
+
     protease_colors_map = {}
     if json_colors_path and os.path.exists(json_colors_path):
-        with open(json_colors_path, 'r') as f:
+        with open(json_colors_path, "r") as f:
             protease_colors_map = json.load(f)
-    
+
     unique_labels = sorted(list(set(labels)))
     fallback_palette = sns.color_palette("husl", len(unique_labels)).as_hex()
     label_color = {
-        lab: protease_colors_map.get(lab, fallback_palette[i % len(fallback_palette)]) 
+        lab: protease_colors_map.get(lab, fallback_palette[i % len(fallback_palette)])
         for i, lab in enumerate(unique_labels)
     }
-    
+
     fig_w, fig_h = get_figsize(width_ratio=3)
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
-    ax.add_patch(patches.Rectangle(
-        (0, 0), len(prot_seq), 0.3, 
-        linewidth=0, 
-        facecolor='#e6f0ef', 
-        zorder=0
-    ))
+    ax.add_patch(patches.Rectangle((0, 0), len(prot_seq), 0.3, linewidth=0, facecolor="#e6f0ef", zorder=0))
 
     tracks = {}
     bar_height = 0.6
@@ -1377,42 +1374,48 @@ def mapping_psms_protease_associated(
         start_index, end_index, _, _ = mapping
         lab = labels[idx]
         placed = False
-        
+
         for track_num in sorted(tracks.keys()):
             if not any(max(s, start_index) < min(e, end_index) for s, e in tracks[track_num]):
                 tracks[track_num].append((start_index, end_index))
                 current_y = base_y_offset + (track_num * track_spacing)
                 placed = True
                 break
-        
+
         if not placed:
             new_track_num = len(tracks)
             tracks[new_track_num] = [(start_index, end_index)]
             current_y = base_y_offset + (new_track_num * track_spacing)
 
-        ax.add_patch(patches.Rectangle(
-            (start_index, current_y), end_index - start_index, bar_height,
-            linewidth=0, facecolor=label_color[lab], alpha=0.85
-        ))
+        ax.add_patch(
+            patches.Rectangle(
+                (start_index, current_y),
+                end_index - start_index,
+                bar_height,
+                linewidth=0,
+                facecolor=label_color[lab],
+                alpha=0.85,
+            )
+        )
 
     max_track = len(tracks) if tracks else 0
     ax.set_xlim(0, len(prot_seq))
     ax.set_ylim(-0.2, base_y_offset + (max_track * track_spacing) + 0.5)
-    
+
     ax.set_xlabel("Residue position")
     ax.set_yticks([])
-    
+
     sns.despine(ax=ax, left=True, top=True, right=True, bottom=False)
 
     legend_patches = [patches.Patch(color=label_color[lab], label=lab) for lab in unique_labels]
-    
+
     ax.legend(
-        handles=legend_patches, 
+        handles=legend_patches,
         title="Proteases",
-        loc='upper center', 
+        loc="upper center",
         bbox_to_anchor=(0.5, 1.25),
         ncol=min(len(unique_labels), 5),
-        frameon=False
+        frameon=False,
     )
 
     plt.tight_layout()
@@ -1420,7 +1423,7 @@ def mapping_psms_protease_associated(
     if output_folder and output_file:
         os.makedirs(output_folder, exist_ok=True)
         save_path = os.path.join(output_folder, output_file)
-        plt.savefig(save_path, format='svg', bbox_inches='tight', transparent=True)
+        plt.savefig(save_path, format="svg", bbox_inches="tight", transparent=True)
 
     if show_figure:
         plt.show()

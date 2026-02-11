@@ -12,13 +12,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from Bio import SeqIO
 
 from instanexus import helpers, preprocessing, visualization
 from instanexus.assembly import Assembler
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent 
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
@@ -44,7 +43,7 @@ CATEGORY_COLOR_MAP = {
 }
 
 FDR_THRESHOLDS = [0.01, 0.05, 0.10, 0.20, 0.40, 1]
-#FDR_THRESHOLDS = [0.01, 0.05]
+# FDR_THRESHOLDS = [0.01, 0.05]
 
 DEFAULT_KMER = 7
 MIN_OVERLAP = 3
@@ -97,26 +96,26 @@ def load_custom_palette():
 
 def main():
     parser = argparse.ArgumentParser(description="Run FDR Analysis with specific Assembler.")
-    parser.add_argument("--mode", type=str, default="dbg_weighted", 
-                        help="Assembly mode (e.g., greedy, dbg_weighted, multimodal_dbg)")
-    parser.add_argument("--refine", action="store_true", 
-                        help="Enable iterative refinement (Overlap Graph)")
+    parser.add_argument(
+        "--mode", type=str, default="dbg_weighted", help="Assembly mode (e.g., greedy, dbg_weighted, multimodal_dbg)"
+    )
+    parser.add_argument("--refine", action="store_true", help="Enable iterative refinement (Overlap Graph)")
     parser.add_argument("--kmer", type=int, default=DEFAULT_KMER, help="K-mer size")
 
     args = parser.parse_args()
-    
+
     assembly_mode = args.mode
     kmer_size = args.kmer
     refine_rounds = MAX_REFINE_ROUNDS if args.refine else 0
-    
+
     folder_suffix = assembly_mode
     if args.refine:
         folder_suffix += "_refined"
-    
+
     current_output_folder = BASE_OUTPUT_FOLDER / folder_suffix
     os.makedirs(current_output_folder, exist_ok=True)
 
-    logger.info(f"--- Configuration ---")
+    logger.info("--- Configuration ---")
     logger.info(f"Mode:   {assembly_mode}")
     logger.info(f"Refine: {'Enabled' if args.refine else 'Disabled'}")
     logger.info(f"Output: {current_output_folder}")
@@ -132,7 +131,7 @@ def main():
         size_threshold=SIZE_THRESHOLD,
         min_identity=MIN_IDENTITY,
         max_mismatches=MAX_MISMATCHES,
-        refine_rounds=refine_rounds
+        refine_rounds=refine_rounds,
     )
 
     all_results = []
@@ -145,11 +144,14 @@ def main():
             run_name = csv_path.stem
             clean_run_name = run_name.replace("_cleaned", "")
 
-            if not csv_path.exists(): continue
+            if not csv_path.exists():
+                continue
 
             meta_entries = FULL_METADATA.get(clean_run_name, [])
-            if isinstance(meta_entries, dict): meta_entries = [meta_entries]
-            if not meta_entries: continue
+            if isinstance(meta_entries, dict):
+                meta_entries = [meta_entries]
+            if not meta_entries:
+                continue
 
             df_original = pd.read_csv(csv_path)
 
@@ -175,7 +177,8 @@ def main():
                 if "cleaned_preds" in df.columns:
                     df["cleaned_preds"] = df["cleaned_preds"].apply(preprocessing.remove_modifications)
                     df = df.dropna(subset=["cleaned_preds"])
-                else: continue
+                else:
+                    continue
 
                 df = add_quantification_data(df, clean_run_name, inputs_folder=INPUTS_FOLDER)
 
@@ -186,15 +189,31 @@ def main():
                 for fdr in FDR_THRESHOLDS:
                     if "psm_q_value" in df.columns:
                         subset = df[df["psm_q_value"] <= fdr].copy()
-                    else: subset = df.copy()
+                    else:
+                        subset = df.copy()
 
                     input_seqs = subset["cleaned_preds"].tolist()
 
-                    def add_result(cov=0, scaf_count=0):
-                        all_results.append({
-                            "Category": category, "Sample": sample_label, "Run": clean_run_name,
-                            "Chain": chain_type, "FDR": fdr, "Coverage": cov, "Scaffolds": scaf_count
-                        })
+                    def add_result(
+                        cov=0,
+                        scaf_count=0,
+                        _category=category,
+                        _sample_label=sample_label,
+                        _clean_run_name=clean_run_name,
+                        _chain_type=chain_type,
+                        _fdr=fdr,
+                    ):
+                        all_results.append(
+                            {
+                                "Category": _category,
+                                "Sample": _sample_label,
+                                "Run": _clean_run_name,
+                                "Chain": _chain_type,
+                                "FDR": _fdr,
+                                "Coverage": cov,
+                                "Scaffolds": scaf_count,
+                            }
+                        )
 
                     if not input_seqs:
                         add_result()
@@ -202,7 +221,8 @@ def main():
 
                     try:
                         scaffolds = assembler.run(sequences=input_seqs, df_full=subset)
-                    except Exception: scaffolds = []
+                    except Exception:
+                        scaffolds = []
 
                     if not scaffolds:
                         add_result()
@@ -216,7 +236,8 @@ def main():
                     if mapped:
                         df_map = visualization.create_dataframe_from_mapped_sequences(mapped)
                         stats = helpers.compute_assembly_statistics(
-                            df=df_map, sequence_type="temp",
+                            df=df_map,
+                            sequence_type="temp",
                             output_folder=str(current_output_folder),
                             reference=protein_norm,
                         )
@@ -234,18 +255,14 @@ def main():
     results_df["Chain"] = results_df["Chain"].replace("", "N/A").fillna("N/A")
 
     results_df = results_df.sort_values("FDR")
-    results_df["FDR_Label"] = results_df["FDR"].apply(lambda x: f"{int(x*100)}%")
+    results_df["FDR_Label"] = results_df["FDR"].apply(lambda x: f"{int(x * 100)}%")
 
-    marker_map = {
-        "heavy": "s",    
-        "light": "D",    
-        "N/A": "o"       
-    }
-    
+    marker_map = {"heavy": "s", "light": "D", "N/A": "o"}
+
     visualization.set_publication_style()
-    
+
     fig_w, fig_h = visualization.get_figsize(width_ratio=3)
-    panel_height = 3.5  
+    panel_height = 3.5
     calc_aspect = (fig_w / 2) / panel_height
 
     custom_palette = load_custom_palette()
@@ -259,7 +276,7 @@ def main():
         kind="line",
         hue="Category",
         style="Chain",
-        markers=marker_map, 
+        markers=marker_map,
         dashes=True,
         linewidth=2.5,
         palette=custom_palette,
@@ -274,12 +291,17 @@ def main():
     g.set_axis_labels("FDR threshold", "Sequence coverage (%)")
     g.set_titles("{col_name}")
     g.set(ylim=(0, 105))
-    
+
     for ax in g.axes.flat:
         ax.grid(True, which="major", color="#dddddd", linewidth=0.8, alpha=0.5)
 
     sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, 1.02), ncol=5, title=None, frameon=False,
+        g,
+        "lower center",
+        bbox_to_anchor=(0.5, 1.02),
+        ncol=5,
+        title=None,
+        frameon=False,
     )
 
     plt.savefig(current_output_folder / "aggregated_coverage_faceted.svg", bbox_inches="tight")

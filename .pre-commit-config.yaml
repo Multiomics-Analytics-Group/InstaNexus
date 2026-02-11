@@ -1,0 +1,33 @@
+repos:
+  # Ruff (lint + format)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # mypy — local hook so it uses uv run and reads pyproject.toml
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy --config-file pyproject.toml
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # codespell
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        exclude: '\.(svg|fasta)$|^fasta/|^outputs/|^inputs/|uv\.lock'
+        args: ['--ignore-words-list', 'caf,ser,hda,aas,te,celle,nome']
+
+  # Conventional Commits (commit-msg hook)
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.1.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]

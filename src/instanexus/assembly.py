@@ -66,19 +66,20 @@ def find_sliding_overlaps(sequences: list, min_overlap: int):
     overlaps = []
     for i, seq_a in enumerate(sequences):
         for j, seq_b in enumerate(sequences):
-            if i == j: continue
-                        
+            if i == j:
+                continue
+
             max_search = min(len(seq_a), len(seq_b))
             for length in range(max_search, min_overlap - 1, -1):
                 s1 = seq_a[-length:]
                 s2 = seq_b[:length]
-                
+
                 if s1 == s2:
                     overlaps.append((i, j, length))
                     break
-                
-                diff = sum(1 for a, b in zip(s1, s2) if a != b)
-                if diff == 1 and length >= 5: 
+
+                diff = sum(1 for a, b in zip(s1, s2, strict=False) if a != b)
+                if diff == 1 and length >= 5:
                     logger.info(f"POTENTIAL OVERLAP MISSED: {s1} vs {s2}")
     return overlaps
 
@@ -86,19 +87,19 @@ def find_sliding_overlaps(sequences: list, min_overlap: int):
 def merge_with_overhang(seq_a, seq_b, overlap_len):
     """
     Finds the exact alignment point and merges.
-    This handles: A='...KGR', B='SVKGR...' -> Result: 'SVKGR...' 
+    This handles: A='...KGR', B='SVKGR...' -> Result: 'SVKGR...'
     (if B contains A) or the correct concatenation.
     """
     if seq_a in seq_b:
         return seq_b
     if seq_b in seq_a:
         return seq_a
-        
+
     for i in range(len(seq_a) - overlap_len + 1):
         suffix = seq_a[i:]
         if seq_b.startswith(suffix):
             return seq_a[:i] + seq_b
-            
+
     return seq_a + seq_b[overlap_len:]
 
 
@@ -110,19 +111,19 @@ def assemble_contigs_greedy(peptides, min_overlap):
     while iteration < MAX_ITERATIONS:
         iteration += 1
         overlaps_list = find_sliding_overlaps(assembled_contigs, min_overlap)
-        
+
         if not overlaps_list:
             break
-            
+
         overlaps_list.sort(key=lambda x: x[2], reverse=True)
-        
+
         new_contigs = []
         used_indices = set()
 
         for i, j, overlap_len in overlaps_list:
             if i in used_indices or j in used_indices:
                 continue
-            
+
             new_contig = merge_with_overhang(assembled_contigs[i], assembled_contigs[j], overlap_len)
             new_contigs.append(new_contig)
             used_indices.update([i, j])
@@ -159,6 +160,7 @@ def merge_contigs_greedy(contigs):
 #         combined_contigs.append(combined)
 
 #     return combined_contigs + contigs
+
 
 def combine_seqs_into_scaffolds(contigs, min_overlap):
     """Combine contigs using the new sliding logic and overhang-aware merging."""
@@ -219,10 +221,10 @@ def get_weighted_kmers_from_df(
     3. Quality (MS2): Linear boost from 'ion_match_intensity'.
     4. Physics (iRT): Exponential penalty for 'iRT error'.
     """
-    kmer_weights = Counter()
+    kmer_weights: Counter[str] = Counter()
 
     col_tokens = "instanovo_token_log_probabilities"
-    col_ms1_abundance = "peptide_abundance" 
+    col_ms1_abundance = "peptide_abundance"
     col_ms2_intensity = "ion_match_intensity"
     col_irt = "iRT error"
 
@@ -303,7 +305,7 @@ def get_weighted_kmers_from_df(
             # Final Weight = Global (MS1/MS2/iRT) * Local (Token Prob)
             weight = global_multiplier * local_confidence
 
-            kmer_weights[kmer] += weight
+            kmer_weights[kmer] += weight  # type: ignore[assignment]
 
     return kmer_weights
 
@@ -376,7 +378,7 @@ def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
     # Usa find_sliding_overlaps che restituisce (i, j, overlap_len)
     overlaps = find_sliding_overlaps(contigs, min_overlap=min_overlap)
     combined_contigs = []
-    
+
     for i, j, overlap_len in tqdm(overlaps, desc="Merging overlaps", disable=disable_tqdm):
         a = contigs[i]
         b = contigs[j]
@@ -398,7 +400,9 @@ def merge_sequences_dbg(contigs, disable_tqdm=False):
     return list(merged)
 
 
-def scaffold_iterative_dbg(contigs, min_overlap, size_threshold, disable_tqdm=False):
+def scaffold_iterative_dbg(
+    contigs: List[str], min_overlap: int, size_threshold: int, disable_tqdm: bool = False
+) -> List[str]:
     """Iterative scaffolding using DBG approach."""
     prev = None
     current = contigs
@@ -413,7 +417,7 @@ def scaffold_iterative_dbg(contigs, min_overlap, size_threshold, disable_tqdm=Fa
 
 def get_kmers(sequences: Iterable[str], kmer_size: int) -> List[str]:
     """Generate all k-mers from a list of sequences (preserves duplicates)."""
-    kmers = []
+    kmers: List[str] = []
     for seq in sequences:
         if not seq:
             continue
@@ -429,7 +433,7 @@ def get_kmer_counts(kmers: Iterable[str]) -> Counter:
     return Counter(kmers)
 
 
-def build_dbg_from_kmers(kmers: Iterable[str], weights: Counter = None) -> nx.DiGraph:
+def build_dbg_from_kmers(kmers: Iterable[str], weights: Optional[Counter] = None) -> nx.DiGraph:
     """
     Build a De Bruijn graph.
     If 'weights' (Counter) is provided, uses those values for edges.
@@ -530,8 +534,8 @@ class ContigScore:
     seq: str
     length: int
     mean_weight: float
-    min_weight: int
-    max_weight: int
+    min_weight: float
+    max_weight: float
     score: float
 
 
@@ -553,7 +557,7 @@ def score_contig(
         min_w = min(cp.weights)
         max_w = max(cp.weights)
     else:
-        mean_w = min_w = max_w = 0.0
+        mean_w = min_w = max_w = 0.0  # type: ignore[assignment]
     L = len(cp.seq)
     composite = alpha_len * math.log(max(L, 2)) + alpha_cov * mean_w + alpha_min * min_w
     return ContigScore(
@@ -584,14 +588,15 @@ def build_overlap_graph(contigs: List[str], min_overlap: int) -> nx.DiGraph:
     n_contigs = len(contigs)
     for i in range(n_contigs):
         for j in range(n_contigs):
-            if i == j: continue
+            if i == j:
+                continue
 
             seq_a, seq_b = contigs[i], contigs[j]
             # Cerchiamo l'overlap usando la logica sliding che abbiamo validato
             # Questo permette a A='...KGR' di connettersi a B='SVKGR...'
             best_overlap = 0
             max_ov = min(len(seq_a), len(seq_b))
-            
+
             for k in range(max_ov, min_overlap - 1, -1):
                 # Caso 1: La fine di A è contenuta nell'inizio di B (Sliding)
                 if seq_b.startswith(seq_a[-k:]) or seq_a.endswith(seq_b[:k]):
@@ -663,10 +668,10 @@ def refine_using_overlap_graph(contigs: List[str], min_overlap: int) -> List[str
 
     G = build_overlap_graph(contigs, min_overlap)
     logger.info(f"DEBUG: Overlap Graph has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
-    
+
     if G.number_of_edges() == 0:
-        logger.warning("No overlaps found between scaffolds! Check sliding logic.")    
-    
+        logger.warning("No overlaps found between scaffolds! Check sliding logic.")
+
     refined = merge_paths_from_overlap_graph(G)
 
     refined = sorted(list(set(refined)), key=len, reverse=True)
@@ -804,7 +809,7 @@ def get_hybrid_kmer_weights(
     2. MS1 Abundance (Peptide Area)
     3. AI Confidence (Token Probabilities)
     """
-    kmer_weights = Counter()
+    kmer_weights: Counter[str] = Counter()
 
     col_tokens = "instanovo_token_log_probabilities"
     col_abundance = "peptide_abundance"
@@ -814,7 +819,6 @@ def get_hybrid_kmer_weights(
         if not isinstance(sequence, str) or len(sequence) < kmer_size:
             continue
 
-        
         raw_probs_str = row.get(col_tokens)
         log_probs = [0.0] * len(sequence)  # Default neutral
 
@@ -854,7 +858,7 @@ def get_hybrid_kmer_weights(
             # Frequency is handled implicitly because we += this value every time we see the k-mer
             weight = abundance_score * ai_score
 
-            kmer_weights[kmer] += weight
+            kmer_weights[kmer] += weight  # type: ignore[assignment]
 
     return kmer_weights
 
@@ -884,8 +888,8 @@ class Assembler:
         alpha_len: float = 1.0,
         alpha_cov: float = 1.0,
         alpha_min: float = 0.2,
-        reference_protein: str = None,
-        stats_output_folder: str = None,
+        reference_protein: Optional[str] = None,
+        stats_output_folder: Optional[str] = None,
     ):
         if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"]:
             raise ValueError(
@@ -916,7 +920,7 @@ class Assembler:
                     assembled_contigs=contigs,
                     target_protein=self.reference_protein,
                     max_mismatches=self.max_mismatches,
-                    min_identity=self.min_identity
+                    min_identity=self.min_identity,
                 )
                 df_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped)
                 if not df_mapped.empty:
@@ -940,7 +944,7 @@ class Assembler:
 
         return scaffolds
 
-    def assemble_dbg(self, sequences):
+    def assemble_dbg(self, sequences: List[str]) -> List[str]:
         logger.info(f"[Assembler] Running DBG assembly (kmer_size={self.kmer_size})")
 
         kmers = get_kmers(sequences, self.kmer_size)
@@ -985,9 +989,9 @@ class Assembler:
 
             # Use a slightly safer/larger overlap for this final merge to avoid false positives
             # e.g., max(min_overlap, 2) or just self.min_overlap
-            #safe_overlap = max(self.min_overlap, 2)
+            # safe_overlap = max(self.min_overlap, 2)
             safe_overlap = self.min_overlap
-            
+
             iteration = 0
 
             while iteration < self.refine_rounds:
@@ -1011,7 +1015,7 @@ class Assembler:
 
         return contigs
 
-    def assemble_dbgX(self, sequences):
+    def assemble_dbgX(self, sequences: List[str]) -> List[str]:
         logger.info(f"[Assembler] Running DBG-Extension (k={self.kmer_size})")
 
         kmers = get_kmers(sequences, self.kmer_size)
@@ -1306,12 +1310,12 @@ def main(
             raise ValueError("metadata_json_path is required.")
         try:
             path_obj = Path(input_csv_path)
-            
+
             if path_obj.name == "cleaned.csv":
                 run_name = path_obj.parent.parent.name
             else:
                 run_name = path_obj.stem.replace("_cleaned", "")
-    
+
             meta = helpers.get_sample_metadata(run=run_name, chain=chain, json_path=metadata_json_path)
             protein = meta["protein"]
             protein_norm = preprocessing.normalize_sequence(protein)
@@ -1344,7 +1348,7 @@ def main(
         max_mismatches=max_mismatches,
         refine_rounds=refine_rounds,
         reference_protein=protein_norm,
-        stats_output_folder=str(stats_folder) if protein_norm else None
+        stats_output_folder=str(stats_folder) if protein_norm else None,
     )
 
     scaffolds = assembler.run(sequences=sequences, df_full=df)
