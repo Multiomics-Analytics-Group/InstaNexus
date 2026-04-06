@@ -38,6 +38,7 @@ import itertools
 import json
 import logging
 import sys
+import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -82,32 +83,32 @@ def load_grid_params(json_path: Path, mode: str) -> List[Dict[str, Any]]:
 
 
 def compute_final_ranking(df_results: pd.DataFrame) -> pd.DataFrame:
-    """
-    Applies MinMax scaling to normalize metrics and computes the Composite Score.
+    """Applies MinMax scaling and computes the Composite Score for ranking.
 
-    WEIGHTING STRATEGY: 'Aggressive Consolidation Split'
-    ----------------------------------------------------
-    1. Coverage (0.35): DOMINANT.
-       Rationale: The primary goal is to recover the protein sequence. High N50
-       is useless if we only recover 10% of the target.
+    As defined in Reverenna et al., bioRxiv 2025.
 
-    2. N50 (0.25) & Scaffold Count (0.25): STRUCTURAL (50% Combined).
-       Rationale: We strongly penalize fragmentation. We want the algorithm to
-       prioritize merging contigs into longer, fewer scaffolds over keeping
-       them separate to maximize local identity.
+    Formula:
+        composite_score = 0.5 * coverage_norm
+                        + 0.3 * N50_norm
+                        + 0.1 * (1 - scaffolds_count_norm)   # inverted: fewer = better
+                        + 0.1 * max_length_norm
 
-    3. Mean Identity (0.15): QUALITY.
-       Rationale: Lower weight because input data is usually pre-filtered
-       (e.g., >80% identity during mapping). Differences between 95% and 99%
-       are less critical than differences in coverage or fragmentation.
+    Note: mean_identity is collected for reporting but is NOT part of this
+    formula. Do not add it here. For benchmarking against other tools use the
+    AQS formula defined in Reverenna et al., MCP 2026.
+
+    Args:
+        df_results: DataFrame with one row per parameter combination.
+
+    Returns:
+        df_results with a composite_score column, sorted descending.
     """
     if df_results.empty:
         return df_results
 
-    # Metrics to use for scoring
-    metrics = ["coverage", "N50", "mean_identity", "scaffolds_count"]
+    # Metrics used in the Composite Score (Reverenna et al., bioRxiv 2025)
+    metrics = ["coverage", "N50", "scaffolds_count", "max_length"]
 
-    # Check if metrics exist
     available_metrics = [m for m in metrics if m in df_results.columns]
     if len(available_metrics) != len(metrics):
         logger.warning("Some metrics missing from results. Skipping scoring.")
@@ -115,26 +116,22 @@ def compute_final_ranking(df_results: pd.DataFrame) -> pd.DataFrame:
 
     df_scoring = df_results[metrics].copy().fillna(0)
 
-    # Normalize (0 to 1)
+    # Normalize all metrics to [0, 1]
     scaler = MinMaxScaler()
     scaled_values = scaler.fit_transform(df_scoring)
     df_scaled = pd.DataFrame(scaled_values, columns=metrics, index=df_results.index)
 
-    # Invert 'scaffolds_count' because fewer is better.
-    # Formula: 1 - normalized_val (where 1 becomes best/fewest, 0 becomes worst/most)
+    # Invert scaffolds_count: fewer assembled sequences = better
     df_scaled["scaffolds_count"] = 1 - df_scaled["scaffolds_count"]
 
-    # Define Weights
-    weights = {"coverage": 0.35, "N50": 0.25, "scaffolds_count": 0.25, "mean_identity": 0.15}
+    # Composite Score weights (Reverenna et al., bioRxiv 2025)
+    weights = {"coverage": 0.5, "N50": 0.3, "scaffolds_count": 0.1, "max_length": 0.1}
 
-    # Calculate Weighted Sum
     composite_scores = df_scaled[list(weights.keys())].dot(pd.Series(weights))
 
-    # Merge back
     df_final = df_results.copy()
     df_final["composite_score"] = composite_scores
 
-    # Sort by score descending
     return df_final.sort_values(by="composite_score", ascending=False)
 
 
@@ -193,18 +190,20 @@ def evaluate_combination(
 
         df_mapped = visualization.create_dataframe_from_mapped_sequences(mapped_scaffolds)
 
-        stats = helpers.compute_assembly_statistics(
-            df=df_mapped,
-            sequence_type="scaffolds",
-            output_folder="",  # We don't save individual JSONs to save IO/Time
-            reference=protein_norm,
-        )
+        with tempfile.TemporaryDirectory() as _tmpdir:
+            stats = helpers.compute_assembly_statistics(
+                df=df_mapped,
+                sequence_type="scaffolds",
+                output_folder=_tmpdir,
+                reference=protein_norm,
+            )
 
         return {
             **params,
             "scaffolds_count": len(scaffolds),
             "coverage": stats.get("coverage", 0),
             "N50": stats.get("N50", 0),
+            "max_length": stats.get("max_length", 0),
             "mean_identity": stats.get("mean_identity", 0),
             "total_mismatches": stats.get("total_mismatches", 0),
             "duration_sec": round(duration, 2),
@@ -214,6 +213,49 @@ def evaluate_combination(
 
     except Exception as e:
         return {**params, "error": str(e)}
+
+
+def _build_instanexus_command(
+    input_csv: str,
+    mode: str,
+    best_params: Dict[str, Any],
+    best_score: float,
+) -> str:
+    """Builds a ready-to-run instanexus CLI command from the best grid parameters.
+
+    Args:
+        input_csv: Path to the input CSV used during the search.
+        mode: Assembly mode (e.g. 'dbg_weighted').
+        best_params: Dict of parameter name → best value from the grid.
+        best_score: Best composite score achieved.
+
+    Returns:
+        A formatted string with the suggested instanexus command.
+    """
+    # Map grid-search parameter names to instanexus CLI flags
+    cli_map: Dict[str, str] = {
+        "fdr": "--fdr",
+        "kmer_size": "--kmer-size",
+        "min_overlap": "--min-overlap",
+        "size_threshold": "--size-threshold",
+    }
+    int_params = {"kmer_size", "min_overlap", "size_threshold"}
+
+    parts = [
+        "instanexus",
+        f"--input-csv {input_csv}",
+        f"--assembly-mode {mode}",
+    ]
+
+    for key, flag in cli_map.items():
+        if key in best_params:
+            val = int(best_params[key]) if key in int_params else best_params[key]
+            parts.append(f"{flag} {val}")
+
+    if int(best_params.get("refine_rounds", 0)) > 0:
+        parts.append("--refine")
+
+    return f"Based on optimization (composite_score={best_score:.3f}), run:\n  {' '.join(parts)}"
 
 
 def main():
@@ -276,7 +318,7 @@ def main():
         df_valid = df_results[df_results["error"].isnull()].copy()
 
         if not df_valid.empty:
-            logger.info("Computing final ranking (Aggressive Consolidation Split)...")
+            logger.info("Computing final ranking (Composite Score, Reverenna et al., bioRxiv 2025)...")
             df_ranked = compute_final_ranking(df_valid)
 
             df_errors = df_results[df_results["error"].notnull()]
@@ -296,8 +338,11 @@ def main():
                 f"   Cov: {best['coverage'] * 100:.1f}% | N50: {best['N50']} | Scaffolds: {best['scaffolds_count']}"
             )
 
-            best_params = {k: best[k] for k in combinations[0].keys() if k in best}
+            best_params = {
+                k: best[k].item() if hasattr(best[k], "item") else best[k] for k in combinations[0].keys() if k in best
+            }
             logger.info(f"   Params: {json.dumps(best_params, indent=2)}")
+            logger.info(_build_instanexus_command(args.input_csv, args.mode, best_params, best["composite_score"]))
         else:
             logger.warning("All runs failed or produced no valid assemblies.")
             csv_out = output_dir / f"grid_{args.mode}_{run_name}_FAILED.csv"
