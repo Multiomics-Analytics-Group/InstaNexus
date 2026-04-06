@@ -1286,7 +1286,7 @@ class Assembler:
 def main(
     input_csv_path: str,
     output_scaffolds_path: str,
-    metadata_json_path: str,
+    metadata_json_path: Optional[str],
     assembly_mode: str,
     kmer_size: int,
     min_overlap: int,
