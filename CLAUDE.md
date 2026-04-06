@@ -15,7 +15,10 @@
 ## Common Commands
 - Test: `uv run pytest`
 - Lint: `uv run ruff check .`
+- Format: `uv run ruff format .`
 - Type Check: `uv run mypy --config-file pyproject.toml`
+
+> **Do NOT use Black.** The project formatter is Ruff exclusively.
 
 ## Architecture & Design Principles
 
