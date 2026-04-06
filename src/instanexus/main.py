@@ -57,14 +57,14 @@ def cli():
     parser.add_argument(
         "--metadata-json-path",
         type=str,
-        required=True,
-        help="Path to the sample_metadata.json file (required by preprocessing and assembly).",
+        default=None,
+        help="Path to the sample_metadata.json file (optional; enables protease splitting, chain filtering, and contaminant removal).",
     )
     parser.add_argument(
         "--contaminants-fasta-path",
         type=str,
-        required=True,
-        help="Path to the contaminants.fasta file (required by preprocessing).",
+        default=None,
+        help="Path to the contaminants.fasta file (optional; enables contaminant filtering when metadata is also provided).",
     )
     parser.add_argument(
         "--chain",

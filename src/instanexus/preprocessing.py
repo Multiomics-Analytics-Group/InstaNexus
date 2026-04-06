@@ -25,6 +25,7 @@ import json
 import logging
 import re
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -328,8 +329,8 @@ logger = logging.getLogger(__name__)
 
 def main(
     input_csv: str,
-    metadata_json: str,
-    contaminants_fasta: str,
+    metadata_json: Optional[str],
+    contaminants_fasta: Optional[str],
     chain: str,
     reference: bool,
     conf: float,
@@ -341,21 +342,20 @@ def main(
 
     run = input_csv_path.stem  # stem gives the filename without suffix
 
-    # load metadata
-    if chain:
-        meta = get_sample_metadata(run, chain=chain, json_path=metadata_json)
-    else:
-        meta = get_sample_metadata(run, json_path=metadata_json)
-
-    proteases = meta["proteases"]
-
-    if reference:
-        protein = meta["protein"]
-        protein_norm = normalize_sequence(protein)
+    protein_norm = None
+    if metadata_json is not None:
+        if chain:
+            meta = get_sample_metadata(run, chain=chain, json_path=metadata_json)
+        else:
+            meta = get_sample_metadata(run, json_path=metadata_json)
+        proteases = meta["proteases"]
+        if reference:
+            protein = meta["protein"]
+            protein_norm = normalize_sequence(protein)
 
     df = pd.read_csv(input_csv_path)
 
-    if "experiment_name" in df.columns:
+    if metadata_json is not None and "experiment_name" in df.columns:
         df["protease"] = df["experiment_name"].apply(lambda name: extract_protease(name, proteases))
 
     if "preds" in df.columns:
@@ -367,12 +367,12 @@ def main(
 
     df = clean_dataframe(df)
 
-    # filtering contaminants
-    cleaned_psms = df["cleaned_preds"].tolist()
-    filtered_psms = filter_contaminants(cleaned_psms, run, contaminants_fasta)
-    df = df[df["cleaned_preds"].isin(filtered_psms)]
+    if contaminants_fasta is not None:
+        cleaned_psms = df["cleaned_preds"].tolist()
+        filtered_psms = filter_contaminants(cleaned_psms, run, contaminants_fasta)
+        df = df[df["cleaned_preds"].isin(filtered_psms)]
 
-    if reference:
+    if reference and protein_norm is not None:
         df["mapped"] = df["cleaned_preds"].apply(lambda x: True if x in protein_norm else False)
 
     if conf is not None:
@@ -440,14 +440,14 @@ def cli():
     parser.add_argument(
         "--metadata-json",
         type=str,
-        required=True,
-        help="Path to the sample_metadata.json file.",
+        default=None,
+        help="Path to the sample_metadata.json file (optional).",
     )
     parser.add_argument(
         "--contaminants-fasta",
         type=str,
-        required=True,
-        help="Path to the contaminants.fasta file.",
+        default=None,
+        help="Path to the contaminants.fasta file (optional).",
     )
     parser.add_argument(
         "--output-csv-path",
