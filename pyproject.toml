@@ -31,6 +31,7 @@ dependencies = [
   "plotly>=6.2.0",
   "logomaker>=0.8",
   "networkx>=3.3",
+  "scikit-learn>=1.3",
   "upsetplot"
 ]
 
@@ -58,6 +59,7 @@ Issues = "https://github.com/Multiomics-Analytics-Group/InstaNexus/issues"
 
 [project.scripts]
 instanexus = "instanexus.main:cli"
+instanexus-optimize = "instanexus.optimize:cli"
 
 # --- TOOL CONFIGURATIONS ---
 
