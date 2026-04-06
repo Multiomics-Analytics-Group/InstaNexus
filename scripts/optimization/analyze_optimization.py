@@ -7,11 +7,13 @@ Output: Publication-ready tables and SVG Heatmaps.
 """
 
 import glob
+import json
 import os
 from pathlib import Path
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 # --- CONFIGURATION ---
@@ -201,6 +203,121 @@ def save_detailed_rankings(df_best, output_dir, mode_name):
         out_path = output_dir / mode_name / f"best_results_{cat}_{mode_name}.csv"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         final_df.to_csv(out_path, index=False)
+
+
+def combine_json_to_csv(
+    run: str,
+    type_method: str,
+    type_sequence: str,
+    base_path: Path = Path("outputs"),
+) -> None:
+    """Walks output directories, reads JSON stats files, and saves a combined CSV.
+
+    Args:
+        run: Run identifier (e.g. 'bsa', 'ma1').
+        type_method: Assembly method prefix used in the JSON filename (e.g. 'scaffolds').
+        type_sequence: Sequence type suffix used in the JSON filename (e.g. 'contigs').
+        base_path: Root outputs folder.
+    """
+    run_path = Path(base_path) / run
+    dataframes = []
+    files_added = 0
+
+    for root, dirs, _ in os.walk(run_path):
+        for dir_name in dirs:
+            json_path = Path(root) / dir_name / "statistics" / f"{type_method}_{type_sequence}_stats.json"
+            if json_path.exists():
+                try:
+                    with open(json_path) as f:
+                        data = json.load(f)
+                    df = pd.json_normalize(data)
+                    df["source"] = dir_name
+                    dataframes.append(df)
+                    files_added += 1
+                except Exception as e:
+                    print(f"Error loading {json_path}: {e}")
+
+    if not dataframes:
+        print(f"No stats files found under {run_path}.")
+        return
+
+    combined_df = pd.concat(dataframes, ignore_index=True)
+
+    if "ass_method" in combined_df.columns:
+        combined_df["ass_method"] = combined_df["ass_method"].fillna("greedy")
+
+    combined_df["sequence_type"] = type_sequence
+    combined_df["method_type"] = type_method
+    combined_df["run"] = run
+
+    output_file = run_path / f"{type_sequence}_combined_stats.csv"
+    combined_df.to_csv(output_file, index=False)
+    print(f"Combined stats saved to: {output_file}  ({files_added} files merged)")
+
+
+def plot_coverages_from_runs(
+    runs: list,
+    base_path: Path = Path("outputs"),
+    combination_folder: str = "",
+    contigs_json: str = "contigs_stats.json",
+    scaffolds_json: str = "scaffolds_stats.json",
+    save: bool = False,
+    output_dir: Path = Path("."),
+) -> None:
+    """Plots coverage barplots for contigs and scaffolds across multiple runs.
+
+    Args:
+        runs: List of run identifiers to include (e.g. ['bsa', 'nb1']).
+        base_path: Root outputs folder.
+        combination_folder: Sub-folder name for the specific parameter combination.
+        contigs_json: Filename of the contigs stats JSON (default: contigs_stats.json).
+        scaffolds_json: Filename of the scaffolds stats JSON (default: scaffolds_stats.json).
+        save: If True, saves plots as PNG files.
+        output_dir: Directory where PNG files are saved when save=True.
+    """
+    base_path = Path(base_path)
+    contig_coverages: list = []
+    scaffold_coverages: list = []
+    labels: list = []
+
+    for run in runs:
+        stats_path = base_path / run / combination_folder / "statistics"
+        if not stats_path.exists():
+            print(f"[{run}] Missing statistics folder: {stats_path}")
+            continue
+
+        for coverage_list, fname in [(contig_coverages, contigs_json), (scaffold_coverages, scaffolds_json)]:
+            json_path = stats_path / fname
+            if json_path.exists():
+                try:
+                    with open(json_path) as f:
+                        coverage_list.append(json.load(f).get("coverage", 0))
+                except Exception as e:
+                    print(f"[{run}] Error reading {fname}: {e}")
+                    coverage_list.append(0)
+            else:
+                print(f"[{run}] {fname} not found.")
+                coverage_list.append(0)
+
+        labels.append(run)
+
+    for coverages, color, title, suffix in [
+        (contig_coverages, "mediumslateblue", "Contigs Coverage per Run", "contigs"),
+        (scaffold_coverages, "seagreen", "Scaffolds Coverage per Run", "scaffolds"),
+    ]:
+        plt.figure(figsize=(10, 4))
+        plt.bar(labels, coverages, color=color)
+        plt.ylabel("Coverage")
+        plt.title(title)
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+
+        if save:
+            output_dir = Path(output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            plt.savefig(output_dir / f"{suffix}_coverage.png", dpi=300)
+
+        plt.show()
 
 
 def main():
