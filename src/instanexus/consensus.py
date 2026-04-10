@@ -141,10 +141,10 @@ def plot_logo2(pssm_df, output_file):
     plt.close(fig)
 
 
-def run_consensus_generation(align_folder: str, output_folder: str, run_id: str = ""):
+def run_consensus_generation(align_folder: str, output_folder: str, run_id: str = "", skip_plots: bool = False):
     """
     Core logic: Process all .afa files from alignment folder.
-    Generate consensus sequences, heatmaps, and logos.
+    Generate consensus sequences, and optionally heatmaps and logos.
     """
     align_path = Path(align_folder)
     output_path = Path(output_folder)
@@ -155,12 +155,13 @@ def run_consensus_generation(align_folder: str, output_folder: str, run_id: str 
         raise FileNotFoundError(f"Alignment folder not found: {align_path}")
 
     consensus_fasta_dir = output_path / "consensus_fasta"
-    heatmap_dir = output_path / "heatmap"
-    logo_dir = output_path / "logo"
-
     consensus_fasta_dir.mkdir(exist_ok=True)
-    heatmap_dir.mkdir(exist_ok=True)
-    logo_dir.mkdir(exist_ok=True)
+
+    if not skip_plots:
+        heatmap_dir = output_path / "heatmap"
+        logo_dir = output_path / "logo"
+        heatmap_dir.mkdir(exist_ok=True)
+        logo_dir.mkdir(exist_ok=True)
 
     alignment_files = [f for f in sorted(os.listdir(align_path)) if f.endswith(".afa")]
 
@@ -190,11 +191,12 @@ def run_consensus_generation(align_folder: str, output_folder: str, run_id: str 
         consensus_fasta_path = consensus_fasta_dir / f"{base_filename}_consensus.fasta"
         Bio.SeqIO.write([consensus_record], consensus_fasta_path, "fasta")
 
-        heatmap_path = heatmap_dir / f"{base_filename}_heatmap.svg"
-        plot_heatmap2(pssm_df, heatmap_path)
+        if not skip_plots:
+            heatmap_path = heatmap_dir / f"{base_filename}_heatmap.svg"
+            plot_heatmap2(pssm_df, heatmap_path)
 
-        logo_path = logo_dir / f"{base_filename}_logo.svg"
-        plot_logo2(pssm_df, logo_path)
+            logo_path = logo_dir / f"{base_filename}_logo.svg"
+            plot_logo2(pssm_df, logo_path)
 
     logger.info("All consensus tasks completed.")
     return consensus_fasta_dir
@@ -248,7 +250,7 @@ def generate_consensus_stats(consensus_base_folder):
     logger.info(f"Consensus statistics saved to: {stats_path}")
 
 
-def main(input_alignment_folder: str, output_consensus_folder: str, run_id: str = ""):
+def main(input_alignment_folder: str, output_consensus_folder: str, run_id: str = "", skip_plots: bool = False):
     """
     Main function to run the consensus generation script.
     """
@@ -259,13 +261,16 @@ def main(input_alignment_folder: str, output_consensus_folder: str, run_id: str 
 
     logger.info(f"Alignment Folder (Input): {align_folder_in}")
     logger.info(f"Consensus Folder (Output): {consensus_folder_out}")
+    if skip_plots:
+        logger.info("Skipping heatmap and logo generation (--skip-plots)")
 
-    # --- Step 1: Generate consensus, heatmaps, and logos ---
+    # --- Step 1: Generate consensus, and optionally heatmaps and logos ---
     logger.info("Running consensus generation from alignment files...")
     consensus_fasta_dir = run_consensus_generation(
         align_folder=str(align_folder_in),
         output_folder=str(consensus_folder_out),
         run_id=run_id,
+        skip_plots=skip_plots,
     )
 
     # --- Step 2: Generate statistics on the consensus files ---
@@ -300,6 +305,11 @@ def cli():
         default="",
         help="Optional ID to display in the progress bar.",
     )
+    parser.add_argument(
+        "--skip-plots",
+        action="store_true",
+        help="Skip generating heatmap and logo SVG plots.",
+    )
 
     args = parser.parse_args()
 
@@ -307,6 +317,7 @@ def cli():
         input_alignment_folder=args.input_folder,
         output_consensus_folder=args.output_folder,
         run_id=args.run_id,
+        skip_plots=args.skip_plots,
     )
 
 
