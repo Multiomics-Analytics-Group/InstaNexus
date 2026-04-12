@@ -260,8 +260,14 @@ def _build_instanexus_command(
 
 def main():
     parser = argparse.ArgumentParser(description="Hyperparameter Grid Search for InstaNexus.")
-    parser.add_argument("--input-csv", required=True, help="Path to input cleaned CSV.")
-    parser.add_argument("--metadata-json", required=True, help="Path to sample_metadata.json.")
+    parser.add_argument(
+        "--input-csv",
+        required=True,
+        help="Path to the raw input CSV file. Preprocessing runs automatically if no cleaned.csv exists in --output-dir.",
+    )
+    parser.add_argument(
+        "--metadata-json", required=True, help="Path to sample_metadata.json (required for reference protein lookup)."
+    )
     parser.add_argument("--grid-json", required=True, help="Path to gridsearch_params.json.")
     parser.add_argument("--mode", required=True, help="Assembly mode (greedy, dbg_weighted, etc.)")
     parser.add_argument("--output-dir", default="outputs/_grid_search", help="Directory to save results.")
@@ -271,16 +277,63 @@ def main():
     parser.add_argument("--eval-min-identity", type=float, default=0.8, help="Min identity for evaluation mapping.")
     parser.add_argument("--eval-max-mismatches", type=int, default=100, help="Max mismatches for evaluation mapping.")
 
+    # Preprocessing knobs — applied once when cleaned.csv does not yet exist
+    parser.add_argument(
+        "--conf",
+        type=float,
+        default=None,
+        help="Confidence threshold for the preprocessing step (optional). Applied once when building cleaned.csv.",
+    )
+    parser.add_argument(
+        "--fdr",
+        type=float,
+        default=None,
+        help=(
+            "FDR threshold for the preprocessing step (optional). Note: the grid search also sweeps 'fdr' as a "
+            "hyperparameter; setting this pre-filters the dataset before the sweep begins."
+        ),
+    )
+    parser.add_argument(
+        "--contaminants-fasta",
+        type=str,
+        default=None,
+        help="Path to contaminants.fasta for the preprocessing step (optional).",
+    )
+
     args = parser.parse_args()
 
     input_path = Path(args.input_csv)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Loading data from {input_path}...")
-    run_name = input_path.stem.replace("_cleaned", "")
+    # ------------------------------------------------------------------
+    # Preprocessing — runs once; skipped when cleaned.csv already exists
+    # ------------------------------------------------------------------
+    cleaned_csv_path = output_dir / "cleaned.csv"
 
-    df = pd.read_csv(input_path)
+    if not cleaned_csv_path.exists():
+        logger.info(f"No cleaned.csv found in {output_dir}. Running preprocessing on {input_path} ...")
+        try:
+            preprocessing.main(
+                input_csv=str(input_path),
+                metadata_json=args.metadata_json,
+                contaminants_fasta=args.contaminants_fasta,
+                chain=args.chain,
+                reference=False,
+                conf=args.conf,
+                fdr=args.fdr,
+                output_csv_path=str(cleaned_csv_path),
+            )
+        except Exception as e:
+            logger.error(f"Preprocessing failed: {e}")
+            return
+    else:
+        logger.info(f"Found existing cleaned.csv at {cleaned_csv_path}. Skipping preprocessing.")
+
+    run_name = input_path.stem
+
+    logger.info(f"Loading data from {cleaned_csv_path}...")
+    df = pd.read_csv(cleaned_csv_path)
 
     try:
         meta = helpers.get_sample_metadata(run_name, chain=args.chain, json_path=args.metadata_json)
