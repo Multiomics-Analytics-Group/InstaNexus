@@ -358,10 +358,10 @@ def main(
     if metadata_json is not None and "experiment_name" in df.columns:
         df["protease"] = df["experiment_name"].apply(lambda name: extract_protease(name, proteases))
 
-    if "preds" in df.columns:
-        df["cleaned_preds"] = df["preds"].apply(remove_modifications)
-    elif "prediction_untokenised" in df.columns:
-        df["cleaned_preds"] = df["prediction_untokenised"].apply(remove_modifications)
+    seq_candidates = ["preds", "prediction_untokenised", "prediction", "Peptide", "sequence"]
+    seq_col = next((c for c in seq_candidates if c in df.columns), None)
+    if seq_col is not None:
+        df["cleaned_preds"] = df[seq_col].apply(remove_modifications)
     else:
         raise ValueError("No suitable column found for peptide sequences.")
 

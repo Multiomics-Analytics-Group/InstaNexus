@@ -143,6 +143,19 @@ def cli():
         action="store_true",
         help="Enables iterative refinement (Overlap Graph) to merge assembled contigs.",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Explicit output directory. When set, overrides the auto-generated path (folder-outputs/run_name/params). "
+        "Useful for pipeline/batch execution where deterministic output paths are required.",
+    )
+    parser.add_argument(
+        "--skip-plots",
+        action="store_true",
+        help="Skip generating heatmap and logo plots in the consensus step. "
+        "Useful for headless/batch execution where visualizations are not needed.",
+    )
 
     args = parser.parse_args()
 
@@ -160,30 +173,28 @@ def run_pipeline(args):
     logger.info("--- InstaNexus Pipeline started ---")
 
     run_name = Path(args.input_csv).stem
-    base_output_folder = Path(args.folder_outputs) / run_name  # e.g., 'outputs/bsa'
 
-    # Build the experiment folder name based on parameters
-    folder_name_parts = [f"{args.assembly_mode}"]
+    # Determine experiment output folder
+    if args.output_dir:
+        # Explicit output directory — deterministic path for pipeline/batch use
+        experiment_folder = Path(args.output_dir)
+        run_folder_name = experiment_folder.name
+    else:
+        # Auto-generated path from input name + parameters (interactive use)
+        base_output_folder = Path(args.folder_outputs) / run_name
 
-    if args.chain:
-        folder_name_parts.append(f"{args.chain}")
+        folder_name_parts = [f"{args.assembly_mode}"]
+        if args.chain:
+            folder_name_parts.append(f"{args.chain}")
+        if args.fdr is not None:
+            folder_name_parts.append(f"fdr{args.fdr}")
+        elif args.conf is not None:
+            folder_name_parts.append(f"c{args.conf}")
+        if "dbg" in args.assembly_mode:
+            folder_name_parts.append(f"ks{args.kmer_size}")
 
-    if args.fdr is not None:
-        folder_name_parts.append(f"fdr{args.fdr}")
-    elif args.conf is not None:
-        folder_name_parts.append(f"c{args.conf}")
-
-    if "dbg" in args.assembly_mode:
-        folder_name_parts.append(f"ks{args.kmer_size}")
-
-    # folder_name_parts.append(f"mo{args.min_overlap}")
-    # folder_name_parts.append(f"ts{args.size_threshold}")
-
-    # if args.reference:
-    #     folder_name_parts.extend([f"mi{args.min_identity}", f"mm{args.max_mismatches}"])
-
-    run_folder_name = "_".join(folder_name_parts)
-    experiment_folder = base_output_folder / run_folder_name  # e.g., 'outputs/bsa/greedy_c0.9_mo4_ts10'
+        run_folder_name = "_".join(folder_name_parts)
+        experiment_folder = base_output_folder / run_folder_name
 
     cleaned_csv_path = experiment_folder / "cleaned.csv"
 
@@ -300,11 +311,37 @@ def run_pipeline(args):
         consensus.main(
             input_alignment_folder=str(alignment_folder),
             output_consensus_folder=str(consensus_folder),
-            run_id=run_id_str,  # Pass ID for logs
+            run_id=run_id_str,
+            skip_plots=getattr(args, "skip_plots", False),
         )
     except Exception as e:
         logger.error(f"Consensus failed: {e}")
         return
+
+    # Write a stable summary file at a predictable path for pipeline integration
+    summary_path = experiment_folder / "summary.tsv"
+    try:
+        summary_data = {
+            "run_name": run_name,
+            "assembly_mode": args.assembly_mode,
+            "output_dir": str(experiment_folder),
+            "scaffolds_fasta": str(scaffolds_fasta_path),
+            "consensus_dir": str(consensus_folder),
+        }
+        # Include consensus stats if they exist
+        consensus_stats_path = consensus_folder / "consensus_stats.json"
+        if consensus_stats_path.exists():
+            import json
+
+            with open(consensus_stats_path) as f:
+                stats = json.load(f)
+            summary_data.update(stats)
+
+        summary_df = pd.DataFrame([summary_data])
+        summary_df.to_csv(summary_path, sep="\t", index=False)
+        logger.info(f"Summary written to: {summary_path}")
+    except Exception as e:
+        logger.warning(f"Failed to write summary: {e}")
 
     logger.info("--- InstaNexus Pipeline finished successfully! ---")
     logger.info(f"Final results in: {experiment_folder}")
