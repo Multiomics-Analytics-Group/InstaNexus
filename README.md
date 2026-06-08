@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/source/assets/instanexus_logo 2.svg" width="600" alt="InstaNexus logo">
+  <img src="https://raw.githubusercontent.com/Multiomics-Analytics-Group/InstaNexus/main/docs/source/assets/instanexus_logo%202.svg" width="600" alt="InstaNexus logo">
 </p>
 
 <p align="center"><em>A de novo protein sequencing workflow</em></p>
@@ -52,7 +52,7 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 ## Workflow Diagram
 
 <p align="center">
-  <img src="images/instanexus_panel.png" width="900" alt="InstaNexus Workflow">
+  <img src="https://raw.githubusercontent.com/Multiomics-Analytics-Group/InstaNexus/main/docs/source/assets/instanexus_panel.png" width="900" alt="InstaNexus Workflow">
 </p>
 
 ---
