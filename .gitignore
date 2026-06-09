@@ -10,6 +10,7 @@ logs/
 work/
 examples/outputs/
 docs/build/
+demo/output_demo_nb1
 
 # ignore compiled python files
 *.pyc
