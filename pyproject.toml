@@ -24,6 +24,7 @@ classifiers = [
 
 dependencies = [
   "biopython>=1.85",
+  "numpy>=1.26",
   "pandas>=2.3.1",
   "tqdm>=4.67.1",
   "seaborn>=0.13.2",
@@ -51,7 +52,7 @@ docs = [
 lint = ["mypy", "ruff", "codespell"]
 
 # local development options
-dev = ["ruff", "pytest", "jupytext", "pre-commit"]
+dev = ["ruff", "pytest", "jupytext", "pre-commit", "jupyter", "nbconvert", "ipykernel"]
 
 [project.urls]
 Homepage = "https://github.com/Multiomics-Analytics-Group/InstaNexus"
