@@ -42,9 +42,11 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 - ⚗️ Handles multiple protease digestions (Trypsin, LysC, GluC, etc.)
 - 🧹 Integrated contaminant removal and confidence filtering
 - 🧩 Clustering, alignment, and consensus sequence reconstruction
+- 🎛️ Parallel hyperparameter optimization via the `instanexus-optimize` grid-search CLI
 - 🔗 Integrates with external tools:
   - [MMseqs2](https://github.com/soedinglab/MMseqs2) for fast clustering
   - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/) for high-quality alignment
+- 📦 Reproducible environments via [uv](https://docs.astral.sh/uv/) or conda
 - 📊 Output-ready for downstream analysis and visualization
 
 ---
@@ -74,18 +76,24 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 | `src/instanexus/clustering.py` | Module for clustering (mmseqs2) |
 | `src/instanexus/alignment.py` | Module for alignment (clustalo) |
 | `src/instanexus/consensus.py` | Module for consensus generation |
-| `src/instanexus/opt/` | Grid search and optimization workflows |
+| `src/instanexus/optimize.py` | Entry point for the `instanexus-optimize` CLI |
+| `scripts/optimization/` | Grid-search and optimization workflows |
 | `tests/` | Pytest unit and integration tests |
 | `pyproject.toml` | Package metadata, dependencies, and entry point |
+| `environment.linux.yml` | Conda environment specification (Linux) |
+| `environment.osx-arm64.yaml` | Conda environment specification (macOS, Apple Silicon) |
 | `.pre-commit-config.yaml` | Pre-commit hook configuration |
 
 ---
 
 ## Installation
 
-InstaNexus requires Python 3.10+, [uv](https://docs.astral.sh/uv/), **MMseqs2**, and **Clustal Omega**.
+InstaNexus requires Python 3.10+, **MMseqs2**, and **Clustal Omega**. You can manage the
+environment with either [uv](https://docs.astral.sh/uv/) or [conda](https://docs.conda.io/)
+(the conda environment files bundle MMseqs2 and Clustal Omega for you).
 
 - [uv](https://docs.astral.sh/uv/) — fast Python package manager
+- [conda](https://docs.conda.io/) / [mamba](https://mamba.readthedocs.io/) — cross-platform package and environment manager
 - [MMseqs2](https://github.com/soedinglab/MMseqs2)
 - [Clustal Omega](https://www.ebi.ac.uk/Tools/msa/clustalo/)
 
@@ -99,7 +107,7 @@ InstaNexus requires Python 3.10+, [uv](https://docs.astral.sh/uv/), **MMseqs2**,
 pip install instanexus
 ```
 
-### Option 2: Install from Source (for Developers)
+### Option 2: Install from Source with uv (for Developers)
 
 #### Clone the repository:
 
@@ -114,9 +122,15 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 #### Sync the environment:
+`uv sync --all-extras` creates a `.venv/` and installs the runtime plus all optional
+(`docs`, `lint`, `dev`) dependencies from `pyproject.toml`/`uv.lock`.
 ```bash
 uv sync --all-extras
 ```
+
+> **Note:** MMseqs2 and Clustal Omega are not Python packages. With uv, install them
+> separately (e.g. via your system package manager) or use the conda option below, which
+> bundles them.
 
 #### Set up pre-commit hooks:
 ```bash
@@ -126,6 +140,32 @@ uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
 #### Verify the installation:
 ```bash
 uv run instanexus --help
+```
+
+### Option 3: Install from Source with conda
+
+The conda environment files pin the Python dependencies **and** the external tools
+(MMseqs2, Clustal Omega), so they provide a fully self-contained setup.
+
+```bash
+git clone git@github.com:Multiomics-Analytics-Group/InstaNexus.git
+cd InstaNexus
+
+# Linux
+conda env create -f environment.linux.yml
+
+# macOS (Apple Silicon)
+conda env create -f environment.osx-arm64.yaml
+
+conda activate instanexus
+
+# install InstaNexus itself into the environment
+pip install -e .
+```
+
+Verify the installation:
+```bash
+instanexus --help
 ```
 
 ---
@@ -170,7 +210,43 @@ instanexus \
 
 The results for this specific run will be saved in a unique directory, such as:```outputs/bsa/dbg_c0.9_ks7_mo3_ts12/```
 
+---
 
+## Hyperparameter Optimization
+
+InstaNexus ships with a parallel grid-search optimizer, exposed as the `instanexus-optimize`
+command (entry point for `scripts/optimization/grid_search.py`). It sweeps assembly
+parameters across a grid, evaluates each combination against a reference, and ranks them
+with a normalized **Composite Score** combining Coverage, N50, scaffold count, and maximum
+contig length (see [`scripts/optimization/README.md`](scripts/optimization/README.md) for
+the exact formula).
+
+The search space for each assembly mode (`greedy`, `dbg_weighted`, `multimodal_dbg`) is
+defined in `json/gridsearch_params.json`.
+
+#### Run a grid search:
+```bash
+instanexus-optimize \
+    --input-csv inputs/ma1_cleaned.csv \
+    --metadata-json json/sample_metadata.json \
+    --grid-json json/gridsearch_params.json \
+    --mode dbg_weighted \
+    --chain light \
+    --workers 16
+```
+
+| Flag | Description |
+|---|---|
+| `--input-csv` | Raw or cleaned input CSV (preprocessing runs automatically if no cleaned file exists in `--output-dir`) |
+| `--metadata-json` | Path to `sample_metadata.json` (required for reference protein lookup) |
+| `--grid-json` | Path to `gridsearch_params.json` defining the parameter grid |
+| `--mode` | Assembly mode (`greedy`, `dbg_weighted`, `multimodal_dbg`) |
+| `--chain` | Chain type for antibodies (`light` / `heavy`); omit for single-chain samples |
+| `--workers` | Number of parallel worker processes (default: `8`) |
+| `--output-dir` | Directory to save results (default: `outputs/_grid_search`) |
+
+To sweep multiple samples and modes at once, see `scripts/optimization/run_all_gridsearch.sh`.
+Results can be summarized and visualized with `scripts/optimization/analyze_optimization.py`.
 
 ---
 
