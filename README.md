@@ -280,6 +280,20 @@ Special thanks to the users and developers of:
 
 ## Citation
 
-If you find this project useful in your research or work, please cite it as:
+If you find this project useful in your research or work, please cite our publication in Molecular & Cellular Proteomics: [Generalizable direct protein sequencing with InstaNexus](https://doi.org/10.1016/j.mcpro.2026.101547).
 
-Reverenna M., Nielsen M. W., Wolff D. S., Lytra E., Colaianni P. D., Ljungars A., Laustsen A. H., Schoof E. M., Van Goey J., Jenkins T. P., Lukassen M. V., Santos A., Kalogeropoulos K. (2025). *Generalizable direct protein sequencing with InstaNexus* [Preprint]. bioRxiv. https://doi.org/10.1101/2025.07.25.666861
+```bibtex
+@article{reverenna2026generalizable,
+  title={Generalizable direct protein sequencing with InstaNexus},
+  author={Reverenna, Marco and Nielsen, Maike Wennekers and Wolff, Darian Stephan and Daniel, Jemma and Lytra, Elpida and 
+          Thumtecho, Suthimon and Colaianni, Pasquale D and Ljungars, Anne and Laustsen, Andreas H and Schoof, Erwin M and
+          Van Goey, Jeroen and Jenkins, Timothy P and Lukassen, Marie V and Santos, Alberto and Kalogeropoulos, Konstantinos},
+  journal={Molecular \& Cellular Proteomics},
+  volume={25},
+  number={4},
+  pages={101547},
+  year={2026},
+  doi={10.1016/j.mcpro.2026.101547},
+  publisher={Elsevier}
+}
+```
