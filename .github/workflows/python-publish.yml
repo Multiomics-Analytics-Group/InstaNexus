@@ -4,7 +4,7 @@
 # 1. A maintainer creates a new GitHub Release (via the web UI or gh CLI).
 # 2. This workflow triggers on the "release published" event.
 # 3. It checks out the code, builds an sdist + wheel with `python -m build`,
-#    and uploads both to PyPI using the PYPI_API_TOKEN secret.
+#    and uploads both to PyPI via trusted publishing (OIDC, no API token).
 #
 # HOW TO TRIGGER
 # Option A — GitHub web UI:
@@ -21,9 +21,10 @@
 #   gh workflow run python-publish.yml
 #
 # PREREQUISITES
-# - A PyPI API token must be stored as a repository secret named PYPI_API_TOKEN.
-#   To create one: https://pypi.org/manage/account/token/
-#   Then add it at: Settings → Secrets and variables → Actions → New repository secret
+# - This repository and workflow file (python-publish.yml, no environment) must be
+#   registered as a trusted publisher for the instanexus project on PyPI:
+#   https://pypi.org/manage/project/instanexus/settings/publishing/
+#   The job needs `id-token: write` to request the OIDC token.
 #
 # - The version in pyproject.toml must match the release tag (without the "v" prefix).
 #   For example, tag "v0.2.1" should correspond to version = "0.2.1" in pyproject.toml.
@@ -38,6 +39,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -62,6 +64,3 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.12.4
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
