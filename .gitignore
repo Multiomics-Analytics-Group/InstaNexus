@@ -30,3 +30,6 @@ docs/source/tutorials/case_studies/summary_tables/*
 grid_master.log
 inputs.tar.gz
 scaffolds_stats.json
+# Claude Code local settings (CLAUDE.md stays tracked)
+CLAUDE.local.md
+.claude/
