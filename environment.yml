@@ -1,0 +1,14 @@
+# Conda environment for InstaNexus (Linux and macOS, x86_64 and arm64).
+# Provides Python and the external tools; Python dependencies come from pyproject.toml:
+#   conda env create -f environment.yml
+#   conda activate instanexus
+#   pip install -e .
+name: instanexus
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - mmseqs2
+  - clustalo
+  - pip
