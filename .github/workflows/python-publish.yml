@@ -3,22 +3,21 @@
 # HOW IT WORKS
 # 1. A maintainer creates a new GitHub Release (via the web UI or gh CLI).
 # 2. This workflow triggers on the "release published" event.
-# 3. It checks out the code, builds an sdist + wheel with `python -m build`,
+# 3. It checks that the release tag matches the version in pyproject.toml,
+#    builds an sdist + wheel with `python -m build`,
 #    and uploads both to PyPI via trusted publishing (OIDC, no API token).
 #
 # HOW TO TRIGGER
 # Option A — GitHub web UI:
 #   1. Go to https://github.com/Multiomics-Analytics-Group/InstaNexus/releases/new
-#   2. Create a new tag matching the version in pyproject.toml (e.g. v0.2.1)
+#   2. Create a new tag vX.Y.Z matching the version in pyproject.toml (e.g. v0.3.1)
 #   3. Fill in release title and notes, then click "Publish release"
 #   4. The workflow starts automatically.
 #
 # Option B — GitHub CLI:
-#   gh release create v0.2.1 --title "v0.2.1" --notes "Release notes here"
+#   gh release create v0.3.1 --title "InstaNexus v0.3.1" --notes "Release notes here"
 #
-# Option C — Manual dispatch (for testing):
-#   Go to Actions → "Publish to PyPI" → "Run workflow", or:
-#   gh workflow run python-publish.yml
+# To retry a failed publish, use "Re-run jobs" on the release's workflow run.
 #
 # PREREQUISITES
 # - This repository and workflow file (python-publish.yml, no environment) must be
@@ -27,7 +26,8 @@
 #   The job needs `id-token: write` to request the OIDC token.
 #
 # - The version in pyproject.toml must match the release tag (without the "v" prefix).
-#   For example, tag "v0.2.1" should correspond to version = "0.2.1" in pyproject.toml.
+#   For example, tag "v0.3.1" should correspond to version = "0.3.1" in pyproject.toml.
+#   The workflow fails before building if they differ.
 #   PyPI will reject uploads if the version already exists.
 
 name: Publish to PyPI
@@ -35,7 +35,6 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -53,6 +52,17 @@ jobs:
         with:
           python-version: "3.x"
           cache: "pip"
+
+      - name: Check release tag matches pyproject.toml version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [ "${TAG#v}" != "$VERSION" ]; then
+            echo "::error::Release tag '$TAG' does not match version '$VERSION' in pyproject.toml"
+            exit 1
+          fi
+          echo "Tag $TAG matches pyproject.toml version $VERSION"
 
       - name: Install build dependencies
         run: |
