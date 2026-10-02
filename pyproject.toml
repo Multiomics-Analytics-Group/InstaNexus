@@ -52,7 +52,7 @@ docs = [
 lint = ["mypy", "ruff", "codespell"]
 
 # local development options
-dev = ["ruff", "pytest", "jupytext", "pre-commit", "jupyter", "nbconvert", "ipykernel"]
+dev = ["ruff", "pytest", "jupytext", "pre-commit"]
 
 [project.urls]
 Homepage = "https://github.com/Multiomics-Analytics-Group/InstaNexus"
