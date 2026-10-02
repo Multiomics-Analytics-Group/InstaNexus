@@ -45,6 +45,21 @@ logger = logging.getLogger(__name__)
 MAX_REFINE_ROUNDS = 10
 
 
+def sort_by_length(seqs: Iterable[str]) -> List[str]:
+    """Sort sequences by descending length, breaking ties alphabetically.
+
+    Sorting by length alone leaves equal-length sequences in input order, which is
+    hash-seed dependent when the input is a set. The tie-break keeps output stable.
+
+    Args:
+        seqs: Sequences to sort.
+
+    Returns:
+        Sorted list of sequences.
+    """
+    return sorted(seqs, key=lambda s: (-len(s), s))
+
+
 # def find_peptide_overlaps(peptides, min_overlap):
 #     """Finds overlaps between peptide sequences using a greedy approach."""
 #     overlaps = defaultdict(list)
@@ -147,7 +162,7 @@ def merge_contigs_greedy(contigs):
             if c != c2 and c2 in c:  # if c is a substring of c2
                 merged.discard(c2)
 
-    return list(merged)
+    return sort_by_length(merged)
 
 
 # def combine_seqs_into_scaffolds(contigs, min_overlap):
@@ -183,9 +198,8 @@ def scaffold_iterative_greedy(contigs, min_overlap, size_threshold, disable_tqdm
 
     def clean(seqs):
         """Remove duplicates, filter by length, and sort by descending size."""
-        seqs = list(set(seqs))
-        seqs = [s for s in seqs if len(s) > size_threshold]
-        return sorted(seqs, key=len, reverse=True)
+        seqs = [s for s in set(seqs) if len(s) > size_threshold]
+        return sort_by_length(seqs)
 
     current = clean(contigs)
     MAX_ROUNDS = 10
@@ -327,11 +341,12 @@ def assemble_contigs_dbg(edges):
     a De Bruijn graph and assembles contigs by performing a depth-first traversal.
     """
     graph = defaultdict(list)
-    for start, end in edges:
+    # sorted: `edges` is a set, and traversal order decides which paths are reported
+    for start, end in sorted(edges):
         graph[start].append(end)
     # find starting nodes (nodes with no incoming edges)
     all_ends = set(e for _, e in edges)
-    start_nodes = set(graph.keys()) - all_ends
+    start_nodes = sorted(set(graph.keys()) - all_ends)
 
     def traverse_iterative(start_node):
         """Traverse a graph iteratively to find paths (contigs) starting from a given node."""
@@ -350,8 +365,7 @@ def assemble_contigs_dbg(edges):
     contigs = []
     for start_node in tqdm(start_nodes, desc="Traversing nodes"):
         traverse_iterative(start_node)
-    contigs = sorted(contigs, key=len, reverse=True)
-    contigs = list(set(contigs))
+    contigs = sort_by_length(set(contigs))
     return contigs
 
 
@@ -397,7 +411,7 @@ def merge_sequences_dbg(contigs, disable_tqdm=False):
         for c2 in contigs:
             if c != c2 and c2 in c:  # if c2 is a substring of c
                 merged.discard(c2)
-    return list(merged)
+    return sort_by_length(merged)
 
 
 def scaffold_iterative_dbg(
@@ -410,9 +424,8 @@ def scaffold_iterative_dbg(
         prev = current
         current = create_scaffolds(current, min_overlap, disable_tqdm)
         current = merge_sequences_dbg(current, disable_tqdm)
-        current = list(set(current))
-        current = [s for s in current if len(s) > size_threshold]
-    return sorted(current, key=len, reverse=True)
+        current = [s for s in sort_by_length(set(current)) if len(s) > size_threshold]
+    return current
 
 
 def get_kmers(sequences: Iterable[str], kmer_size: int) -> List[str]:
@@ -674,7 +687,7 @@ def refine_using_overlap_graph(contigs: List[str], min_overlap: int) -> List[str
 
     refined = merge_paths_from_overlap_graph(G)
 
-    refined = sorted(list(set(refined)), key=len, reverse=True)
+    refined = sort_by_length(set(refined))
     final_set = []
     for seq in refined:
         if not any(seq in other and seq != other for other in refined):
@@ -936,8 +949,7 @@ class Assembler:
     def assemble_greedy(self, sequences):
         logger.info(f"[Assembler] Running Greedy assembly (min_overlap={self.min_overlap})")
         contigs = assemble_contigs_greedy(sequences, self.min_overlap)
-        contigs = list(set(contigs))
-        contigs = sorted(contigs, key=len, reverse=True)
+        contigs = sort_by_length(set(contigs))
         self._compute_intermediate_stats(contigs, label="contig")
 
         scaffolds = scaffold_iterative_greedy(contigs, self.min_overlap, self.size_threshold)
@@ -950,9 +962,7 @@ class Assembler:
         kmers = get_kmers(sequences, self.kmer_size)
         edges = get_debruijn_edges_from_kmers(kmers)
         contigs = assemble_contigs_dbg(edges)
-        contigs = list(set(contigs))
-        contigs = sorted(contigs, key=len, reverse=True)
-        contigs = [seq for seq in contigs if len(seq) > self.size_threshold]
+        contigs = [seq for seq in sort_by_length(set(contigs)) if len(seq) > self.size_threshold]
 
         scaffolds = scaffold_iterative_dbg(contigs, self.min_overlap, self.size_threshold)
 
@@ -1027,7 +1037,7 @@ class Assembler:
 
         logger.info("Extending contigs using DBG paths (coverage-aware)...")
         extended_contigs = [extend_path_dbg(G, c, self.kmer_size, self.min_weight) for c in contigs]
-        extended_contigs = sorted(set(extended_contigs), key=len, reverse=True)
+        extended_contigs = sort_by_length(set(extended_contigs))
 
         return extended_contigs
 
@@ -1040,14 +1050,15 @@ class Assembler:
         contigs_greedy = assemble_contigs_greedy(sequences, self.min_overlap)
         contigs_greedy = merge_contigs_greedy(contigs_greedy)
 
-        combined = list(set(contigs_dbg_weighted + contigs_greedy))
+        # dict.fromkeys de-duplicates while keeping the DBG-ranked order: greedy merging below depends on input order
+        combined = list(dict.fromkeys(contigs_dbg_weighted + contigs_greedy))
         combined = [s for s in combined if len(s) > self.size_threshold]
         logger.info(f"Combined {len(combined)} contigs from DBG weighted + Greedy")
 
         fused = assemble_contigs_greedy(combined, self.min_overlap)
         fused = merge_contigs_greedy(fused)
         fused = [s for s in fused if len(s) > self.size_threshold]
-        fused = sorted(set(fused), key=len, reverse=True)
+        fused = sort_by_length(set(fused))
 
         return fused
 
