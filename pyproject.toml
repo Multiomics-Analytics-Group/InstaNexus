@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "instanexus"
-version = "0.2.1"
+version = "0.3.0"
 description = "End-to-end workflow for de novo protein sequencing based on InstaNovo"
 readme = "README.md"
 requires-python = ">=3.10"
