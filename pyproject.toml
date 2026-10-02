@@ -49,10 +49,10 @@ docs = [
 ]
 
 # linting and type-checking
-lint = ["mypy", "ruff", "codespell"]
+lint = ["mypy", "ruff==0.9.6", "codespell"]
 
 # local development options
-dev = ["ruff", "pytest", "jupytext", "pre-commit"]
+dev = ["ruff==0.9.6", "pytest", "jupytext", "pre-commit"]
 
 [project.urls]
 Homepage = "https://github.com/Multiomics-Analytics-Group/InstaNexus"
