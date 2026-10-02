@@ -80,8 +80,7 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 | `scripts/optimization/` | Grid-search and optimization workflows |
 | `tests/` | Pytest unit and integration tests |
 | `pyproject.toml` | Package metadata, dependencies, and entry point |
-| `environment.linux.yml` | Conda environment specification (Linux) |
-| `environment.osx-arm64.yaml` | Conda environment specification (macOS, Apple Silicon) |
+| `environment.yml` | Conda environment with Python, MMseqs2, and Clustal Omega (Linux and macOS) |
 | `.pre-commit-config.yaml` | Pre-commit hook configuration |
 
 ---
@@ -90,7 +89,7 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 InstaNexus requires Python 3.10+, **MMseqs2**, and **Clustal Omega**. You can manage the
 environment with either [uv](https://docs.astral.sh/uv/) or [conda](https://docs.conda.io/)
-(the conda environment files bundle MMseqs2 and Clustal Omega for you).
+(the conda environment bundles MMseqs2 and Clustal Omega for you).
 
 - [uv](https://docs.astral.sh/uv/) — fast Python package manager
 - [conda](https://docs.conda.io/) / [mamba](https://mamba.readthedocs.io/) — cross-platform package and environment manager
@@ -144,23 +143,24 @@ uv run instanexus --help
 
 ### Option 3: Install from Source with conda
 
-The conda environment files pin the Python dependencies **and** the external tools
-(MMseqs2, Clustal Omega), so they provide a fully self-contained setup.
+`environment.yml` provides Python and the external tools (MMseqs2 and Clustal Omega from
+[bioconda](https://bioconda.github.io/)); `pip` then installs InstaNexus and its Python
+dependencies from `pyproject.toml`. The same file works on Linux and macOS, on both x86_64
+and arm64 (Apple Silicon). bioconda has no Windows builds, so on Windows use
+[WSL](https://learn.microsoft.com/windows/wsl/).
 
 ```bash
 git clone git@github.com:Multiomics-Analytics-Group/InstaNexus.git
 cd InstaNexus
 
-# Linux
-conda env create -f environment.linux.yml
-
-# macOS (Apple Silicon)
-conda env create -f environment.osx-arm64.yaml
-
+conda env create -f environment.yml
 conda activate instanexus
 
-# install InstaNexus itself into the environment
+# install InstaNexus and its Python dependencies into the environment
 pip install -e .
+
+# optional: development, linting, and docs tools
+pip install -e ".[dev,lint,docs]"
 ```
 
 Verify the installation:
