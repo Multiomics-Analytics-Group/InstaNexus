@@ -79,6 +79,8 @@ def sort_by_length(seqs: Iterable[str]) -> List[str]:
 
 def find_sliding_overlaps(sequences: list, min_overlap: int):
     overlaps = []
+    # the mismatch count below only feeds a debug message and dominates the runtime, so skip it otherwise
+    report_near_misses = logger.isEnabledFor(logging.DEBUG)
     for i, seq_a in enumerate(sequences):
         for j, seq_b in enumerate(sequences):
             if i == j:
@@ -93,9 +95,10 @@ def find_sliding_overlaps(sequences: list, min_overlap: int):
                     overlaps.append((i, j, length))
                     break
 
-                diff = sum(1 for a, b in zip(s1, s2, strict=False) if a != b)
-                if diff == 1 and length >= 5:
-                    logger.info(f"POTENTIAL OVERLAP MISSED: {s1} vs {s2}")
+                if report_near_misses and length >= 5:
+                    diff = sum(1 for a, b in zip(s1, s2, strict=False) if a != b)
+                    if diff == 1:
+                        logger.debug(f"POTENTIAL OVERLAP MISSED: {s1} vs {s2}")
     return overlaps
 
 
