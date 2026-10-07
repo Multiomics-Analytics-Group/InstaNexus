@@ -102,6 +102,39 @@ def find_sliding_overlaps(sequences: list, min_overlap: int):
     return overlaps
 
 
+def find_sliding_overlaps_indexed(sequences: List[str], min_overlap: int) -> List[tuple]:
+    """Find the same overlaps as find_sliding_overlaps, using a prefix index instead of comparing all pairs.
+
+    For every ordered pair (i, j) with i != j, reports the longest length L >= min_overlap such that the
+    last L residues of sequences[i] equal the first L residues of sequences[j]. Runs in time proportional
+    to the total sequence length plus the number of overlaps, instead of all pairs times all lengths.
+
+    Args:
+        sequences: Sequences to compare.
+        min_overlap: Minimum overlap length.
+
+    Returns:
+        (i, j, overlap_length) tuples in the same order as find_sliding_overlaps.
+    """
+    if min_overlap < 1:
+        fallback: List[tuple] = find_sliding_overlaps(sequences, min_overlap)
+        return fallback
+
+    starts_with = defaultdict(list)  # prefix -> indices of the sequences starting with it
+    for j, seq_b in enumerate(sequences):
+        for length in range(min_overlap, len(seq_b) + 1):
+            starts_with[seq_b[:length]].append(j)
+
+    best: Dict[tuple, int] = {}
+    for i, seq_a in enumerate(sequences):
+        for length in range(len(seq_a), min_overlap - 1, -1):
+            for j in starts_with.get(seq_a[-length:], ()):
+                if j != i and (i, j) not in best:
+                    best[(i, j)] = length
+
+    return [(i, j, length) for (i, j), length in sorted(best.items())]
+
+
 def merge_with_overhang(seq_a, seq_b, overlap_len):
     """
     Finds the exact alignment point and merges.
@@ -392,8 +425,8 @@ def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
     """
     Improved version: uses sliding overlaps and overhang-aware merging.
     """
-    # Usa find_sliding_overlaps che restituisce (i, j, overlap_len)
-    overlaps = find_sliding_overlaps(contigs, min_overlap=min_overlap)
+    # (i, j, overlap_len) tuples, same result as find_sliding_overlaps
+    overlaps = find_sliding_overlaps_indexed(contigs, min_overlap=min_overlap)
     combined_contigs = []
 
     for i, j, overlap_len in tqdm(overlaps, desc="Merging overlaps", disable=disable_tqdm):
@@ -407,13 +440,29 @@ def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
 
 
 def merge_sequences_dbg(contigs, disable_tqdm=False):
-    """Merges overlapping sequences."""
-    contigs = sorted(contigs, key=len, reverse=True)
-    merged = set(contigs)
-    for c in tqdm(contigs, desc="Merging contigs", disable=disable_tqdm):
-        for c2 in contigs:
-            if c != c2 and c2 in c:  # if c2 is a substring of c
-                merged.discard(c2)
+    """Remove duplicates and sequences contained in another sequence.
+
+    Candidate containers are looked up through an index of the w-mers of every sequence, where w is the
+    shortest sequence length, instead of comparing all pairs: any sequence containing s also contains
+    the first w residues of s.
+    """
+    unique = set(contigs)
+    if "" in unique and len(unique) > 1:
+        unique.discard("")  # the empty string is contained in every other sequence
+    if len(unique) <= 1:
+        return sort_by_length(unique)
+
+    w = min(len(s) for s in unique)
+    containing = defaultdict(set)  # w-mer -> sequences that contain it
+    for t in unique:
+        for start in range(len(t) - w + 1):
+            containing[t[start : start + w]].add(t)
+
+    merged = [
+        s
+        for s in tqdm(unique, desc="Merging contigs", disable=disable_tqdm)
+        if not any(t != s and s in t for t in containing[s[:w]])
+    ]
     return sort_by_length(merged)
 
 
