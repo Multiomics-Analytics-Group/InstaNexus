@@ -25,6 +25,7 @@ import argparse
 import ast
 import logging
 import math
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import combinations
@@ -43,6 +44,30 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 MAX_REFINE_ROUNDS = 10
+
+# dbg scaffolding merges every overlapping pair and repeats until nothing changes; on noisy input the number
+# of overlaps grows combinatorially from round to round, so stop once a round exceeds this many overlaps
+MAX_SCAFFOLD_OVERLAPS = 100_000
+
+# exit code of the command-line interfaces when ScaffoldingLimitExceeded stops the assembly
+EXIT_SCAFFOLDING_LIMIT = 3
+
+
+class ScaffoldingLimitExceeded(RuntimeError):
+    """Raised when a dbg scaffolding round finds more overlaps than the configured limit."""
+
+    def __init__(self, n_overlaps: int, n_sequences: int, limit: int, min_overlap: int):
+        self.n_overlaps = n_overlaps
+        self.n_sequences = n_sequences
+        self.limit = limit
+        self.min_overlap = min_overlap
+        super().__init__(
+            f"dbg scaffolding stopped: {n_overlaps:,} overlaps between {n_sequences:,} sequences in one round, "
+            f"more than the limit of {limit:,} (--max-scaffold-overlaps). Short overlaps (--min-overlap "
+            f"{min_overlap}) between contigs from noisy, low-confidence peptides merge combinatorially. "
+            "Filter the input (--conf or --fdr), increase --min-overlap, use --assembly-mode dbg_weighted, "
+            "or raise --max-scaffold-overlaps (0 disables the limit)."
+        )
 
 
 def sort_by_length(seqs: Iterable[str]) -> List[str]:
@@ -421,12 +446,16 @@ def find_overlaps(contigs, min_overlap, disable_tqdm=False):
     return overlaps
 
 
-def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
+def create_scaffolds(contigs, min_overlap, disable_tqdm=False, max_overlaps=None):
     """
     Improved version: uses sliding overlaps and overhang-aware merging.
+
+    Raises ScaffoldingLimitExceeded if more than max_overlaps overlaps are found (None: no limit).
     """
     # (i, j, overlap_len) tuples, same result as find_sliding_overlaps
     overlaps = find_sliding_overlaps_indexed(contigs, min_overlap=min_overlap)
+    if max_overlaps is not None and len(overlaps) > max_overlaps:
+        raise ScaffoldingLimitExceeded(len(overlaps), len(contigs), max_overlaps, min_overlap)
     combined_contigs = []
 
     for i, j, overlap_len in tqdm(overlaps, desc="Merging overlaps", disable=disable_tqdm):
@@ -467,14 +496,21 @@ def merge_sequences_dbg(contigs, disable_tqdm=False):
 
 
 def scaffold_iterative_dbg(
-    contigs: List[str], min_overlap: int, size_threshold: int, disable_tqdm: bool = False
+    contigs: List[str],
+    min_overlap: int,
+    size_threshold: int,
+    disable_tqdm: bool = False,
+    max_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
 ) -> List[str]:
-    """Iterative scaffolding using DBG approach."""
+    """Iterative scaffolding using DBG approach.
+
+    Raises ScaffoldingLimitExceeded if a round finds more than max_overlaps overlaps (None: no limit).
+    """
     prev = None
     current = contigs
     while prev != current:
         prev = current
-        current = create_scaffolds(current, min_overlap, disable_tqdm)
+        current = create_scaffolds(current, min_overlap, disable_tqdm, max_overlaps=max_overlaps)
         current = merge_sequences_dbg(current, disable_tqdm)
         current = [s for s in sort_by_length(set(current)) if len(s) > size_threshold]
     return current
@@ -955,6 +991,7 @@ class Assembler:
         alpha_min: float = 0.2,
         reference_protein: Optional[str] = None,
         stats_output_folder: Optional[str] = None,
+        max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
     ):
         if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"]:
             raise ValueError(
@@ -975,6 +1012,7 @@ class Assembler:
         self.alpha_min = alpha_min
         self.reference_protein = reference_protein
         self.stats_output_folder = stats_output_folder
+        self.max_scaffold_overlaps = max_scaffold_overlaps
 
     def _compute_intermediate_stats(self, contigs, label):
         """Internal wrapper for statistics."""
@@ -1016,7 +1054,9 @@ class Assembler:
         contigs = assemble_contigs_dbg(edges)
         contigs = [seq for seq in sort_by_length(set(contigs)) if len(seq) > self.size_threshold]
 
-        scaffolds = scaffold_iterative_dbg(contigs, self.min_overlap, self.size_threshold)
+        scaffolds = scaffold_iterative_dbg(
+            contigs, self.min_overlap, self.size_threshold, max_overlaps=self.max_scaffold_overlaps
+        )
 
         return scaffolds
 
@@ -1359,6 +1399,7 @@ def main(
     min_identity: float,
     max_mismatches: int,
     refine_rounds: int = 0,
+    max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
 ):
     """Main function for standalone assembly."""
     output_path = Path(output_scaffolds_path)
@@ -1410,6 +1451,7 @@ def main(
         min_identity=min_identity,
         max_mismatches=max_mismatches,
         refine_rounds=refine_rounds,
+        max_scaffold_overlaps=max_scaffold_overlaps,
         reference_protein=protein_norm,
         stats_output_folder=str(stats_folder) if protein_norm else None,
     )
@@ -1452,6 +1494,38 @@ def main(
             reference=protein_norm,
         )
         logger.info(f"Reference mode: Statistics saved to {stats_path}")
+
+
+def _scaffold_overlap_limit(value: str) -> Optional[int]:
+    """Parse --max-scaffold-overlaps: a non-negative integer, where 0 disables the limit.
+
+    Args:
+        value: Command-line value.
+
+    Returns:
+        The limit, or None for no limit.
+    """
+    limit = int(value)
+    if limit < 0:
+        raise argparse.ArgumentTypeError("must be a non-negative integer (0 disables the limit)")
+
+    return limit or None
+
+
+def add_max_scaffold_overlaps_argument(parser: argparse.ArgumentParser) -> None:
+    """Add --max-scaffold-overlaps to a command-line parser.
+
+    Args:
+        parser: Parser to extend.
+    """
+    parser.add_argument(
+        "--max-scaffold-overlaps",
+        type=_scaffold_overlap_limit,
+        default=MAX_SCAFFOLD_OVERLAPS,
+        help=f"dbg mode only: stop with exit code {EXIT_SCAFFOLDING_LIMIT} if a scaffolding round finds more than "
+        f"this many overlaps between contigs, which happens on noisy input (default: {MAX_SCAFFOLD_OVERLAPS}; "
+        "0 disables the limit).",
+    )
 
 
 def cli():
@@ -1529,6 +1603,7 @@ def cli():
         default=10,
         help="Maximum mismatches for reference mapping.",
     )
+    add_max_scaffold_overlaps_argument(parser)
 
     args = parser.parse_args()
 
@@ -1547,7 +1622,11 @@ def cli():
     if "refine" in args_dict:
         del args_dict["refine"]
 
-    main(refine_rounds=refine_rounds_val, **args_dict)
+    try:
+        main(refine_rounds=refine_rounds_val, **args_dict)
+    except ScaffoldingLimitExceeded as e:
+        logger.error(str(e))
+        sys.exit(EXIT_SCAFFOLDING_LIMIT)
 
 
 if __name__ == "__main__":
