@@ -94,9 +94,14 @@ def extract_protease(experiment_name, proteases):
     return None
 
 
-def remove_modifications(psm_column):
-    """Remove any content within parentheses, including the parentheses, from a given
-    string. Remove UNIMOD modifications and normalize I to L.
+def strip_modifications(psm_column):
+    """The bare residue letters of a prediction, with I and L left as they were read.
+
+    Assembly works on the normalized form, where I and L are one residue, because two
+    reads of the same region that spell it differently do not overlap on a literal
+    comparison. The spelling is still what the model predicted, though, and the
+    scaffold is the output of this tool, so the residues are kept here for the vote
+    that puts isoleucine back (see ``assembly.restore_isoleucine``).
     """
     if pd.notnull(psm_column):
         # remove (ox) style modifications
@@ -104,10 +109,18 @@ def remove_modifications(psm_column):
         # replace UNIMOD modifications
         ret = re.sub(r"\[.*?\]-?", "", ret)
 
-        ret = ret.strip("-")
-        ret = normalize_sequence(ret)
-        return ret
+        return ret.strip("-")
     return None
+
+
+def remove_modifications(psm_column):
+    """The bare residue letters, normalized so that I and L are one residue.
+
+    This is what assembly overlaps on. ``strip_modifications`` is the same thing
+    without the normalization.
+    """
+    stripped = strip_modifications(psm_column)
+    return normalize_sequence(stripped) if stripped is not None else None
 
 
 def clean_instanovo_raw(df):
@@ -121,6 +134,7 @@ def clean_instanovo_raw(df):
     if "preds" in df.columns:
         df = df.dropna(subset=["preds"])
         df["cleaned_preds"] = df["preds"].apply(remove_modifications)
+        df["read_residues"] = df["preds"].apply(strip_modifications)
     else:
         logger.error("V1 Error: 'preds' column missing!")
         return pd.DataFrame()  # Empty DF on error
@@ -154,6 +168,7 @@ def clean_winnow_rescored(df):
         logger.info(f"Using '{found_seq_col}' as sequence column.")
         df = df.dropna(subset=[found_seq_col])
         df["cleaned_preds"] = df[found_seq_col].apply(remove_modifications)
+        df["read_residues"] = df[found_seq_col].apply(strip_modifications)
     else:
         logger.error("V2 Critical Error: No sequence column found (checked: prediction_untokenised, prediction, etc.)!")
         return pd.DataFrame()
@@ -168,6 +183,7 @@ def clean_winnow_rescored(df):
         "experiment_name",
         "scan_number",
         "cleaned_preds",
+        "read_residues",
         "conf",
         "psm_q_value",
         "delta_mass_ppm",
