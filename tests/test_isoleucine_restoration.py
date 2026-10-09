@@ -1,6 +1,13 @@
 """Isoleucine is reported in scaffolds, having been normalized away for assembly."""
 
-from instanexus.assembly import restore_isoleucine
+import logging
+from pathlib import Path
+
+import pandas as pd
+from Bio import SeqIO
+
+from instanexus import assembly
+from instanexus.assembly import count_isoleucine_leucine, restore_isoleucine
 from instanexus.helpers import compute_isoleucine_statistics
 from instanexus.preprocessing import normalize_sequence, remove_modifications, strip_modifications
 
@@ -158,3 +165,72 @@ class TestIsoleucineStatistics:
         assert stats["il_positions_covered"] == 3
         assert stats["il_accuracy"] == 1.0
         assert round(stats["il_accuracy_all_leucine"], 4) == round(2 / 3, 4)
+
+
+# A stretch of bovine serum albumin with both isoleucine and leucine
+PROTEIN = "MKWVTFISLLLLFSSAYSRGVFRRDTHKSEIAHRFKDLGEEHFKGLVLIAFSQYLQQ"
+
+
+def _run_command(tmp_path: Path, read_residues: list, **kwargs) -> tuple:
+    """Assemble overlapping fragments of PROTEIN through ``assembly.main``, as the command line does.
+
+    Args:
+        tmp_path: Folder for input and outputs.
+        read_residues: Predicted residues of each fragment, one per fragment.
+        **kwargs: Extra arguments for ``assembly.main``.
+
+    Returns:
+        The reported scaffolds and the path of isoleucine_restoration.tsv.
+    """
+    input_csv = tmp_path / "cleaned.csv"
+    pd.DataFrame(
+        {"cleaned_preds": [normalize_sequence(r) for r in read_residues], "read_residues": read_residues}
+    ).to_csv(input_csv, index=False)
+    output_fasta = tmp_path / "out" / "scaffolds.fasta"
+    assembly.main(
+        input_csv_path=str(input_csv),
+        output_scaffolds_path=str(output_fasta),
+        metadata_json_path=None,
+        assembly_mode="greedy",
+        kmer_size=7,
+        min_overlap=3,
+        size_threshold=10,
+        reference=False,
+        chain="",
+        min_identity=0.8,
+        max_mismatches=10,
+        **kwargs,
+    )
+    scaffolds = [str(record.seq) for record in SeqIO.parse(output_fasta, "fasta")]
+
+    return scaffolds, output_fasta.parent / "isoleucine_restoration.tsv"
+
+
+FRAGMENTS = [PROTEIN[start : start + 12] for start in range(0, len(PROTEIN) - 11, 4)]
+
+
+class TestRestorationInTheCommand:
+    """``assembly.main`` votes only when the reads can tell I from L, and can be told not to."""
+
+    def test_reads_using_both_letters_are_voted_on(self, tmp_path):
+        scaffolds, tsv = _run_command(tmp_path, FRAGMENTS)
+
+        assert any("I" in s for s in scaffolds)
+        assert tsv.exists()
+        assert set(pd.read_csv(tsv, sep="\t")["call"]) <= {"I", "L", "tie", "no_reads"}
+
+    def test_reads_with_only_isoleucine_are_not_voted_on(self, tmp_path, caplog):
+        # Some models write I for every I/L: a vote would turn every position into I.
+        only_isoleucine = [fragment.replace("L", "I") for fragment in FRAGMENTS]
+
+        with caplog.at_level(logging.WARNING, logger=assembly.logger.name):
+            scaffolds, tsv = _run_command(tmp_path, only_isoleucine)
+
+        assert "do not distinguish isoleucine from leucine" in caplog.text
+        assert scaffolds
+        assert not any("I" in s for s in scaffolds)
+        assert not tsv.exists()
+
+    def test_count_isoleucine_leucine(self):
+        assert count_isoleucine_leucine(["AIL", "IIG", None]) == (3, 1)
+        assert count_isoleucine_leucine(["AIK", "IIG"]) == (3, 0)

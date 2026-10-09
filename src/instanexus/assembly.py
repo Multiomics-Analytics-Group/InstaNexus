@@ -1386,6 +1386,28 @@ class Assembler:
             return self.assemble_hybrid_dbg(sequences, df_full=df_full)
 
 
+def count_isoleucine_leucine(reads_residues: Iterable[str]) -> Tuple[int, int]:
+    """Count the I and L residues in the reads as predicted.
+
+    If one of the two counts is zero, the reads never distinguish isoleucine from leucine
+    (some de novo models write a single letter for both), so a vote among them carries no
+    information.
+
+    Args:
+        reads_residues: Reads as predicted, I and L intact.
+
+    Returns:
+        The number of I and the number of L residues.
+    """
+    n_isoleucine = n_leucine = 0
+    for residues in reads_residues:
+        if isinstance(residues, str):
+            n_isoleucine += residues.count("I")
+            n_leucine += residues.count("L")
+
+    return n_isoleucine, n_leucine
+
+
 # Columns of isoleucine_restoration.tsv; position_1based counts scaffold residues from 1
 ISOLEUCINE_RESTORATION_COLUMNS = ["scaffold", "position_1based", "votes_isoleucine", "votes_leucine", "call"]
 
@@ -1550,20 +1572,8 @@ def main(
     # That is right for everything that matches -- the reference comparison below
     # included, which is why it keeps using `scaffolds` -- and wrong for the sequence
     # this tool reports, so the reads vote their isoleucines back in.
-    if "read_residues" in df.columns:
-        # Taken from the same rows, not from `sequences`, which has already had its
-        # missing values dropped and so no longer lines up with the frame.
-        voters = df.dropna(subset=["cleaned_preds", "read_residues"])
-        reported_scaffolds, il_decisions = restore_isoleucine(
-            scaffolds, voters["cleaned_preds"].tolist(), voters["read_residues"].tolist()
-        )
-        n_restored = sum(1 for d in il_decisions if d["call"] == "I")
-        logger.info(f"Restored isoleucine at {n_restored} of {len(il_decisions)} scaffold I/L positions by read vote.")
-        # every I/L position with its votes and call, written whenever the vote runs
-        pd.DataFrame(il_decisions, columns=ISOLEUCINE_RESTORATION_COLUMNS).to_csv(
-            output_path.parent / "isoleucine_restoration.tsv", sep="\t", index=False
-        )
-    else:
+    reported_scaffolds = scaffolds
+    if "read_residues" not in df.columns:
         # Input cleaned by a version that dropped the predicted residues. Reporting
         # the normalized spelling is what happened before, so say so rather than
         # letting a silently I-free scaffold look like a result.
@@ -1571,7 +1581,31 @@ def main(
             "No `read_residues` column in the input, so isoleucine cannot be restored: "
             "every I in the output is reported as L. Re-run preprocessing to get it."
         )
-        reported_scaffolds = scaffolds
+    else:
+        # Taken from the same rows, not from `sequences`, which has already had its
+        # missing values dropped and so no longer lines up with the frame.
+        voters = df.dropna(subset=["cleaned_preds", "read_residues"])
+        n_isoleucine, n_leucine = count_isoleucine_leucine(voters["read_residues"])
+        if n_isoleucine == 0 or n_leucine == 0:
+            # Some de novo models write one letter for both residues; their reads cannot
+            # tell I from L, and a vote among them would turn every position into that letter.
+            logger.warning(
+                f"The reads contain {n_isoleucine} I and {n_leucine} L, so they do not distinguish "
+                "isoleucine from leucine and a vote would carry no information. Isoleucine restoration "
+                "skipped: every I/L position is reported as L, as in earlier versions."
+            )
+        else:
+            reported_scaffolds, il_decisions = restore_isoleucine(
+                scaffolds, voters["cleaned_preds"].tolist(), voters["read_residues"].tolist()
+            )
+            n_restored = sum(1 for d in il_decisions if d["call"] == "I")
+            logger.info(
+                f"Restored isoleucine at {n_restored} of {len(il_decisions)} scaffold I/L positions by read vote."
+            )
+            # every I/L position with its votes and call, written whenever the vote runs
+            pd.DataFrame(il_decisions, columns=ISOLEUCINE_RESTORATION_COLUMNS).to_csv(
+                output_path.parent / "isoleucine_restoration.tsv", sep="\t", index=False
+            )
 
     output_path = Path(output_scaffolds_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
