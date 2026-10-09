@@ -1040,6 +1040,18 @@ def plot_protease_distribution(protease_counts, folder_figures):
 def map_to_protein(seq, protein, max_mismatches, min_identity):
     """Maps a sequence (`seq`) to a target protein sequence, allowing for mismatches,
     and identifies the best match based on the maximum mismatches and minimum identity threshold.
+
+    Args:
+        seq: Sequence to map.
+        protein: Reference protein sequence.
+        max_mismatches: Maximum number of mismatches allowed.
+        min_identity: Minimum identity (fraction of matching residues) required.
+
+    Returns:
+        ``(start, end, mismatch_positions, identity)`` for the best match, or None if there is no match.
+        ``start`` is 0-based and ``end`` is exclusive, like a Python slice: ``protein[start:end]`` is the
+        aligned region and ``end - start == len(seq)``. ``mismatch_positions`` are 0-based offsets within
+        ``seq``, not positions in ``protein``.
     """
 
     best_match = None
