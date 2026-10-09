@@ -30,7 +30,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import Bio
 import networkx as nx
@@ -1386,7 +1386,9 @@ class Assembler:
             return self.assemble_hybrid_dbg(sequences, df_full=df_full)
 
 
-def restore_isoleucine(scaffolds, reads_normalized, reads_residues):
+def restore_isoleucine(
+    scaffolds: List[str], reads_normalized: List[str], reads_residues: List[str]
+) -> Tuple[List[str], List[dict]]:
     """Put isoleucine back into assembled scaffolds, by vote among the reads.
 
     Assembly runs on the normalized alphabet, where I and L are one residue, because
@@ -1402,14 +1404,18 @@ def restore_isoleucine(scaffolds, reads_normalized, reads_residues):
     Ties and positions no read covers stay as leucine, which is both the status quo
     and the commoner residue.
 
-    Parameters:
-        scaffolds (list[str]): assembled scaffolds, in the normalized alphabet.
-        reads_normalized (list[str]): the sequences assembly ran on.
-        reads_residues (list[str]): the same reads as predicted, I and L intact.
+    The restoration is applied by the command-line entry points (``main``, used by
+    ``instanexus`` and ``python -m instanexus.assembly``), not by ``Assembler.run``:
+    code that calls ``Assembler.run`` directly gets the normalized scaffolds.
+
+    Args:
+        scaffolds: Assembled scaffolds, in the normalized alphabet.
+        reads_normalized: The sequences assembly ran on.
+        reads_residues: The same reads as predicted, I and L intact.
 
     Returns:
-        tuple[list[str], list[dict]]: the scaffolds with isoleucine restored, and one
-        record per restored position for inspection.
+        The scaffolds with isoleucine restored, and one record per restored position for
+        inspection.
     """
     pairs = [
         (n, r)
@@ -1419,9 +1425,10 @@ def restore_isoleucine(scaffolds, reads_normalized, reads_residues):
         if isinstance(n, str) and isinstance(r, str) and len(n) == len(r)
     ]
 
-    restored, decisions = [], []
+    restored: List[str] = []
+    decisions: List[dict] = []
     for index, scaffold in enumerate(scaffolds):
-        votes = defaultdict(Counter)
+        votes: Dict[int, Counter] = defaultdict(Counter)
         for normalized, residues in pairs:
             if not normalized:
                 continue
