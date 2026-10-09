@@ -16,10 +16,11 @@ We follow Conventional Commits. Use the template provided in `.gitmessage`.
 
 ## Releasing
 Releases are published to PyPI automatically by `.github/workflows/python-publish.yml`.
+User-visible changes, especially ones that make results incomparable with earlier versions, are recorded under **Unreleased** in `CHANGELOG.md` as they are merged.
 
-1. **Bump the version**: on a branch from `main`, set `version = "X.Y.Z"` in `pyproject.toml`, run `uv lock`, and open a PR.
+1. **Bump the version**: on a branch from `main`, set `version = "X.Y.Z"` in `pyproject.toml`, run `uv lock`, rename the **Unreleased** heading in `CHANGELOG.md` to `X.Y.Z`, and open a PR.
 2. **Merge** the PR into `main`.
-3. **Publish a GitHub Release** with tag `vX.Y.Z` targeting `main`, e.g.
+3. **Publish a GitHub Release** with tag `vX.Y.Z` targeting `main`, starting the notes from that `CHANGELOG.md` section, e.g.
    ```bash
    gh release create vX.Y.Z --target main --title "InstaNexus vX.Y.Z" --notes-file notes.md
    ```
