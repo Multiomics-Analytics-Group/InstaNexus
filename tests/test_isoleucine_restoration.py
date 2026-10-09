@@ -1,6 +1,9 @@
 """Isoleucine is reported in scaffolds, having been normalized away for assembly."""
 
+import argparse
 import logging
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -234,3 +237,44 @@ class TestRestorationInTheCommand:
     def test_count_isoleucine_leucine(self):
         assert count_isoleucine_leucine(["AIL", "IIG", None]) == (3, 1)
         assert count_isoleucine_leucine(["AIK", "IIG"]) == (3, 0)
+
+    def test_restoration_can_be_disabled(self, tmp_path):
+        scaffolds, tsv = _run_command(tmp_path, FRAGMENTS, isoleucine_restoration=False)
+
+        assert scaffolds
+        assert not any("I" in s for s in scaffolds)
+        assert not tsv.exists()
+
+    def test_option_is_on_by_default_and_turned_off_by_the_flag(self):
+        parser = argparse.ArgumentParser()
+        assembly.add_isoleucine_restoration_argument(parser)
+
+        assert parser.parse_args([]).isoleucine_restoration is True
+        assert parser.parse_args(["--no-isoleucine-restoration"]).isoleucine_restoration is False
+
+    def test_flag_reaches_the_assembly_command(self, tmp_path):
+        input_csv = tmp_path / "cleaned.csv"
+        pd.DataFrame({"cleaned_preds": [normalize_sequence(f) for f in FRAGMENTS], "read_residues": FRAGMENTS}).to_csv(
+            input_csv, index=False
+        )
+        args = [
+            sys.executable,
+            "-m",
+            "instanexus.assembly",
+            "--input-csv-path",
+            str(input_csv),
+            "--size-threshold",
+            "10",
+        ]
+
+        for flag, expect_isoleucine in (([], True), (["--no-isoleucine-restoration"], False)):
+            output_fasta = tmp_path / ("off" if flag else "on") / "scaffolds.fasta"
+            proc = subprocess.run(
+                args + ["--output-scaffolds-path", str(output_fasta)] + flag,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            assert proc.returncode == 0, proc.stderr[-2000:]
+            reported = "".join(str(record.seq) for record in SeqIO.parse(output_fasta, "fasta"))
+            assert ("I" in reported) is expect_isoleucine

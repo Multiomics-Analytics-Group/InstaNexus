@@ -159,6 +159,7 @@ def cli():
         "Useful for headless/batch execution where visualizations are not needed.",
     )
     assembly.add_max_scaffold_overlaps_argument(parser)
+    assembly.add_isoleucine_restoration_argument(parser)
 
     args = parser.parse_args()
 
@@ -288,6 +289,7 @@ def run_pipeline(args):
             max_mismatches=args.max_mismatches,
             refine_rounds=current_refine_rounds,
             max_scaffold_overlaps=args.max_scaffold_overlaps,
+            isoleucine_restoration=args.isoleucine_restoration,
         )
     except assembly.ScaffoldingLimitExceeded:
         raise  # handled in cli() with a dedicated exit code

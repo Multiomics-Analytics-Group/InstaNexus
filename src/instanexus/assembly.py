@@ -1508,6 +1508,7 @@ def main(
     max_mismatches: int,
     refine_rounds: int = 0,
     max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
+    isoleucine_restoration: bool = True,
 ):
     """Main function for standalone assembly."""
     output_path = Path(output_scaffolds_path)
@@ -1573,7 +1574,12 @@ def main(
     # included, which is why it keeps using `scaffolds` -- and wrong for the sequence
     # this tool reports, so the reads vote their isoleucines back in.
     reported_scaffolds = scaffolds
-    if "read_residues" not in df.columns:
+    if not isoleucine_restoration:
+        logger.info(
+            "Isoleucine restoration disabled (--no-isoleucine-restoration): "
+            "every I/L position is reported as L, as in earlier versions."
+        )
+    elif "read_residues" not in df.columns:
         # Input cleaned by a version that dropped the predicted residues. Reporting
         # the normalized spelling is what happened before, so say so rather than
         # letting a silently I-free scaffold look like a result.
@@ -1699,6 +1705,21 @@ def add_max_scaffold_overlaps_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_isoleucine_restoration_argument(parser: argparse.ArgumentParser) -> None:
+    """Add --no-isoleucine-restoration to a command-line parser.
+
+    Args:
+        parser: Parser to extend.
+    """
+    parser.add_argument(
+        "--no-isoleucine-restoration",
+        dest="isoleucine_restoration",
+        action="store_false",
+        help="Report scaffolds in the normalized spelling, with every I/L position as L, as earlier versions did, "
+        "instead of restoring isoleucine by a vote among the reads.",
+    )
+
+
 def cli():
     """Command-line interface for the assembly module."""
 
@@ -1775,6 +1796,7 @@ def cli():
         help="Maximum mismatches for reference mapping.",
     )
     add_max_scaffold_overlaps_argument(parser)
+    add_isoleucine_restoration_argument(parser)
 
     args = parser.parse_args()
 
