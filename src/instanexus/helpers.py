@@ -102,11 +102,12 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     statistics = {}
     statistics.update(params)  # add the hyperparameters to the statistics
 
-    df["sequence_length"] = df["end"] - df["start"] + 1
+    # start is 0-based and end is exclusive, as returned by visualization.map_to_protein
+    df["sequence_length"] = df["end"] - df["start"]
 
-    # Reference coordinates
+    # Reference coordinates (0-based, end exclusive)
     statistics["reference_start"] = int(0)
-    statistics["reference_end"] = int(len(reference) + 1)
+    statistics["reference_end"] = int(len(reference))
 
     # Sequences statistics
     statistics["total_sequences"] = int(len(df))
@@ -114,10 +115,10 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     statistics["min_length"] = int(df["sequence_length"].min())
     statistics["max_length"] = int(df["sequence_length"].max())
 
-    # Create a set of covered positions (adjusting for 0-based indexing)
+    # Set of covered reference positions; range(start, end) because start is 0-based and end exclusive
     covered_positions = set()
     for start, end in zip(df["start"], df["end"], strict=False):
-        covered_positions.update(range(start - 1, end))  # Convert 1-based to 0-based indexing
+        covered_positions.update(range(start, end))
     statistics["coverage"] = float(len(covered_positions) / statistics["reference_end"])
 
     # identity score statistics
