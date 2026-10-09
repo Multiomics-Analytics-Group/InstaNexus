@@ -206,6 +206,7 @@ def evaluate_combination(
             "max_length": stats.get("max_length", 0),
             "mean_identity": stats.get("mean_identity", 0),
             "total_mismatches": stats.get("total_mismatches", 0),
+            "mismatched_positions": stats.get("mismatched_positions", 0),
             "duration_sec": round(duration, 2),
             "input_sequences": len(sequences),
             "error": None,

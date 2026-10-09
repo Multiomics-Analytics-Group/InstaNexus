@@ -92,11 +92,27 @@ def create_subdirectories_figures(folder):
 def compute_assembly_statistics(df, sequence_type, output_folder, reference, **params):
     """Statistics for contigs and scaffolds
 
+    Reference positions are 0-based and end-exclusive, as returned by visualization.map_to_protein.
+    Per-reference-position metrics count each position once, however many sequences cover it:
+
+    - coverage: fraction of reference positions covered by at least one mapped sequence.
+    - mismatched_positions: number of reference positions with a mismatch in at least one mapped
+      sequence (start + offset of each mismatch).
+
+    Per-sequence metrics add up over the mapped sequences:
+
+    - perfect_matches: number of sequences without mismatches.
+    - total_mismatches: total number of mismatches over all mapped sequences; a reference position
+      covered by several sequences with the same error counts once per sequence.
+
     Args:
         df: DataFrame with mapped values
         sequence_type: either 'contigs' or 'scaffold'
         output_folder: folder to save output
         reference: reference protein normalized
+
+    Returns:
+        The statistics, also written to ``<output_folder>/<sequence_type>_stats.json``.
     """
 
     statistics = {}
@@ -126,10 +142,14 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     statistics["median_identity"] = float(df["identity_score"].median())
     # statistics['std_identity'] = float(df['identity_score'].std())
 
-    # mismatch statistics
+    # mismatch statistics; mismatches_pos holds 0-based offsets within each sequence
     statistics["perfect_matches"] = int(sum(df["mismatches_pos"].apply(len) == 0))  # sequences with no mismatches
-    all_mismatches = [pos for mismatches in df["mismatches_pos"] for pos in mismatches]
-    statistics["total_mismatches"] = int(len(set(all_mismatches)))
+    statistics["total_mismatches"] = int(df["mismatches_pos"].apply(len).sum())
+    # same reference coordinates as coverage: start (0-based) + offset
+    mismatched_positions = set()
+    for start, mismatches in zip(df["start"], df["mismatches_pos"], strict=False):
+        mismatched_positions.update(start + offset for offset in mismatches)
+    statistics["mismatched_positions"] = int(len(mismatched_positions))
 
     # N50 and N90 calculations
     lengths = sorted(df["sequence_length"], reverse=True)
