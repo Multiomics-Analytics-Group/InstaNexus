@@ -1386,6 +1386,10 @@ class Assembler:
             return self.assemble_hybrid_dbg(sequences, df_full=df_full)
 
 
+# Columns of isoleucine_restoration.tsv; position_1based counts scaffold residues from 1
+ISOLEUCINE_RESTORATION_COLUMNS = ["scaffold", "position_1based", "votes_isoleucine", "votes_leucine", "call"]
+
+
 def restore_isoleucine(
     scaffolds: List[str], reads_normalized: List[str], reads_residues: List[str]
 ) -> Tuple[List[str], List[dict]]:
@@ -1414,8 +1418,11 @@ def restore_isoleucine(
         reads_residues: The same reads as predicted, I and L intact.
 
     Returns:
-        The scaffolds with isoleucine restored, and one record per restored position for
-        inspection.
+        The scaffolds with isoleucine restored, and one record per I/L position of every
+        scaffold (in the normalized scaffolds, every L), for inspection: ``scaffold`` (the
+        FASTA id), ``position_1based`` (1-based position in the scaffold),
+        ``votes_isoleucine``, ``votes_leucine`` and ``call``, which is ``I``, ``L``, ``tie``
+        or ``no_reads``.
     """
     pairs = [
         (n, r)
@@ -1440,17 +1447,26 @@ def restore_isoleucine(
                 start = scaffold.find(normalized, start + 1)
 
         sequence = list(scaffold)
-        for position, counts in votes.items():
+        for position, residue in enumerate(scaffold):
+            if residue != "L":  # the normalized spelling of every I/L position
+                continue
+            counts = votes.get(position, Counter())
             if counts["I"] > counts["L"]:
+                call = "I"
                 sequence[position] = "I"
-                decisions.append(
-                    {
-                        "scaffold": f"scaffold_{index + 1}",
-                        "position": position + 1,  # 1-based, as sequence positions are read
-                        "votes_isoleucine": counts["I"],
-                        "votes_leucine": counts["L"],
-                    }
-                )
+            elif counts["L"] > counts["I"]:
+                call = "L"
+            else:
+                call = "tie" if counts["I"] else "no_reads"
+            decisions.append(
+                {
+                    "scaffold": f"scaffold_{index + 1}",
+                    "position_1based": position + 1,
+                    "votes_isoleucine": counts["I"],
+                    "votes_leucine": counts["L"],
+                    "call": call,
+                }
+            )
         restored.append("".join(sequence))
 
     return restored, decisions
@@ -1541,9 +1557,12 @@ def main(
         reported_scaffolds, il_decisions = restore_isoleucine(
             scaffolds, voters["cleaned_preds"].tolist(), voters["read_residues"].tolist()
         )
-        logger.info(f"Restored isoleucine at {len(il_decisions)} scaffold positions by read vote.")
-        if il_decisions:
-            pd.DataFrame(il_decisions).to_csv(output_path.parent / "isoleucine_restoration.tsv", sep="\t", index=False)
+        n_restored = sum(1 for d in il_decisions if d["call"] == "I")
+        logger.info(f"Restored isoleucine at {n_restored} of {len(il_decisions)} scaffold I/L positions by read vote.")
+        # every I/L position with its votes and call, written whenever the vote runs
+        pd.DataFrame(il_decisions, columns=ISOLEUCINE_RESTORATION_COLUMNS).to_csv(
+            output_path.parent / "isoleucine_restoration.tsv", sep="\t", index=False
+        )
     else:
         # Input cleaned by a version that dropped the predicted residues. Reporting
         # the normalized spelling is what happened before, so say so rather than

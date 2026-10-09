@@ -26,8 +26,9 @@ class TestRestoreIsoleucine:
     def test_a_single_read_restores_its_own_isoleucine(self):
         restored, decisions = restore_isoleucine(["AAALVTQTMKAA"], ["ALVTQTMK"], ["AIVTQTMK"])
         assert restored == ["AAAIVTQTMKAA"]
-        assert decisions[0]["position"] == 4
+        assert decisions[0]["position_1based"] == 4
         assert decisions[0]["votes_isoleucine"] == 1
+        assert decisions[0]["call"] == "I"
 
     def test_the_majority_decides(self):
         # Three reads of one position, two reading isoleucine.
@@ -43,7 +44,7 @@ class TestRestoreIsoleucine:
         # status quo and the commoner of the two.
         restored, decisions = restore_isoleucine(["ALVTQTMK"], ["ALVTQTMK"] * 2, ["AIVTQTMK", "ALVTQTMK"])
         assert restored == ["ALVTQTMK"]
-        assert decisions == []
+        assert [d["call"] for d in decisions] == ["tie"]
 
     def test_a_position_no_read_covers_stays_leucine(self):
         restored, _ = restore_isoleucine(["ALVTQTMKLLLL"], ["ALVTQTMK"], ["AIVTQTMK"])
@@ -62,12 +63,33 @@ class TestRestoreIsoleucine:
         # A wrong offset is worse than no vote, so a mismatched pair is skipped.
         restored, decisions = restore_isoleucine(["ALVTQTMK"], ["ALVTQTMK"], ["AIVTQTM"])
         assert restored == ["ALVTQTMK"]
-        assert decisions == []
+        assert [d["call"] for d in decisions] == ["no_reads"]
 
     def test_scaffolds_with_no_matching_read_are_returned_unchanged(self):
         restored, decisions = restore_isoleucine(["ALVTQTMK"], ["GGGGG"], ["GGGGG"])
         assert restored == ["ALVTQTMK"]
-        assert decisions == []
+        assert [d["call"] for d in decisions] == ["no_reads"]
+
+    def test_every_il_position_is_recorded_with_its_call(self):
+        # Four I/L positions: isoleucine wins, leucine wins, a tie, and one no read covers.
+        restored, decisions = restore_isoleucine(
+            ["GLGLGLGGL"],
+            ["GLGLGLG"] * 4,
+            ["GIGLGIG", "GIGLGLG", "GLGLGIG", "GIGIGLG"],
+        )
+        assert restored == ["GIGLGLGGL"]
+        assert decisions == [
+            {"scaffold": "scaffold_1", "position_1based": 2, "votes_isoleucine": 3, "votes_leucine": 1, "call": "I"},
+            {"scaffold": "scaffold_1", "position_1based": 4, "votes_isoleucine": 1, "votes_leucine": 3, "call": "L"},
+            {"scaffold": "scaffold_1", "position_1based": 6, "votes_isoleucine": 2, "votes_leucine": 2, "call": "tie"},
+            {
+                "scaffold": "scaffold_1",
+                "position_1based": 9,
+                "votes_isoleucine": 0,
+                "votes_leucine": 0,
+                "call": "no_reads",
+            },
+        ]
 
     def test_nothing_other_than_i_and_l_is_touched(self):
         scaffold = "ALVTQTMKGGWYF"
