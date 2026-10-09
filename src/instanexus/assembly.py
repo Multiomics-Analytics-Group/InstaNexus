@@ -30,7 +30,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import Bio
 import networkx as nx
@@ -1386,6 +1386,114 @@ class Assembler:
             return self.assemble_hybrid_dbg(sequences, df_full=df_full)
 
 
+def count_isoleucine_leucine(reads_residues: Iterable[str]) -> Tuple[int, int]:
+    """Count the I and L residues in the reads as predicted.
+
+    If one of the two counts is zero, the reads never distinguish isoleucine from leucine
+    (some de novo models write a single letter for both), so a vote among them carries no
+    information.
+
+    Args:
+        reads_residues: Reads as predicted, I and L intact.
+
+    Returns:
+        The number of I and the number of L residues.
+    """
+    n_isoleucine = n_leucine = 0
+    for residues in reads_residues:
+        if isinstance(residues, str):
+            n_isoleucine += residues.count("I")
+            n_leucine += residues.count("L")
+
+    return n_isoleucine, n_leucine
+
+
+# Columns of isoleucine_restoration.tsv; position_1based counts scaffold residues from 1
+ISOLEUCINE_RESTORATION_COLUMNS = ["scaffold", "position_1based", "votes_isoleucine", "votes_leucine", "call"]
+
+
+def restore_isoleucine(
+    scaffolds: List[str], reads_normalized: List[str], reads_residues: List[str]
+) -> Tuple[List[str], List[dict]]:
+    """Put isoleucine back into assembled scaffolds, by vote among the reads.
+
+    Assembly runs on the normalized alphabet, where I and L are one residue, because
+    reads that spell the same region differently do not overlap on a literal
+    comparison. Every scaffold therefore comes out of the assembler written in 19
+    residues, with no isoleucine anywhere -- and the scaffold is this tool's output,
+    not an intermediate, so that spelling is reported as the sequence.
+
+    The reads still carry what the model read. Where a read's normalized form occurs
+    in a scaffold, its residues line up one to one, so each read votes on the
+    positions it covers. Coverage is the point: a scaffold position is usually read
+    several times, and counting the reads is a better estimate than any one of them.
+    Ties and positions no read covers stay as leucine, which is both the status quo
+    and the commoner residue.
+
+    The restoration is applied by the command-line entry points (``main``, used by
+    ``instanexus`` and ``python -m instanexus.assembly``), not by ``Assembler.run``:
+    code that calls ``Assembler.run`` directly gets the normalized scaffolds.
+
+    Args:
+        scaffolds: Assembled scaffolds, in the normalized alphabet.
+        reads_normalized: The sequences assembly ran on.
+        reads_residues: The same reads as predicted, I and L intact.
+
+    Returns:
+        The scaffolds with isoleucine restored, and one record per I/L position of every
+        scaffold (in the normalized scaffolds, every L), for inspection: ``scaffold`` (the
+        FASTA id), ``position_1based`` (1-based position in the scaffold),
+        ``votes_isoleucine``, ``votes_leucine`` and ``call``, which is ``I``, ``L``, ``tie``
+        or ``no_reads``.
+    """
+    pairs = [
+        (n, r)
+        for n, r in zip(reads_normalized, reads_residues, strict=False)
+        # A read whose residues do not line up with its normalized form cannot vote:
+        # the offsets would be wrong, and a wrong vote is worse than no vote.
+        if isinstance(n, str) and isinstance(r, str) and len(n) == len(r)
+    ]
+
+    restored: List[str] = []
+    decisions: List[dict] = []
+    for index, scaffold in enumerate(scaffolds):
+        votes: Dict[int, Counter] = defaultdict(Counter)
+        for normalized, residues in pairs:
+            if not normalized:
+                continue
+            start = scaffold.find(normalized)
+            while start != -1:
+                for offset, residue in enumerate(residues):
+                    if residue in ("I", "L"):
+                        votes[start + offset][residue] += 1
+                start = scaffold.find(normalized, start + 1)
+
+        sequence = list(scaffold)
+        for position, residue in enumerate(scaffold):
+            if residue != "L":  # the normalized spelling of every I/L position
+                continue
+            counts = votes.get(position, Counter())
+            if counts["I"] > counts["L"]:
+                call = "I"
+                sequence[position] = "I"
+            elif counts["L"] > counts["I"]:
+                call = "L"
+            else:
+                call = "tie" if counts["I"] else "no_reads"
+            decisions.append(
+                {
+                    "scaffold": f"scaffold_{index + 1}",
+                    "position_1based": position + 1,
+                    "votes_isoleucine": counts["I"],
+                    "votes_leucine": counts["L"],
+                    "call": call,
+                }
+            )
+        restored.append("".join(sequence))
+
+    return restored, decisions
+
+
 def main(
     input_csv_path: str,
     output_scaffolds_path: str,
@@ -1400,6 +1508,7 @@ def main(
     max_mismatches: int,
     refine_rounds: int = 0,
     max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
+    isoleucine_restoration: bool = True,
 ):
     """Main function for standalone assembly."""
     output_path = Path(output_scaffolds_path)
@@ -1407,6 +1516,7 @@ def main(
     stats_folder = output_path.parent / "statistics"
 
     protein_norm = None  # None means no reference mode
+    protein_raw = None  # the reference as written, for the I/L comparison below
 
     if reference:
         logger.info("Reference mode enabled. Loading reference protein...")
@@ -1422,6 +1532,7 @@ def main(
 
             meta = helpers.get_sample_metadata(run=run_name, chain=chain, json_path=metadata_json_path)
             protein = meta["protein"]
+            protein_raw = protein
             protein_norm = preprocessing.normalize_sequence(protein)
             logger.info("Reference protein loaded and normalized successfully.")
             stats_folder.mkdir(parents=True, exist_ok=True)
@@ -1458,13 +1569,57 @@ def main(
 
     scaffolds = assembler.run(sequences=sequences, df_full=df)
 
+    # The scaffolds above are in the normalized alphabet and contain no isoleucine.
+    # That is right for everything that matches -- the reference comparison below
+    # included, which is why it keeps using `scaffolds` -- and wrong for the sequence
+    # this tool reports, so the reads vote their isoleucines back in.
+    reported_scaffolds = scaffolds
+    if not isoleucine_restoration:
+        logger.info(
+            "Isoleucine restoration disabled (--no-isoleucine-restoration): "
+            "every I/L position is reported as L, as in earlier versions."
+        )
+    elif "read_residues" not in df.columns:
+        # Input cleaned by a version that dropped the predicted residues. Reporting
+        # the normalized spelling is what happened before, so say so rather than
+        # letting a silently I-free scaffold look like a result.
+        logger.warning(
+            "No `read_residues` column in the input, so isoleucine cannot be restored: "
+            "every I in the output is reported as L. Re-run preprocessing to get it."
+        )
+    else:
+        # Taken from the same rows, not from `sequences`, which has already had its
+        # missing values dropped and so no longer lines up with the frame.
+        voters = df.dropna(subset=["cleaned_preds", "read_residues"])
+        n_isoleucine, n_leucine = count_isoleucine_leucine(voters["read_residues"])
+        if n_isoleucine == 0 or n_leucine == 0:
+            # Some de novo models write one letter for both residues; their reads cannot
+            # tell I from L, and a vote among them would turn every position into that letter.
+            logger.warning(
+                f"The reads contain {n_isoleucine} I and {n_leucine} L, so they do not distinguish "
+                "isoleucine from leucine and a vote would carry no information. Isoleucine restoration "
+                "skipped: every I/L position is reported as L, as in earlier versions."
+            )
+        else:
+            reported_scaffolds, il_decisions = restore_isoleucine(
+                scaffolds, voters["cleaned_preds"].tolist(), voters["read_residues"].tolist()
+            )
+            n_restored = sum(1 for d in il_decisions if d["call"] == "I")
+            logger.info(
+                f"Restored isoleucine at {n_restored} of {len(il_decisions)} scaffold I/L positions by read vote."
+            )
+            # every I/L position with its votes and call, written whenever the vote runs
+            pd.DataFrame(il_decisions, columns=ISOLEUCINE_RESTORATION_COLUMNS).to_csv(
+                output_path.parent / "isoleucine_restoration.tsv", sep="\t", index=False
+            )
+
     output_path = Path(output_scaffolds_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     # output_folder = output_path.parent.mkdir(parents=True, exist_ok=True)
 
     records = [
         Bio.SeqRecord.SeqRecord(Bio.Seq.Seq(seq), id=f"scaffold_{i + 1}", description=f"length: {len(seq)}")
-        for i, seq in enumerate(scaffolds)
+        for i, seq in enumerate(reported_scaffolds)
     ]
 
     Bio.SeqIO.write(
@@ -1487,11 +1642,33 @@ def main(
             min_identity=min_identity,
         )
         df_scaffolds_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped_scaffolds)
+
+        # Placement above is normalized on both sides and has to be; the residues are
+        # then compared as they were read, against the reference as written. Without
+        # this the statistics cannot see I/L at all, so an assembly that got every one
+        # right scored the same as one that got them all wrong.
+        il_statistics = helpers.compute_isoleucine_statistics(
+            mapped_sequences=mapped_scaffolds,
+            reported_by_normalized=dict(zip(scaffolds, reported_scaffolds, strict=False)),
+            reference=protein_raw or protein_norm,
+        )
+        logger.info(
+            "I/L accuracy against the reference: {0}/{1} ({2:.1%}), against {3:.1%} for reporting every position as leucine".format(
+                il_statistics["il_correct"],
+                il_statistics["il_positions_covered"],
+                il_statistics["il_accuracy"],
+                il_statistics["il_accuracy_all_leucine"],
+            )
+            if il_statistics["il_positions_covered"]
+            else "No reference I/L positions fall under a placed scaffold."
+        )
+
         helpers.compute_assembly_statistics(
             df=df_scaffolds_mapped,
             sequence_type="scaffolds",
             output_folder=str(stats_path),
             reference=protein_norm,
+            **il_statistics,
         )
         logger.info(f"Reference mode: Statistics saved to {stats_path}")
 
@@ -1525,6 +1702,21 @@ def add_max_scaffold_overlaps_argument(parser: argparse.ArgumentParser) -> None:
         help=f"dbg mode only: stop with exit code {EXIT_SCAFFOLDING_LIMIT} if a scaffolding round finds more than "
         f"this many overlaps between contigs, which happens on noisy input (default: {MAX_SCAFFOLD_OVERLAPS}; "
         "0 disables the limit).",
+    )
+
+
+def add_isoleucine_restoration_argument(parser: argparse.ArgumentParser) -> None:
+    """Add --no-isoleucine-restoration to a command-line parser.
+
+    Args:
+        parser: Parser to extend.
+    """
+    parser.add_argument(
+        "--no-isoleucine-restoration",
+        dest="isoleucine_restoration",
+        action="store_false",
+        help="Report scaffolds in the normalized spelling, with every I/L position as L, as earlier versions did, "
+        "instead of restoring isoleucine by a vote among the reads.",
     )
 
 
@@ -1604,6 +1796,7 @@ def cli():
         help="Maximum mismatches for reference mapping.",
     )
     add_max_scaffold_overlaps_argument(parser)
+    add_isoleucine_restoration_argument(parser)
 
     args = parser.parse_args()
 
