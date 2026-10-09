@@ -34,6 +34,8 @@ from typing import Dict, Iterable, List, Optional
 import Bio
 import networkx as nx
 import pandas as pd
+
+from .helpers import ASSEMBLY_MODES
 from tqdm import tqdm
 
 from . import helpers, preprocessing
@@ -904,10 +906,8 @@ class Assembler:
         reference_protein: Optional[str] = None,
         stats_output_folder: Optional[str] = None,
     ):
-        if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"]:
-            raise ValueError(
-                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion', 'multimodal_dbg' or 'hybrid_dbg'"
-            )
+        if mode not in ASSEMBLY_MODES:
+            raise ValueError(f"mode must be one of {', '.join(ASSEMBLY_MODES)}")
 
         self.mode = mode
         self.min_overlap = min_overlap
@@ -1427,9 +1427,9 @@ def cli():
     parser.add_argument(
         "--assembly-mode",
         type=str,
-        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg"],
+        choices=ASSEMBLY_MODES,
         default="greedy",
-        help="Assembly mode to use: greedy or dbg.",
+        help="Assembly mode to use.",
     )
     parser.add_argument(
         "--kmer-size",
