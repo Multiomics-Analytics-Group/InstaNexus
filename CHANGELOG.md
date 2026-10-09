@@ -56,3 +56,32 @@ the number of overlaps grew combinatorially until the run never finished
 - **`dbg` and `greedy` are faster**, with identical output. On the nanobody demo data, `dbg` at `conf > 0.3`
   went from 0.98 s to 0.02 s and `greedy` at `conf > 0.1` from 4.62 s to 0.72 s. At `conf > 0.1` (784 PSMs),
   `dbg` used to run past 600 s; it now stops at the limit after 0.34 s.
+
+### Changed: scaffolds report isoleucine; new I/L statistics
+
+Assembly runs on a normalized alphabet in which isoleucine is written as leucine, and earlier versions reported
+scaffolds in that spelling, with no isoleucine at all
+([#66](https://github.com/Multiomics-Analytics-Group/InstaNexus/pull/66)). The assembly itself is unchanged: with
+every I replaced by L, the scaffolds are identical to before.
+
+- **Scaffolds contain I.** After assembly, the reads vote on each I/L position they cover; the majority decides,
+  and ties and positions no read covers stay L. This is done by `instanexus` and `python -m instanexus.assembly`,
+  not by `Assembler.run`, whose callers still get the normalized scaffolds.
+- **New column `read_residues`** in the preprocessed CSV (`cleaned.csv`): the predicted residues with I and L as
+  read, beside the unchanged `cleaned_preds`. Input preprocessed by an earlier version has no such column; the
+  scaffolds are then reported as before, with a warning.
+- **New keys in `scaffolds_stats.json`** (with `--reference`): `il_positions_covered`, `il_correct`, `il_accuracy`
+  and `il_accuracy_all_leucine`, which compare the reported I/L residues with the reference, counted once per
+  reference position. `il_accuracy_all_leucine` is the accuracy of reporting every position as L, the behaviour of
+  earlier versions, and is the baseline to read `il_accuracy` against.
+- **New file `isoleucine_restoration.tsv`** next to the scaffolds, written whenever the vote runs: one row per I/L
+  position of every scaffold, with `position_1based` (1-based position in the scaffold), the I and L votes and the
+  `call` (`I`, `L`, `tie` or `no_reads`).
+- **Safeguard:** if the reads contain only I or only L (some de novo models write one letter for both), they cannot
+  distinguish the two residues, so the vote is skipped with a warning and the scaffolds are reported as before. The
+  nanobody demo data in this repository is such a case (35 I and no L at `conf > 0.9`).
+- **`--no-isoleucine-restoration`** (on `instanexus` and `python -m instanexus.assembly`) turns the vote off and
+  reports the normalized scaffolds, as earlier versions did.
+
+On synthetic BSA peptides with 10% simulated I/L errors, `il_accuracy` is 0.97-1.00 against an all-leucine baseline
+of 0.80-0.82 for `greedy`, `dbg` and `dbg_weighted`.
