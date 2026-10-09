@@ -1377,6 +1377,7 @@ def main(
     stats_folder = output_path.parent / "statistics"
 
     protein_norm = None  # None means no reference mode
+    protein_raw = None  # the reference as written, for the I/L comparison below
 
     if reference:
         logger.info("Reference mode enabled. Loading reference protein...")
@@ -1392,6 +1393,7 @@ def main(
 
             meta = helpers.get_sample_metadata(run=run_name, chain=chain, json_path=metadata_json_path)
             protein = meta["protein"]
+            protein_raw = protein
             protein_norm = preprocessing.normalize_sequence(protein)
             logger.info("Reference protein loaded and normalized successfully.")
             stats_folder.mkdir(parents=True, exist_ok=True)
@@ -1480,11 +1482,33 @@ def main(
             min_identity=min_identity,
         )
         df_scaffolds_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped_scaffolds)
+
+        # Placement above is normalized on both sides and has to be; the residues are
+        # then compared as they were read, against the reference as written. Without
+        # this the statistics cannot see I/L at all, so an assembly that got every one
+        # right scored the same as one that got them all wrong.
+        il_statistics = helpers.compute_isoleucine_statistics(
+            mapped_sequences=mapped_scaffolds,
+            reported_by_normalized=dict(zip(scaffolds, reported_scaffolds, strict=False)),
+            reference=protein_raw or protein_norm,
+        )
+        logger.info(
+            "I/L accuracy against the reference: {0}/{1} ({2:.1%}), against {3:.1%} for reporting every position as leucine".format(
+                il_statistics["il_correct"],
+                il_statistics["il_positions_covered"],
+                il_statistics["il_accuracy"],
+                il_statistics["il_accuracy_all_leucine"],
+            )
+            if il_statistics["il_positions_covered"]
+            else "No reference I/L positions fall under a placed scaffold."
+        )
+
         helpers.compute_assembly_statistics(
             df=df_scaffolds_mapped,
             sequence_type="scaffolds",
             output_folder=str(stats_path),
             reference=protein_norm,
+            **il_statistics,
         )
         logger.info(f"Reference mode: Statistics saved to {stats_path}")
 

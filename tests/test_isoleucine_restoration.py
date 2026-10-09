@@ -1,6 +1,7 @@
 """Isoleucine is reported in scaffolds, having been normalized away for assembly."""
 
 from instanexus.assembly import restore_isoleucine
+from instanexus.helpers import compute_isoleucine_statistics
 from instanexus.preprocessing import normalize_sequence, remove_modifications, strip_modifications
 
 
@@ -72,3 +73,66 @@ class TestRestoreIsoleucine:
         scaffold = "ALVTQTMKGGWYF"
         restored, _ = restore_isoleucine([scaffold], [scaffold], ["AIVTQTMKGGWYF"])
         assert restored[0].replace("I", "L") == scaffold
+
+
+class TestIsoleucineStatistics:
+    """Placement is normalized; the residues are then compared as they were read."""
+
+    @staticmethod
+    def _mapped(normalized, start):
+        # What `map_to_protein` returns: (sequence, (start, end, mismatches, identity))
+        # with `start` a 0-based index into the reference and `end` exclusive.
+        return [(normalized, (start, start + len(normalized), [], 1.0))]
+
+    def test_counts_only_reference_il_positions(self):
+        reference = "GGAILGG"  # I at index 3, L at index 4
+        stats = compute_isoleucine_statistics(self._mapped("GGALLGG", 0), {"GGALLGG": "GGAILGG"}, reference)
+        assert stats["il_positions_covered"] == 2
+        assert stats["il_correct"] == 2
+        assert stats["il_accuracy"] == 1.0
+
+    def test_a_wrong_residue_is_counted_as_wrong(self):
+        reference = "GGAILGG"
+        # Reported LL where the reference reads IL: one right, one wrong.
+        stats = compute_isoleucine_statistics(self._mapped("GGALLGG", 0), {"GGALLGG": "GGALLGG"}, reference)
+        assert stats["il_positions_covered"] == 2
+        assert stats["il_correct"] == 1
+        assert stats["il_accuracy"] == 0.5
+
+    def test_this_is_what_the_normalized_comparison_could_not_see(self):
+        # Both of these score identically on a normalized comparison -- that is the
+        # defect. They must not score identically here.
+        reference = "GGAIIGG"
+        right = compute_isoleucine_statistics(self._mapped("GGALLGG", 0), {"GGALLGG": "GGAIIGG"}, reference)
+        wrong = compute_isoleucine_statistics(self._mapped("GGALLGG", 0), {"GGALLGG": "GGALLGG"}, reference)
+        assert right["il_accuracy"] == 1.0
+        assert wrong["il_accuracy"] == 0.0
+
+    def test_a_scaffold_placed_partway_in_uses_the_offset(self):
+        reference = "GGGGIL"
+        stats = compute_isoleucine_statistics(self._mapped("LL", 4), {"LL": "IL"}, reference)
+        assert stats["il_positions_covered"] == 2
+        assert stats["il_correct"] == 2
+
+    def test_positions_past_the_end_of_the_reference_are_skipped(self):
+        stats = compute_isoleucine_statistics(self._mapped("ILGG", 2), {"ILGG": "ILGG"}, "GGIL")
+        assert stats["il_positions_covered"] == 2
+        assert stats["il_correct"] == 2
+
+    def test_no_il_under_a_scaffold_gives_zeros_rather_than_dividing(self):
+        stats = compute_isoleucine_statistics(self._mapped("GGGG", 0), {"GGGG": "GGGG"}, "GGGG")
+        assert stats == {
+            "il_positions_covered": 0,
+            "il_correct": 0,
+            "il_accuracy": 0.0,
+            "il_accuracy_all_leucine": 0.0,
+        }
+
+    def test_the_all_leucine_baseline_is_reported_beside_the_accuracy(self):
+        # Three reference I/L positions, two of them L: reporting everything as L
+        # scores 2/3 for free, which is what the accuracy has to be read against.
+        reference = "GGILLGG"
+        stats = compute_isoleucine_statistics(self._mapped("GGLLLGG", 0), {"GGLLLGG": "GGILLGG"}, reference)
+        assert stats["il_positions_covered"] == 3
+        assert stats["il_accuracy"] == 1.0
+        assert round(stats["il_accuracy_all_leucine"], 4) == round(2 / 3, 4)

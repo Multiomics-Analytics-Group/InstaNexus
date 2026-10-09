@@ -89,6 +89,60 @@ def create_subdirectories_figures(folder):
         create_directory(f"{folder}/{subdirectory}")
 
 
+def compute_isoleucine_statistics(mapped_sequences, reported_by_normalized, reference):
+    """How often the reported isoleucine/leucine matches the reference, position by position.
+
+    The placement itself is done on the normalized alphabet, and has to be: a scaffold
+    that spells a residue I where the reference spells it L still belongs at that
+    position. But once placed, the residues can be compared as they were read, against
+    the reference as it is written -- which is the only comparison that says anything
+    about I/L at all. The coverage and identity figures beside these are normalized on
+    both sides, so they are blind to it by construction.
+
+    Args:
+        mapped_sequences: (normalized scaffold, (start, end, mismatches, identity)) pairs,
+            as ``process_protein_contigs_scaffold`` returns them. ``start`` is a 0-based
+            index into the reference and ``end`` is exclusive -- ``map_to_protein``
+            builds them as ``(i, i + len(seq))``.
+        reported_by_normalized: the reported spelling of each normalized scaffold.
+        reference: the reference protein as written, isoleucines intact.
+
+    Returns:
+        dict: counts and an accuracy, or zeros when the reference has no I/L under a
+        placed scaffold.
+    """
+    # Counted per reference position, the way `coverage` is, rather than per scaffold
+    # position. Scaffolds overlap -- three of them covering one residue would otherwise
+    # have it counted three times, and a single bad placement could outvote the rest of
+    # the protein. Where scaffolds overlap, the best-placed one speaks for the position.
+    best_at_position: dict[int, tuple[float, str]] = {}
+    for normalized, mapping in mapped_sequences:
+        reported = reported_by_normalized.get(normalized, normalized)
+        start, identity = mapping[0], mapping[3]
+        for offset, residue in enumerate(reported):
+            position = start + offset
+            if position < 0 or position >= len(reference):
+                continue
+            if reference[position] not in ("I", "L"):
+                continue
+            if position not in best_at_position or identity > best_at_position[position][0]:
+                best_at_position[position] = (identity, residue)
+
+    total = len(best_at_position)
+    correct = sum(1 for position, (_, residue) in best_at_position.items() if residue == reference[position])
+    # What reporting the normalized spelling scored: every position L. Without it the
+    # accuracy above says nothing, since a reference with few isoleucines scores high
+    # for free.
+    baseline = sum(1 for position in best_at_position if reference[position] == "L")
+
+    return {
+        "il_positions_covered": int(total),
+        "il_correct": int(correct),
+        "il_accuracy": float(correct / total) if total else 0.0,
+        "il_accuracy_all_leucine": float(baseline / total) if total else 0.0,
+    }
+
+
 def compute_assembly_statistics(df, sequence_type, output_folder, reference, **params):
     """Statistics for contigs and scaffolds
 
