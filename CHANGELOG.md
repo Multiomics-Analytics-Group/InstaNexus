@@ -20,5 +20,21 @@ so the following values change and **cannot be compared with results from 0.3.1 
 | `N50`, `N90` | lower or unchanged | Usually 1 residue lower. |
 | `reference_end` | lower | Now the reference length (it was length + 1). |
 
-`total_sequences`, `mean_identity`, `median_identity`, `perfect_matches` and `total_mismatches` are unchanged.
+`total_sequences`, `mean_identity`, `median_identity` and `perfect_matches` are not affected by this fix
+(`total_mismatches` changes for a different reason, see below).
 Parameter rankings from `scripts/optimization/grid_search.py`, which weights `coverage` and `N50`, may change.
+
+### Changed: `total_mismatches` counts mismatches; new `mismatched_positions`
+
+`total_mismatches` used to be the number of distinct mismatch offsets *within* the mapped sequences, so mismatches
+of different sequences at the same offset were merged
+([#63](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/63)). The same statistics files now report
+two mismatch metrics:
+
+| Metric | Meaning | Change |
+|---|---|---|
+| `total_mismatches` | Total number of mismatches over all mapped sequences. A reference position covered by several sequences with the same error counts once per sequence. | **New value, not comparable with earlier versions.** Higher or equal, never lower; on the nanobody demo data from 3-24 to 4-124, most for redundant sets such as peptides (12 → 90 at `conf > 0.5`). |
+| `mismatched_positions` | Number of reference positions with a mismatch in at least one mapped sequence, using the same coordinates as `coverage`; at most the number of covered positions. | **New.** 3-22 on the nanobody demo data. |
+
+`scripts/optimization/grid_search.py` also reports `mismatched_positions` in its results table; the composite score
+does not use either metric and is unchanged.
