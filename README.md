@@ -210,6 +210,13 @@ instanexus \
 
 The results for this specific run will be saved in a unique directory, such as:```outputs/bsa/dbg_c0.9_ks7_mo3_ts12/```
 
+On noisy, low-confidence input, `dbg` scaffolding can produce a combinatorial number of
+overlaps between contigs. If one scaffolding round finds more than `--max-scaffold-overlaps`
+overlaps (default 100,000; `0` disables the limit), `instanexus` stops with **exit code 3**
+and an error message, so pipelines can tell this case apart from other failures. Filtering the
+input with `--conf` or `--fdr`, increasing `--min-overlap`, or using `--assembly-mode
+dbg_weighted` avoids it.
+
 ---
 
 ## Hyperparameter Optimization

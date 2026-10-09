@@ -22,10 +22,12 @@ __status__ = Dev
 
 import argparse
 import logging
+import sys
 import pandas as pd
 from pathlib import Path
 
 from . import alignment, assembly, clustering, consensus, preprocessing, helpers, visualization as viz
+from .helpers import ASSEMBLY_MODES
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -92,7 +94,7 @@ def cli():
     parser.add_argument(
         "--assembly-mode",
         type=str,
-        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"],
+        choices=ASSEMBLY_MODES,
         default="greedy",
         help="Assembly algorithm to use.",
     )
@@ -156,11 +158,16 @@ def cli():
         help="Skip generating heatmap and logo plots in the consensus step. "
         "Useful for headless/batch execution where visualizations are not needed.",
     )
+    assembly.add_max_scaffold_overlaps_argument(parser)
 
     args = parser.parse_args()
 
     # Run the pipeline with the validated arguments
-    run_pipeline(args)
+    try:
+        run_pipeline(args)
+    except assembly.ScaffoldingLimitExceeded as e:
+        logger.error(f"Assembly failed: {e}")
+        sys.exit(assembly.EXIT_SCAFFOLDING_LIMIT)
 
 
 def run_pipeline(args):
@@ -280,7 +287,10 @@ def run_pipeline(args):
             min_identity=args.min_identity,
             max_mismatches=args.max_mismatches,
             refine_rounds=current_refine_rounds,
+            max_scaffold_overlaps=args.max_scaffold_overlaps,
         )
+    except assembly.ScaffoldingLimitExceeded:
+        raise  # handled in cli() with a dedicated exit code
     except Exception as e:
         logger.error(f"Assembly failed: {e}")
         return

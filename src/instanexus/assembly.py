@@ -25,6 +25,7 @@ import argparse
 import ast
 import logging
 import math
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from itertools import combinations
@@ -34,6 +35,8 @@ from typing import Dict, Iterable, List, Optional
 import Bio
 import networkx as nx
 import pandas as pd
+
+from .helpers import ASSEMBLY_MODES
 from tqdm import tqdm
 
 from . import helpers, preprocessing
@@ -43,6 +46,30 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 MAX_REFINE_ROUNDS = 10
+
+# dbg scaffolding merges every overlapping pair and repeats until nothing changes; on noisy input the number
+# of overlaps grows combinatorially from round to round, so stop once a round exceeds this many overlaps
+MAX_SCAFFOLD_OVERLAPS = 100_000
+
+# exit code of the command-line interfaces when ScaffoldingLimitExceeded stops the assembly
+EXIT_SCAFFOLDING_LIMIT = 3
+
+
+class ScaffoldingLimitExceeded(RuntimeError):
+    """Raised when a dbg scaffolding round finds more overlaps than the configured limit."""
+
+    def __init__(self, n_overlaps: int, n_sequences: int, limit: int, min_overlap: int):
+        self.n_overlaps = n_overlaps
+        self.n_sequences = n_sequences
+        self.limit = limit
+        self.min_overlap = min_overlap
+        super().__init__(
+            f"dbg scaffolding stopped: {n_overlaps:,} overlaps between {n_sequences:,} sequences in one round, "
+            f"more than the limit of {limit:,} (--max-scaffold-overlaps). Short overlaps (--min-overlap "
+            f"{min_overlap}) between contigs from noisy, low-confidence peptides merge combinatorially. "
+            "Filter the input (--conf or --fdr), increase --min-overlap, use --assembly-mode dbg_weighted, "
+            "or raise --max-scaffold-overlaps (0 disables the limit)."
+        )
 
 
 def sort_by_length(seqs: Iterable[str]) -> List[str]:
@@ -79,6 +106,8 @@ def sort_by_length(seqs: Iterable[str]) -> List[str]:
 
 def find_sliding_overlaps(sequences: list, min_overlap: int):
     overlaps = []
+    # the mismatch count below only feeds a debug message and dominates the runtime, so skip it otherwise
+    report_near_misses = logger.isEnabledFor(logging.DEBUG)
     for i, seq_a in enumerate(sequences):
         for j, seq_b in enumerate(sequences):
             if i == j:
@@ -93,10 +122,44 @@ def find_sliding_overlaps(sequences: list, min_overlap: int):
                     overlaps.append((i, j, length))
                     break
 
-                diff = sum(1 for a, b in zip(s1, s2, strict=False) if a != b)
-                if diff == 1 and length >= 5:
-                    logger.info(f"POTENTIAL OVERLAP MISSED: {s1} vs {s2}")
+                if report_near_misses and length >= 5:
+                    diff = sum(1 for a, b in zip(s1, s2, strict=False) if a != b)
+                    if diff == 1:
+                        logger.debug(f"POTENTIAL OVERLAP MISSED: {s1} vs {s2}")
     return overlaps
+
+
+def find_sliding_overlaps_indexed(sequences: List[str], min_overlap: int) -> List[tuple]:
+    """Find the same overlaps as find_sliding_overlaps, using a prefix index instead of comparing all pairs.
+
+    For every ordered pair (i, j) with i != j, reports the longest length L >= min_overlap such that the
+    last L residues of sequences[i] equal the first L residues of sequences[j]. Runs in time proportional
+    to the total sequence length plus the number of overlaps, instead of all pairs times all lengths.
+
+    Args:
+        sequences: Sequences to compare.
+        min_overlap: Minimum overlap length.
+
+    Returns:
+        (i, j, overlap_length) tuples in the same order as find_sliding_overlaps.
+    """
+    if min_overlap < 1:
+        fallback: List[tuple] = find_sliding_overlaps(sequences, min_overlap)
+        return fallback
+
+    starts_with = defaultdict(list)  # prefix -> indices of the sequences starting with it
+    for j, seq_b in enumerate(sequences):
+        for length in range(min_overlap, len(seq_b) + 1):
+            starts_with[seq_b[:length]].append(j)
+
+    best: Dict[tuple, int] = {}
+    for i, seq_a in enumerate(sequences):
+        for length in range(len(seq_a), min_overlap - 1, -1):
+            for j in starts_with.get(seq_a[-length:], ()):
+                if j != i and (i, j) not in best:
+                    best[(i, j)] = length
+
+    return [(i, j, length) for (i, j), length in sorted(best.items())]
 
 
 def merge_with_overhang(seq_a, seq_b, overlap_len):
@@ -385,12 +448,16 @@ def find_overlaps(contigs, min_overlap, disable_tqdm=False):
     return overlaps
 
 
-def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
+def create_scaffolds(contigs, min_overlap, disable_tqdm=False, max_overlaps=None):
     """
     Improved version: uses sliding overlaps and overhang-aware merging.
+
+    Raises ScaffoldingLimitExceeded if more than max_overlaps overlaps are found (None: no limit).
     """
-    # Usa find_sliding_overlaps che restituisce (i, j, overlap_len)
-    overlaps = find_sliding_overlaps(contigs, min_overlap=min_overlap)
+    # (i, j, overlap_len) tuples, same result as find_sliding_overlaps
+    overlaps = find_sliding_overlaps_indexed(contigs, min_overlap=min_overlap)
+    if max_overlaps is not None and len(overlaps) > max_overlaps:
+        raise ScaffoldingLimitExceeded(len(overlaps), len(contigs), max_overlaps, min_overlap)
     combined_contigs = []
 
     for i, j, overlap_len in tqdm(overlaps, desc="Merging overlaps", disable=disable_tqdm):
@@ -404,25 +471,48 @@ def create_scaffolds(contigs, min_overlap, disable_tqdm=False):
 
 
 def merge_sequences_dbg(contigs, disable_tqdm=False):
-    """Merges overlapping sequences."""
-    contigs = sorted(contigs, key=len, reverse=True)
-    merged = set(contigs)
-    for c in tqdm(contigs, desc="Merging contigs", disable=disable_tqdm):
-        for c2 in contigs:
-            if c != c2 and c2 in c:  # if c2 is a substring of c
-                merged.discard(c2)
+    """Remove duplicates and sequences contained in another sequence.
+
+    Candidate containers are looked up through an index of the w-mers of every sequence, where w is the
+    shortest sequence length, instead of comparing all pairs: any sequence containing s also contains
+    the first w residues of s.
+    """
+    unique = set(contigs)
+    if "" in unique and len(unique) > 1:
+        unique.discard("")  # the empty string is contained in every other sequence
+    if len(unique) <= 1:
+        return sort_by_length(unique)
+
+    w = min(len(s) for s in unique)
+    containing = defaultdict(set)  # w-mer -> sequences that contain it
+    for t in unique:
+        for start in range(len(t) - w + 1):
+            containing[t[start : start + w]].add(t)
+
+    merged = [
+        s
+        for s in tqdm(unique, desc="Merging contigs", disable=disable_tqdm)
+        if not any(t != s and s in t for t in containing[s[:w]])
+    ]
     return sort_by_length(merged)
 
 
 def scaffold_iterative_dbg(
-    contigs: List[str], min_overlap: int, size_threshold: int, disable_tqdm: bool = False
+    contigs: List[str],
+    min_overlap: int,
+    size_threshold: int,
+    disable_tqdm: bool = False,
+    max_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
 ) -> List[str]:
-    """Iterative scaffolding using DBG approach."""
+    """Iterative scaffolding using DBG approach.
+
+    Raises ScaffoldingLimitExceeded if a round finds more than max_overlaps overlaps (None: no limit).
+    """
     prev = None
     current = contigs
     while prev != current:
         prev = current
-        current = create_scaffolds(current, min_overlap, disable_tqdm)
+        current = create_scaffolds(current, min_overlap, disable_tqdm, max_overlaps=max_overlaps)
         current = merge_sequences_dbg(current, disable_tqdm)
         current = [s for s in sort_by_length(set(current)) if len(s) > size_threshold]
     return current
@@ -903,11 +993,10 @@ class Assembler:
         alpha_min: float = 0.2,
         reference_protein: Optional[str] = None,
         stats_output_folder: Optional[str] = None,
+        max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
     ):
-        if mode not in ["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg", "hybrid_dbg"]:
-            raise ValueError(
-                "mode must be 'greedy', 'dbg', 'dbg_weighted', 'dbgX', 'fusion', 'multimodal_dbg' or 'hybrid_dbg'"
-            )
+        if mode not in ASSEMBLY_MODES:
+            raise ValueError(f"mode must be one of {', '.join(ASSEMBLY_MODES)}")
 
         self.mode = mode
         self.min_overlap = min_overlap
@@ -923,6 +1012,7 @@ class Assembler:
         self.alpha_min = alpha_min
         self.reference_protein = reference_protein
         self.stats_output_folder = stats_output_folder
+        self.max_scaffold_overlaps = max_scaffold_overlaps
 
     def _compute_intermediate_stats(self, contigs, label):
         """Internal wrapper for statistics."""
@@ -964,7 +1054,9 @@ class Assembler:
         contigs = assemble_contigs_dbg(edges)
         contigs = [seq for seq in sort_by_length(set(contigs)) if len(seq) > self.size_threshold]
 
-        scaffolds = scaffold_iterative_dbg(contigs, self.min_overlap, self.size_threshold)
+        scaffolds = scaffold_iterative_dbg(
+            contigs, self.min_overlap, self.size_threshold, max_overlaps=self.max_scaffold_overlaps
+        )
 
         return scaffolds
 
@@ -1370,6 +1462,7 @@ def main(
     min_identity: float,
     max_mismatches: int,
     refine_rounds: int = 0,
+    max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
 ):
     """Main function for standalone assembly."""
     output_path = Path(output_scaffolds_path)
@@ -1423,6 +1516,7 @@ def main(
         min_identity=min_identity,
         max_mismatches=max_mismatches,
         refine_rounds=refine_rounds,
+        max_scaffold_overlaps=max_scaffold_overlaps,
         reference_protein=protein_norm,
         stats_output_folder=str(stats_folder) if protein_norm else None,
     )
@@ -1513,6 +1607,38 @@ def main(
         logger.info(f"Reference mode: Statistics saved to {stats_path}")
 
 
+def _scaffold_overlap_limit(value: str) -> Optional[int]:
+    """Parse --max-scaffold-overlaps: a non-negative integer, where 0 disables the limit.
+
+    Args:
+        value: Command-line value.
+
+    Returns:
+        The limit, or None for no limit.
+    """
+    limit = int(value)
+    if limit < 0:
+        raise argparse.ArgumentTypeError("must be a non-negative integer (0 disables the limit)")
+
+    return limit or None
+
+
+def add_max_scaffold_overlaps_argument(parser: argparse.ArgumentParser) -> None:
+    """Add --max-scaffold-overlaps to a command-line parser.
+
+    Args:
+        parser: Parser to extend.
+    """
+    parser.add_argument(
+        "--max-scaffold-overlaps",
+        type=_scaffold_overlap_limit,
+        default=MAX_SCAFFOLD_OVERLAPS,
+        help=f"dbg mode only: stop with exit code {EXIT_SCAFFOLDING_LIMIT} if a scaffolding round finds more than "
+        f"this many overlaps between contigs, which happens on noisy input (default: {MAX_SCAFFOLD_OVERLAPS}; "
+        "0 disables the limit).",
+    )
+
+
 def cli():
     """Command-line interface for the assembly module."""
 
@@ -1538,9 +1664,9 @@ def cli():
     parser.add_argument(
         "--assembly-mode",
         type=str,
-        choices=["greedy", "dbg", "dbg_weighted", "dbgX", "fusion", "multimodal_dbg"],
+        choices=ASSEMBLY_MODES,
         default="greedy",
-        help="Assembly mode to use: greedy or dbg.",
+        help="Assembly mode to use.",
     )
     parser.add_argument(
         "--kmer-size",
@@ -1588,6 +1714,7 @@ def cli():
         default=10,
         help="Maximum mismatches for reference mapping.",
     )
+    add_max_scaffold_overlaps_argument(parser)
 
     args = parser.parse_args()
 
@@ -1606,7 +1733,11 @@ def cli():
     if "refine" in args_dict:
         del args_dict["refine"]
 
-    main(refine_rounds=refine_rounds_val, **args_dict)
+    try:
+        main(refine_rounds=refine_rounds_val, **args_dict)
+    except ScaffoldingLimitExceeded as e:
+        logger.error(str(e))
+        sys.exit(EXIT_SCAFFOLDING_LIMIT)
 
 
 if __name__ == "__main__":

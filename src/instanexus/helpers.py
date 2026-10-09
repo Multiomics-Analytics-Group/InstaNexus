@@ -25,6 +25,19 @@ import json
 import os
 from pathlib import Path
 
+#: Assembly modes :class:`~instanexus.assembly.Assembler` can dispatch. Both entry points
+#: validate against this, so a mode added to the dispatch is offered by each of them rather
+#: than needing to be remembered in three places.
+ASSEMBLY_MODES = (
+    "greedy",
+    "dbg",
+    "dbg_weighted",
+    "dbgX",
+    "fusion",
+    "multimodal_dbg",
+    "hybrid_dbg",
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 JSON_DIR = PROJECT_ROOT / "json"
 
