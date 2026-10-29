@@ -23,6 +23,7 @@ __status__ = Dev
 import argparse
 import logging
 import sys
+from importlib.metadata import PackageNotFoundError, version
 import pandas as pd
 from pathlib import Path
 
@@ -39,11 +40,24 @@ logging.getLogger("instanexus.consensus").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+def package_version() -> str:
+    """Return the installed version of InstaNexus, from the package metadata.
+
+    Returns:
+        The version, or "unknown" when the package is not installed (e.g. run from a source tree).
+    """
+    try:
+        return version("instanexus")
+    except PackageNotFoundError:
+        return "unknown"
+
+
 def cli():
     """Command-line interface for the master pipeline."""
 
     parser = argparse.ArgumentParser(description="Run the full InstaNexus preprocessing and assembly pipeline.")
 
+    parser.add_argument("--version", action="version", version=f"InstaNexus {package_version()}")
     parser.add_argument(
         "--input-csv",
         type=str,
