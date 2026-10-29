@@ -1723,7 +1723,17 @@ def add_isoleucine_restoration_argument(parser: argparse.ArgumentParser) -> None
 def cli():
     """Command-line interface for the assembly module."""
 
-    parser = argparse.ArgumentParser(description="Run Greedy or DBG assembly on peptide sequences.")
+    parser = argparse.ArgumentParser(
+        description="Run Greedy or DBG assembly on peptide sequences.",
+        epilog=(
+            "exit codes:\n"
+            "  0  success\n"
+            "  1  assembly failed\n"
+            "  2  invalid command-line arguments\n"
+            f"  {EXIT_SCAFFOLDING_LIMIT}  dbg scaffolding exceeded --max-scaffold-overlaps"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument(
         "--input-csv-path",
         type=str,
