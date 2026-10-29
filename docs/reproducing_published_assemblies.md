@@ -64,7 +64,8 @@ InstaNexus looks a sample up in `json/sample_metadata.json` by the stem of the i
 | `MA1`, `MA2`, `MA3` | `ma1`, `ma2`, `ma3` |
 | `PA` (the oligoclonal mix) | no single key (`ma1` + `ma2` + `ma3`) |
 
-In particular, `predictions/NB10.csv` is `nb8`, and the paper's Nb10 is `predictions/NB13.csv`.
+In particular, `predictions/NB10.csv` is `nb8`, and sample Nb10 of the published assemblies corresponds to
+`predictions/NB13.csv` in the deposit.
 
 ## Example
 
