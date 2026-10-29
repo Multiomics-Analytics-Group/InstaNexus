@@ -86,6 +86,36 @@ every I replaced by L, the scaffolds are identical to before.
 On synthetic BSA peptides with 10% simulated I/L errors, `il_accuracy` is 0.97-1.00 against an all-leucine baseline
 of 0.80-0.82 for `greedy`, `dbg` and `dbg_weighted`.
 
+### Changed: `instanexus` exits with code 1 when a step fails
+
+`instanexus` logged a failed step (preprocessing, assembly, clustering, alignment or consensus) and then exited with
+code 0, so a shell script or workflow manager treated the run as successful
+([#60](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/60)).
+
+- **Exit code 1** when a step fails; the error messages are unchanged. Code 3 stays reserved for the `dbg`
+  scaffolding limit. `instanexus --help`, `python -m instanexus.assembly --help` and the README list the exit codes.
+- **`run_pipeline` raises `PipelineStepFailed`** (in `instanexus.main`) instead of returning normally, for callers
+  that use it as a library.
+- Failures in the optional reference statistics and in writing `summary.tsv` are still logged without failing the run.
+- The step modules (`python -m instanexus.preprocessing`, `instanexus.clustering`, ...) already exited non-zero on
+  an error and are unchanged.
+
+### Fixed: `plot_contigs` draws adjacent contigs on one track
+
+`plot_contigs` compared the 0-based, end-exclusive mapping coordinates inclusively, so adjacent contigs such as
+`ABC` and `DEF` were drawn on two tracks, and a contig that contained one already on a track was drawn on top of it
+([#62](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/62)). It now uses the same half-open overlap
+test as the other plotting functions. Only the figure layout changes.
+
+### Fixed: `python -m instanexus` runs, and `--version` reports the installed version
+
+`python -m instanexus` failed with an `ImportError`, because `__main__.py` still imported the `script_dbg` and
+`script_greedy` modules that had moved to `_archive`; its `--version` printed a hardcoded `0.1.0`, and the
+`instanexus` command had no `--version` at all ([#74](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/74)).
+`python -m instanexus` now runs the same pipeline as `instanexus`, and both accept `--version`, which reads the
+version from the package metadata. The `dbg` and `greedy` subcommands of `python -m instanexus` are gone; use
+`--assembly-mode`.
+
 ### Added: opt-in peptide length filter
 
 `--min-length` and `--max-length` on `instanexus` and `python -m instanexus.preprocessing` keep only peptides within
