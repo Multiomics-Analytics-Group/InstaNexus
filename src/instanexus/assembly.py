@@ -1728,7 +1728,7 @@ def cli():
         epilog=(
             "exit codes:\n"
             "  0  success\n"
-            "  1  assembly failed\n"
+            "  1  assembly failed (unhandled exception, with a traceback)\n"
             "  2  invalid command-line arguments\n"
             f"  {EXIT_SCAFFOLDING_LIMIT}  dbg scaffolding exceeded --max-scaffold-overlaps"
         ),

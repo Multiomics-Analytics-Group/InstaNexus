@@ -46,7 +46,11 @@ EXIT_CODES_HELP = f"""exit codes:
   0  success
   {EXIT_STEP_FAILED}  a pipeline step failed (preprocessing, assembly, clustering, alignment or consensus)
   2  invalid command-line arguments
-  {assembly.EXIT_SCAFFOLDING_LIMIT}  dbg scaffolding exceeded --max-scaffold-overlaps"""
+  {assembly.EXIT_SCAFFOLDING_LIMIT}  dbg scaffolding exceeded --max-scaffold-overlaps
+
+The step modules (python -m instanexus.<step>) do not share these codes: only
+instanexus.assembly exits {assembly.EXIT_SCAFFOLDING_LIMIT} for the scaffolding limit; on any other failure they
+exit 1 through an unhandled exception, with a traceback."""
 
 
 class PipelineStepFailed(RuntimeError):
@@ -191,7 +195,9 @@ def cli():
     except assembly.ScaffoldingLimitExceeded as e:
         logger.error(f"Assembly failed: {e}")
         sys.exit(assembly.EXIT_SCAFFOLDING_LIMIT)
-    except PipelineStepFailed:
+    except PipelineStepFailed as e:
+        # the step's own error is logged above; end with one line naming the step
+        logger.error(f"Pipeline stopped: step '{e.step.lower()}' failed")
         sys.exit(EXIT_STEP_FAILED)
 
 

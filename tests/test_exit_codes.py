@@ -41,6 +41,7 @@ def test_missing_input_exits_with_step_failed(tmp_path: Path) -> None:
 
     assert proc.returncode == EXIT_STEP_FAILED, proc.stderr[-2000:]
     assert "Preprocessing failed" in proc.stderr
+    assert proc.stderr.strip().splitlines()[-1].endswith("[ERROR] Pipeline stopped: step 'preprocessing' failed")
 
 
 def test_input_without_sequence_column_exits_with_step_failed(tmp_path: Path) -> None:
@@ -140,3 +141,28 @@ def test_scaffolding_limit_keeps_its_own_exit_code(tmp_path: Path) -> None:
 
     assert proc.returncode == EXIT_SCAFFOLDING_LIMIT, proc.stderr[-2000:]
     assert "--max-scaffold-overlaps" in proc.stderr
+
+
+def test_failed_step_is_named_in_a_final_error_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    input_csv = tmp_path / "sample.csv"
+    pd.DataFrame({"preds": ["PEPTIDEKAAGLR", "AAGLRSTWYK"], "conf": [0.9, 0.9]}).to_csv(input_csv, index=False)
+
+    def fail(**kwargs: object) -> None:
+        raise RuntimeError("mmseqs not found")
+
+    monkeypatch.setattr(main.clustering, "main", fail)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["instanexus", "--input-csv", str(input_csv), "--output-dir", str(tmp_path / "out"), "--skip-plots"],
+    )
+
+    with caplog.at_level("ERROR", logger=main.logger.name), pytest.raises(SystemExit) as excinfo:
+        main.cli()
+
+    assert excinfo.value.code == EXIT_STEP_FAILED
+    errors = [r.getMessage() for r in caplog.records if r.name == main.logger.name and r.levelname == "ERROR"]
+    assert errors[-2] == "Clustering failed: mmseqs not found"
+    assert errors[-1] == "Pipeline stopped: step 'clustering' failed"
