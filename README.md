@@ -217,6 +217,24 @@ and an error message, so pipelines can tell this case apart from other failures.
 input with `--conf` or `--fdr`, increasing `--min-overlap`, or using `--assembly-mode
 dbg_weighted` avoids it.
 
+### Exit codes
+
+`instanexus` and the step modules (`python -m instanexus.preprocessing`, `instanexus.assembly`,
+`instanexus.clustering`, `instanexus.alignment`, `instanexus.consensus`) use these exit codes, so a
+shell script or workflow manager can tell a failed run from a successful one:
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | A pipeline step failed; the error is logged |
+| `2` | Invalid command-line arguments |
+| `3` | dbg scaffolding exceeded `--max-scaffold-overlaps` (see above) |
+
+Code `3` is reserved for the scaffolding limit, so a pipeline can treat it differently from other
+failures, for example by skipping the sample instead of stopping the run. A failure while computing
+the optional reference statistics (`--reference`) or writing `summary.tsv` is logged but does not
+fail the run.
+
 ---
 
 ## Hyperparameter Optimization

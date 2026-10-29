@@ -85,3 +85,17 @@ every I replaced by L, the scaffolds are identical to before.
 
 On synthetic BSA peptides with 10% simulated I/L errors, `il_accuracy` is 0.97-1.00 against an all-leucine baseline
 of 0.80-0.82 for `greedy`, `dbg` and `dbg_weighted`.
+
+### Changed: `instanexus` exits with code 1 when a step fails
+
+`instanexus` logged a failed step (preprocessing, assembly, clustering, alignment or consensus) and then exited with
+code 0, so a shell script or workflow manager treated the run as successful
+([#60](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/60)).
+
+- **Exit code 1** when a step fails; the error messages are unchanged. Code 3 stays reserved for the `dbg`
+  scaffolding limit. `instanexus --help`, `python -m instanexus.assembly --help` and the README list the exit codes.
+- **`run_pipeline` raises `PipelineStepFailed`** (in `instanexus.main`) instead of returning normally, for callers
+  that use it as a library.
+- Failures in the optional reference statistics and in writing `summary.tsv` are still logged without failing the run.
+- The step modules (`python -m instanexus.preprocessing`, `instanexus.clustering`, ...) already exited non-zero on
+  an error and are unchanged.
