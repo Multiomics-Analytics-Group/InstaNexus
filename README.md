@@ -245,6 +245,31 @@ The step modules (`python -m instanexus.preprocessing`, `instanexus.assembly`, `
 `instanexus.assembly` exits with `3`, when the scaffolding limit is hit. On any other failure the step
 modules exit with `1` through an unhandled exception, with a traceback, rather than with a logged message.
 
+### Peptide length filter
+
+`--min-length` and `--max-length` (on `instanexus` and `python -m instanexus.preprocessing`) keep only peptides
+within the given number of residues, counted after removing modifications. Both are off by default.
+
+Every preprocessing run writes `<output stem>_filters.json` next to the cleaned CSV, so a run without a length
+filter is recorded too. Preprocessing applies its filters in this order: cleaning, length, contaminants, `conf`,
+FDR. The record holds:
+
+| Key | Meaning |
+|---|---|
+| `input_csv` | File name of the input CSV (without its directory) |
+| `min_length`, `max_length` | Length bounds, or `null` when not set |
+| `conf`, `fdr` | Confidence and FDR thresholds, or `null` when not set |
+| `contaminants_fasta` | Contaminants FASTA as passed, or `null` |
+| `steps` | One entry per filter, in the order above: `name` (`cleaning`, `length`, `contaminants`, `conf`, `fdr`), `applied` (whether the filter ran), `rows_in` and `rows_out` |
+| `rows_output` | Rows written to the cleaned CSV |
+
+`summary.tsv` gains `min_length` and `max_length` as its last two columns.
+
+The published assemblies on Zenodo ([10.5281/zenodo.16417501](https://doi.org/10.5281/zenodo.16417501)) were made
+without a length filter: their `cleaned.csv` files hold peptides of 5 to 28 residues. The 7-20 residue filter appears
+in the case-study notebooks in `docs/source/tutorials/case_studies/` (for example `_panel_bsa_filtering.ipynb`), which
+apply it before assembling or plotting. To reproduce those, pass `--min-length 7 --max-length 20`.
+
 ---
 
 ## Hyperparameter Optimization
