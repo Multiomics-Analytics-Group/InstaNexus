@@ -289,6 +289,10 @@ Special thanks to the users and developers of:
 
 If you find this project useful in your research or work, please cite our publication in Molecular & Cellular Proteomics: [Generalizable direct protein sequencing with InstaNexus](https://doi.org/10.1016/j.mcpro.2026.101547).
 
+To rerun the paper's assemblies from the predictions deposited on Zenodo, see
+[Reproducing the published assemblies](docs/reproducing_published_assemblies.md): the deposit needs three steps that
+it does not record.
+
 ```bibtex
 @article{reverenna2026generalizable,
   title={Generalizable direct protein sequencing with InstaNexus},
