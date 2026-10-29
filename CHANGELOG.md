@@ -85,3 +85,12 @@ every I replaced by L, the scaffolds are identical to before.
 
 On synthetic BSA peptides with 10% simulated I/L errors, `il_accuracy` is 0.97-1.00 against an all-leucine baseline
 of 0.80-0.82 for `greedy`, `dbg` and `dbg_weighted`.
+
+### Fixed: `python -m instanexus` runs, and `--version` reports the installed version
+
+`python -m instanexus` failed with an `ImportError`, because `__main__.py` still imported the `script_dbg` and
+`script_greedy` modules that had moved to `_archive`; its `--version` printed a hardcoded `0.1.0`, and the
+`instanexus` command had no `--version` at all ([#74](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/74)).
+`python -m instanexus` now runs the same pipeline as `instanexus`, and both accept `--version`, which reads the
+version from the package metadata. The `dbg` and `greedy` subcommands of `python -m instanexus` are gone; use
+`--assembly-mode`.
