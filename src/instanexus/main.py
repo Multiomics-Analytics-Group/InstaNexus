@@ -23,6 +23,7 @@ __status__ = Dev
 import argparse
 import logging
 import sys
+from importlib.metadata import PackageNotFoundError, version
 import pandas as pd
 from pathlib import Path
 
@@ -61,6 +62,18 @@ class PipelineStepFailed(RuntimeError):
         super().__init__(f"{step} failed")
 
 
+def package_version() -> str:
+    """Return the installed version of InstaNexus, from the package metadata.
+
+    Returns:
+        The version, or "unknown" when the package is not installed (e.g. run from a source tree).
+    """
+    try:
+        return version("instanexus")
+    except PackageNotFoundError:
+        return "unknown"
+
+
 def cli():
     """Command-line interface for the master pipeline."""
 
@@ -70,6 +83,7 @@ def cli():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    parser.add_argument("--version", action="version", version=f"InstaNexus {package_version()}")
     parser.add_argument(
         "--input-csv",
         type=str,

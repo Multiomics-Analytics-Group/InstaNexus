@@ -178,7 +178,10 @@ All parameters for preprocessing, assembly, clustering, and consensus are provid
 
 ```bash
 instanexus --help
+instanexus --version
 ```
+
+`python -m instanexus` runs the same command.
 
 Example: Run the full pipeline
 This command runs the complete workflow:

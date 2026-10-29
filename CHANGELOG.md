@@ -106,3 +106,12 @@ code 0, so a shell script or workflow manager treated the run as successful
 `ABC` and `DEF` were drawn on two tracks, and a contig that contained one already on a track was drawn on top of it
 ([#62](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/62)). It now uses the same half-open overlap
 test as the other plotting functions. Only the figure layout changes.
+
+### Fixed: `python -m instanexus` runs, and `--version` reports the installed version
+
+`python -m instanexus` failed with an `ImportError`, because `__main__.py` still imported the `script_dbg` and
+`script_greedy` modules that had moved to `_archive`; its `--version` printed a hardcoded `0.1.0`, and the
+`instanexus` command had no `--version` at all ([#74](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/74)).
+`python -m instanexus` now runs the same pipeline as `instanexus`, and both accept `--version`, which reads the
+version from the package metadata. The `dbg` and `greedy` subcommands of `python -m instanexus` are gone; use
+`--assembly-mode`.
