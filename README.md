@@ -217,6 +217,17 @@ and an error message, so pipelines can tell this case apart from other failures.
 input with `--conf` or `--fdr`, increasing `--min-overlap`, or using `--assembly-mode
 dbg_weighted` avoids it.
 
+### Peptide length filter
+
+`--min-length` and `--max-length` (on `instanexus` and `python -m instanexus.preprocessing`) keep only peptides
+within the given number of residues, counted after removing modifications. Both are off by default. The bounds
+applied, and how many rows they removed, are recorded in `<output stem>_filters.json` next to the cleaned CSV.
+
+The published assemblies on Zenodo ([10.5281/zenodo.16417501](https://doi.org/10.5281/zenodo.16417501)) were made
+without a length filter: their `cleaned.csv` files hold peptides of 5 to 28 residues. The 7-20 residue filter appears
+in the case-study notebooks in `docs/source/tutorials/case_studies/` (for example `_panel_bsa_filtering.ipynb`), which
+apply it before assembling or plotting. To reproduce those, pass `--min-length 7 --max-length 20`.
+
 ---
 
 ## Hyperparameter Optimization

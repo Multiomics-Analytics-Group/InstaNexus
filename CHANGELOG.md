@@ -85,3 +85,13 @@ every I replaced by L, the scaffolds are identical to before.
 
 On synthetic BSA peptides with 10% simulated I/L errors, `il_accuracy` is 0.97-1.00 against an all-leucine baseline
 of 0.80-0.82 for `greedy`, `dbg` and `dbg_weighted`.
+
+### Added: opt-in peptide length filter
+
+`--min-length` and `--max-length` on `instanexus` and `python -m instanexus.preprocessing` keep only peptides within
+the given number of residues, counted after removing modifications
+([#68](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/68)). Both are off by default, so results do
+not change unless they are set. Preprocessing now also writes `<output stem>_filters.json` next to the cleaned CSV,
+recording the length bounds, `--conf`, `--fdr`, the contaminants FASTA and the rows the length filter removed;
+`summary.tsv` gains `min_length` and `max_length`, and the auto-generated output folder gains a `len<min>-<max>` part
+when a bound is set. The README states which published results used a length filter.
