@@ -220,6 +220,31 @@ and an error message, so pipelines can tell this case apart from other failures.
 input with `--conf` or `--fdr`, increasing `--min-overlap`, or using `--assembly-mode
 dbg_weighted` avoids it.
 
+### Exit codes
+
+`instanexus` uses these exit codes, so a shell script or workflow manager can tell a failed run from a
+successful one:
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | A pipeline step failed; the error is logged |
+| `2` | Invalid command-line arguments |
+| `3` | dbg scaffolding exceeded `--max-scaffold-overlaps` (see above) |
+
+When a step fails, `instanexus` logs the step's error and then a final line such as
+`Pipeline stopped: step 'clustering' failed`, and exits with `1`.
+
+Code `3` is reserved for the scaffolding limit, so a pipeline can treat it differently from other
+failures, for example by skipping the sample instead of stopping the run. A failure while computing
+the optional reference statistics (`--reference`) or writing `summary.tsv` is logged but does not
+fail the run.
+
+The step modules (`python -m instanexus.preprocessing`, `instanexus.assembly`, `instanexus.clustering`,
+`instanexus.alignment`, `instanexus.consensus`) do not share this table. Among them, only
+`instanexus.assembly` exits with `3`, when the scaffolding limit is hit. On any other failure the step
+modules exit with `1` through an unhandled exception, with a traceback, rather than with a logged message.
+
 ---
 
 ## Hyperparameter Optimization
@@ -291,6 +316,10 @@ Special thanks to the users and developers of:
 ## Citation
 
 If you find this project useful in your research or work, please cite our publication in Molecular & Cellular Proteomics: [Generalizable direct protein sequencing with InstaNexus](https://doi.org/10.1016/j.mcpro.2026.101547).
+
+To rerun the published assemblies from the predictions deposited on Zenodo, see
+[Reproducing the published assemblies](docs/reproducing_published_assemblies.md): the deposit needs three steps that
+it does not record.
 
 ```bibtex
 @article{reverenna2026generalizable,
