@@ -6,11 +6,12 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
-from instanexus import preprocessing
+from instanexus import assembly, main, preprocessing
 
 # 5 to 9 residues once modifications are removed; the second carries a modification that must not count
 PEPTIDES = ["ACDEF", "C[UNIMOD:4]PEPTIDEK", "GHIKLMN", "PQRSTVWY", "ACDEFGHIK"]
@@ -77,7 +78,8 @@ def test_off_by_default_and_recorded(tmp_path: Path) -> None:
     record = json.loads((tmp_path / "cleaned_filters.json").read_text())
     assert record["min_length"] is None
     assert record["max_length"] is None
-    assert record["rows_removed_by_length"] == 0
+    length_step = next(step for step in record["steps"] if step["name"] == "length")
+    assert length_step == {"name": "length", "applied": False, "rows_in": len(PEPTIDES), "rows_out": len(PEPTIDES)}
     assert record["rows_output"] == len(PEPTIDES)
 
 
@@ -90,8 +92,8 @@ def test_bounds_apply_to_residues_and_are_recorded(tmp_path: Path) -> None:
     assert sorted(cleaned["cleaned_preds"].str.len()) == [7, 8]
     record = json.loads((tmp_path / "cleaned_filters.json").read_text())
     assert (record["min_length"], record["max_length"]) == (7, 8)
-    assert record["rows_after_cleaning"] == len(PEPTIDES)
-    assert record["rows_removed_by_length"] == 3
+    length_step = next(step for step in record["steps"] if step["name"] == "length")
+    assert length_step == {"name": "length", "applied": True, "rows_in": len(PEPTIDES), "rows_out": 2}
     assert record["rows_output"] == 2
 
 
@@ -110,3 +112,88 @@ def test_pipeline_cli_accepts_the_bounds(tmp_path: Path) -> None:
 
     assert "--min-length" in proc.stdout
     assert "--max-length" in proc.stdout
+
+
+def test_record_lists_rows_after_every_filter_in_order(tmp_path: Path) -> None:
+    input_csv = tmp_path / "sample.csv"
+    # conf 0.5 on the last two peptides, so the conf filter removes them after the length filter
+    pd.DataFrame({"prediction": PEPTIDES, "conf": [0.9, 0.9, 0.9, 0.5, 0.5]}).to_csv(input_csv, index=False)
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "instanexus.preprocessing",
+            "--input-csv",
+            str(input_csv),
+            "--output-csv-path",
+            str(tmp_path / "cleaned.csv"),
+            "--min-length",
+            "6",
+            "--conf",
+            "0.8",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    record = json.loads((tmp_path / "cleaned_filters.json").read_text())
+    assert record["input_csv"] == "sample.csv"
+    assert [(s["name"], s["applied"], s["rows_in"], s["rows_out"]) for s in record["steps"]] == [
+        ("cleaning", True, 5, 5),
+        ("length", True, 5, 4),
+        ("contaminants", False, 4, 4),
+        ("conf", True, 4, 2),
+        ("fdr", False, 2, 2),
+    ]
+    assert record["rows_output"] == 2
+
+
+def test_length_bounds_are_the_last_summary_columns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    input_csv = tmp_path / "sample.csv"
+    pd.DataFrame({"preds": ["PEPTIDEKAAGLR", "AAGLRSTWYK"], "conf": [0.9, 0.9]}).to_csv(input_csv, index=False)
+    output_dir = tmp_path / "out"
+
+    def write_consensus_stats(**kwargs: object) -> None:
+        stats_path = output_dir / "scaffolds" / "consensus" / "consensus_stats.json"
+        stats_path.parent.mkdir(parents=True, exist_ok=True)
+        stats_path.write_text(json.dumps({"n_consensus_files": 0, "max_consensus_length": 0}))
+
+    # clustering and alignment need external tools; the consensus step only has to leave its statistics
+    monkeypatch.setattr(main.clustering, "main", lambda **kwargs: None)
+    monkeypatch.setattr(main.alignment, "main", lambda **kwargs: None)
+    monkeypatch.setattr(main.consensus, "main", write_consensus_stats)
+    args = SimpleNamespace(
+        input_csv=str(input_csv),
+        output_dir=str(output_dir),
+        folder_outputs=None,
+        metadata_json_path=None,
+        contaminants_fasta_path=None,
+        chain=None,
+        reference=False,
+        conf=None,
+        fdr=None,
+        min_length=7,
+        max_length=20,
+        assembly_mode="greedy",
+        kmer_size=7,
+        min_overlap=3,
+        size_threshold=10,
+        min_identity=0.8,
+        max_mismatches=10,
+        refine=False,
+        min_seq_id=0.85,
+        coverage=0.8,
+        skip_plots=True,
+        max_scaffold_overlaps=assembly.MAX_SCAFFOLD_OVERLAPS,
+        isoleucine_restoration=True,
+    )
+
+    main.run_pipeline(args)
+
+    summary = pd.read_csv(output_dir / "summary.tsv", sep="\t")
+    assert list(summary.columns)[-2:] == ["min_length", "max_length"]
+    assert "n_consensus_files" in summary.columns
+    assert (summary["min_length"][0], summary["max_length"][0]) == (7, 20)

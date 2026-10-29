@@ -367,6 +367,21 @@ def filter_by_length(df: pd.DataFrame, min_length: Optional[int], max_length: Op
     return df[keep]
 
 
+def _filter_step(name: str, applied: bool, rows_in: int, rows_out: int) -> dict:
+    """One entry of the `steps` list in `<output stem>_filters.json`.
+
+    Args:
+        name: Filter name: cleaning, length, contaminants, conf or fdr.
+        applied: Whether the filter was requested and could run.
+        rows_in: Rows before the filter.
+        rows_out: Rows after the filter.
+
+    Returns:
+        The entry.
+    """
+    return {"name": name, "applied": applied, "rows_in": int(rows_in), "rows_out": int(rows_out)}
+
+
 def filters_record_path(output_csv_path: Path) -> Path:
     """Return the path of the JSON file that records the filters applied to a preprocessing output.
 
@@ -441,7 +456,8 @@ def main(
     """Main function to run the preprocessing script.
 
     Besides the cleaned CSV, writes `<output stem>_filters.json` next to it, recording the filters applied
-    and the number of rows they kept.
+    and, in `steps`, the rows before and after each of them, in the order they run: cleaning, length,
+    contaminants, conf, FDR.
     """
     input_csv_path = Path(input_csv)
 
@@ -470,33 +486,47 @@ def main(
     else:
         raise ValueError("No suitable column found for peptide sequences.")
 
-    df = clean_dataframe(df)
-    rows_after_cleaning = len(df)
+    # rows before and after each filter, in the order they are applied
+    steps = []
 
-    if min_length is not None or max_length is not None:
+    rows_in = len(df)
+    df = clean_dataframe(df)
+    steps.append(_filter_step("cleaning", True, rows_in, len(df)))
+
+    rows_in = len(df)
+    length_applied = min_length is not None or max_length is not None
+    if length_applied:
         logger.info(f"Applying length filter: {min_length or 1} to {max_length or 'any'} residues")
         df = filter_by_length(df, min_length, max_length)
-    rows_after_length = len(df)
+    steps.append(_filter_step("length", length_applied, rows_in, len(df)))
 
+    rows_in = len(df)
     if contaminants_fasta is not None:
         cleaned_psms = df["cleaned_preds"].tolist()
         filtered_psms = filter_contaminants(cleaned_psms, run, contaminants_fasta)
         df = df[df["cleaned_preds"].isin(filtered_psms)]
+    steps.append(_filter_step("contaminants", contaminants_fasta is not None, rows_in, len(df)))
 
     if reference and protein_norm is not None:
         df["mapped"] = df["cleaned_preds"].apply(lambda x: True if x in protein_norm else False)
 
+    rows_in = len(df)
+    conf_applied = conf is not None and "conf" in df.columns
     if conf is not None:
         logger.info(f"Applying confidence threshold: > {conf}")
         if "conf" in df.columns:
             df = df[df["conf"] > conf]
+    steps.append(_filter_step("conf", conf_applied, rows_in, len(df)))
 
+    rows_in = len(df)
+    fdr_applied = fdr is not None and "psm_q_value" in df.columns
     if fdr is not None:
         logger.info(f"Applying FDR threshold: <= {fdr}")
         if "psm_q_value" in df.columns:
             df = df[df["psm_q_value"] <= fdr]
         else:
             logger.warning("FDR filter requested but 'psm_q_value' column not found (V1 data?).")
+    steps.append(_filter_step("fdr", fdr_applied, rows_in, len(df)))
 
     if conf is None and fdr is None:
         logger.info("No filters (Conf/FDR) applied.")
@@ -514,14 +544,13 @@ def main(
     logger.info("Cleaned data saved to: {}.".format(cleaned_csv_path))
 
     record = {
-        "input_csv": str(input_csv_path),
+        "input_csv": input_csv_path.name,
         "min_length": min_length,
         "max_length": max_length,
         "conf": conf,
         "fdr": fdr,
         "contaminants_fasta": contaminants_fasta,
-        "rows_after_cleaning": rows_after_cleaning,
-        "rows_removed_by_length": rows_after_cleaning - rows_after_length,
+        "steps": steps,
         "rows_output": len(df),
     }
     with open(filters_record_path(cleaned_csv_path), "w") as f:

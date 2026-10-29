@@ -345,8 +345,6 @@ def run_pipeline(args):
             "output_dir": str(experiment_folder),
             "scaffolds_fasta": str(scaffolds_fasta_path),
             "consensus_dir": str(consensus_folder),
-            "min_length": args.min_length,
-            "max_length": args.max_length,
         }
         # Include consensus stats if they exist
         consensus_stats_path = consensus_folder / "consensus_stats.json"
@@ -356,6 +354,9 @@ def run_pipeline(args):
             with open(consensus_stats_path) as f:
                 stats = json.load(f)
             summary_data.update(stats)
+        # added last so that the columns of earlier versions keep their positions
+        summary_data["min_length"] = args.min_length
+        summary_data["max_length"] = args.max_length
 
         summary_df = pd.DataFrame([summary_data])
         summary_df.to_csv(summary_path, sep="\t", index=False)

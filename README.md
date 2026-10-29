@@ -220,8 +220,22 @@ dbg_weighted` avoids it.
 ### Peptide length filter
 
 `--min-length` and `--max-length` (on `instanexus` and `python -m instanexus.preprocessing`) keep only peptides
-within the given number of residues, counted after removing modifications. Both are off by default. The bounds
-applied, and how many rows they removed, are recorded in `<output stem>_filters.json` next to the cleaned CSV.
+within the given number of residues, counted after removing modifications. Both are off by default.
+
+Every preprocessing run writes `<output stem>_filters.json` next to the cleaned CSV, so a run without a length
+filter is recorded too. Preprocessing applies its filters in this order: cleaning, length, contaminants, `conf`,
+FDR. The record holds:
+
+| Key | Meaning |
+|---|---|
+| `input_csv` | File name of the input CSV (without its directory) |
+| `min_length`, `max_length` | Length bounds, or `null` when not set |
+| `conf`, `fdr` | Confidence and FDR thresholds, or `null` when not set |
+| `contaminants_fasta` | Contaminants FASTA as passed, or `null` |
+| `steps` | One entry per filter, in the order above: `name` (`cleaning`, `length`, `contaminants`, `conf`, `fdr`), `applied` (whether the filter ran), `rows_in` and `rows_out` |
+| `rows_output` | Rows written to the cleaned CSV |
+
+`summary.tsv` gains `min_length` and `max_length` as its last two columns.
 
 The published assemblies on Zenodo ([10.5281/zenodo.16417501](https://doi.org/10.5281/zenodo.16417501)) were made
 without a length filter: their `cleaned.csv` files hold peptides of 5 to 28 residues. The 7-20 residue filter appears
