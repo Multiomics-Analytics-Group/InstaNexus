@@ -38,11 +38,33 @@ logging.getLogger("instanexus.alignment").setLevel(logging.WARNING)
 logging.getLogger("instanexus.consensus").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+# exit code of the command-line interface when a pipeline step fails; 2 is argparse's usage error and
+# assembly.EXIT_SCAFFOLDING_LIMIT (3) is reserved for the dbg scaffolding limit
+EXIT_STEP_FAILED = 1
+
+EXIT_CODES_HELP = f"""exit codes:
+  0  success
+  {EXIT_STEP_FAILED}  a pipeline step failed (preprocessing, assembly, clustering, alignment or consensus)
+  2  invalid command-line arguments
+  {assembly.EXIT_SCAFFOLDING_LIMIT}  dbg scaffolding exceeded --max-scaffold-overlaps"""
+
+
+class PipelineStepFailed(RuntimeError):
+    """Raised by run_pipeline when a step fails, after the step's error has been logged."""
+
+    def __init__(self, step: str):
+        self.step = step
+        super().__init__(f"{step} failed")
+
 
 def cli():
     """Command-line interface for the master pipeline."""
 
-    parser = argparse.ArgumentParser(description="Run the full InstaNexus preprocessing and assembly pipeline.")
+    parser = argparse.ArgumentParser(
+        description="Run the full InstaNexus preprocessing and assembly pipeline.",
+        epilog=EXIT_CODES_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
     parser.add_argument(
         "--input-csv",
@@ -169,11 +191,17 @@ def cli():
     except assembly.ScaffoldingLimitExceeded as e:
         logger.error(f"Assembly failed: {e}")
         sys.exit(assembly.EXIT_SCAFFOLDING_LIMIT)
+    except PipelineStepFailed:
+        sys.exit(EXIT_STEP_FAILED)
 
 
 def run_pipeline(args):
     """
     Orchestrates the full pipeline, calling each refactored module.
+
+    Raises:
+        PipelineStepFailed: A step failed; its error has already been logged.
+        assembly.ScaffoldingLimitExceeded: dbg scaffolding exceeded --max-scaffold-overlaps.
     """
     MAX_REFINE_ROUNDS = 10
     current_refine_rounds = MAX_REFINE_ROUNDS if args.refine else 0
@@ -237,7 +265,7 @@ def run_pipeline(args):
         )
     except Exception as e:
         logger.error(f"Preprocessing failed: {e}")
-        return
+        raise PipelineStepFailed("Preprocessing") from e
 
     if args.reference:
         logger.info("--- [Statistics] Computing INPUT Statistics ---")
@@ -295,7 +323,7 @@ def run_pipeline(args):
         raise  # handled in cli() with a dedicated exit code
     except Exception as e:
         logger.error(f"Assembly failed: {e}")
-        return
+        raise PipelineStepFailed("Assembly") from e
 
     try:
         logger.info("--- [Step 3/5] Running Clustering ---")
@@ -306,7 +334,7 @@ def run_pipeline(args):
         )
     except Exception as e:
         logger.error(f"Clustering failed: {e}")
-        return
+        raise PipelineStepFailed("Clustering") from e
 
     try:
         logger.info("--- [Step 4/5] Running Alignment ---")
@@ -316,7 +344,7 @@ def run_pipeline(args):
         )
     except Exception as e:
         logger.error(f"Alignment failed: {e}")
-        return
+        raise PipelineStepFailed("Alignment") from e
 
     try:
         logger.info("--- [Step 5/5] Running Consensus ---")
@@ -328,7 +356,7 @@ def run_pipeline(args):
         )
     except Exception as e:
         logger.error(f"Consensus failed: {e}")
-        return
+        raise PipelineStepFailed("Consensus") from e
 
     # Write a stable summary file at a predictable path for pipeline integration
     summary_path = experiment_folder / "summary.tsv"
