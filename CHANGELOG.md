@@ -85,3 +85,10 @@ every I replaced by L, the scaffolds are identical to before.
 
 On synthetic BSA peptides with 10% simulated I/L errors, `il_accuracy` is 0.97-1.00 against an all-leucine baseline
 of 0.80-0.82 for `greedy`, `dbg` and `dbg_weighted`.
+
+### Fixed: `plot_contigs` draws adjacent contigs on one track
+
+`plot_contigs` compared the 0-based, end-exclusive mapping coordinates inclusively, so adjacent contigs such as
+`ABC` and `DEF` were drawn on two tracks, and a contig that contained one already on a track was drawn on top of it
+([#62](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/62)). It now uses the same half-open overlap
+test as the other plotting functions. Only the figure layout changes.
