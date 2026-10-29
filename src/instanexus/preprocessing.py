@@ -21,6 +21,7 @@ __status__ = Dev
 """
 
 # import libraries
+import argparse
 import json
 import logging
 import re
@@ -343,6 +344,88 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 
+def filter_by_length(df: pd.DataFrame, min_length: Optional[int], max_length: Optional[int]) -> pd.DataFrame:
+    """Keep peptides whose length, in residues after removing modifications, is within the bounds.
+
+    Args:
+        df: PSMs with a `cleaned_preds` column.
+        min_length: Shortest peptide kept, inclusive; None for no lower bound.
+        max_length: Longest peptide kept, inclusive; None for no upper bound.
+
+    Returns:
+        The rows within the bounds.
+    """
+    if min_length is not None and max_length is not None and min_length > max_length:
+        raise ValueError(f"min_length ({min_length}) is greater than max_length ({max_length}).")
+    lengths = df["cleaned_preds"].str.len()
+    keep = pd.Series(True, index=df.index)
+    if min_length is not None:
+        keep &= lengths >= min_length
+    if max_length is not None:
+        keep &= lengths <= max_length
+
+    return df[keep]
+
+
+def filters_record_path(output_csv_path: Path) -> Path:
+    """Return the path of the JSON file that records the filters applied to a preprocessing output.
+
+    Args:
+        output_csv_path: The cleaned CSV written by preprocessing.
+
+    Returns:
+        `<output stem>_filters.json`, next to the CSV.
+    """
+    return output_csv_path.with_name(f"{output_csv_path.stem}_filters.json")
+
+
+def _peptide_length(value: str) -> int:
+    """Parse --min-length / --max-length: a positive integer.
+
+    Args:
+        value: Command-line value.
+
+    Returns:
+        The length.
+    """
+    length = int(value)
+    if length < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+
+    return length
+
+
+def add_length_filter_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add --min-length and --max-length to a command-line parser.
+
+    Args:
+        parser: Parser to extend.
+    """
+    parser.add_argument(
+        "--min-length",
+        type=_peptide_length,
+        default=None,
+        help="Keep only peptides of at least this many residues, after removing modifications (default: no limit).",
+    )
+    parser.add_argument(
+        "--max-length",
+        type=_peptide_length,
+        default=None,
+        help="Keep only peptides of at most this many residues, after removing modifications (default: no limit).",
+    )
+
+
+def check_length_bounds(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """Fail with a usage error when --min-length is greater than --max-length.
+
+    Args:
+        parser: The parser that produced args.
+        args: Parsed arguments.
+    """
+    if args.min_length is not None and args.max_length is not None and args.min_length > args.max_length:
+        parser.error(f"--min-length ({args.min_length}) is greater than --max-length ({args.max_length}).")
+
+
 def main(
     input_csv: str,
     metadata_json: Optional[str],
@@ -352,8 +435,14 @@ def main(
     conf: float,
     fdr: float,
     output_csv_path: str,
+    min_length: Optional[int] = None,
+    max_length: Optional[int] = None,
 ):
-    """Main function to run the preprocessing script."""
+    """Main function to run the preprocessing script.
+
+    Besides the cleaned CSV, writes `<output stem>_filters.json` next to it, recording the filters applied
+    and the number of rows they kept.
+    """
     input_csv_path = Path(input_csv)
 
     run = input_csv_path.stem  # stem gives the filename without suffix
@@ -382,6 +471,12 @@ def main(
         raise ValueError("No suitable column found for peptide sequences.")
 
     df = clean_dataframe(df)
+    rows_after_cleaning = len(df)
+
+    if min_length is not None or max_length is not None:
+        logger.info(f"Applying length filter: {min_length or 1} to {max_length or 'any'} residues")
+        df = filter_by_length(df, min_length, max_length)
+    rows_after_length = len(df)
 
     if contaminants_fasta is not None:
         cleaned_psms = df["cleaned_preds"].tolist()
@@ -418,11 +513,23 @@ def main(
     df.to_csv(cleaned_csv_path, index=False)
     logger.info("Cleaned data saved to: {}.".format(cleaned_csv_path))
 
+    record = {
+        "input_csv": str(input_csv_path),
+        "min_length": min_length,
+        "max_length": max_length,
+        "conf": conf,
+        "fdr": fdr,
+        "contaminants_fasta": contaminants_fasta,
+        "rows_after_cleaning": rows_after_cleaning,
+        "rows_removed_by_length": rows_after_cleaning - rows_after_length,
+        "rows_output": len(df),
+    }
+    with open(filters_record_path(cleaned_csv_path), "w") as f:
+        json.dump(record, f, indent=4)
+
 
 def cli():
     """Command-line interface for the preprocessing script."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Preprocess peptide-spectrum match (PSM) data.")
     parser.add_argument(
         "--input-csv",
@@ -471,8 +578,10 @@ def cli():
         required=True,
         help="Path to the output CSV file.",
     )
+    add_length_filter_arguments(parser)
 
     args = parser.parse_args()
+    check_length_bounds(parser, args)
 
     main(**vars(args))
 

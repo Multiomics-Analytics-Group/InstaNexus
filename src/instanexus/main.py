@@ -91,6 +91,7 @@ def cli():
         default=None,
         help="False Discovery Rate threshold for filtering (e.g. 0.01).",
     )
+    preprocessing.add_length_filter_arguments(parser)
     parser.add_argument(
         "--assembly-mode",
         type=str,
@@ -162,6 +163,7 @@ def cli():
     assembly.add_isoleucine_restoration_argument(parser)
 
     args = parser.parse_args()
+    preprocessing.check_length_bounds(parser, args)
 
     # Run the pipeline with the validated arguments
     try:
@@ -198,6 +200,8 @@ def run_pipeline(args):
             folder_name_parts.append(f"fdr{args.fdr}")
         elif args.conf is not None:
             folder_name_parts.append(f"c{args.conf}")
+        if args.min_length is not None or args.max_length is not None:
+            folder_name_parts.append(f"len{args.min_length or ''}-{args.max_length or ''}")
         if "dbg" in args.assembly_mode:
             folder_name_parts.append(f"ks{args.kmer_size}")
 
@@ -234,6 +238,8 @@ def run_pipeline(args):
             conf=args.conf,
             fdr=args.fdr,
             output_csv_path=str(cleaned_csv_path),  # Pass explicit path
+            min_length=args.min_length,
+            max_length=args.max_length,
         )
     except Exception as e:
         logger.error(f"Preprocessing failed: {e}")
@@ -339,6 +345,8 @@ def run_pipeline(args):
             "output_dir": str(experiment_folder),
             "scaffolds_fasta": str(scaffolds_fasta_path),
             "consensus_dir": str(consensus_folder),
+            "min_length": args.min_length,
+            "max_length": args.max_length,
         }
         # Include consensus stats if they exist
         consensus_stats_path = consensus_folder / "consensus_stats.json"
