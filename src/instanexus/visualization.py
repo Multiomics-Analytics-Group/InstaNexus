@@ -1141,7 +1141,8 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
         ind += 1
         placed = False
         for track_num, track in tracks.items():
-            if not any(s <= end_index <= e or s <= start_index <= e for s, e in track):
+            # half-open intervals, as map_to_protein returns: adjacent contigs share a track
+            if not any(max(s, start_index) < min(e, end_index) for s, e in track):
                 track.append((start_index, end_index))
                 ax.add_patch(
                     patches.Rectangle(

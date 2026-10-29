@@ -99,3 +99,10 @@ code 0, so a shell script or workflow manager treated the run as successful
 - Failures in the optional reference statistics and in writing `summary.tsv` are still logged without failing the run.
 - The step modules (`python -m instanexus.preprocessing`, `instanexus.clustering`, ...) already exited non-zero on
   an error and are unchanged.
+
+### Fixed: `plot_contigs` draws adjacent contigs on one track
+
+`plot_contigs` compared the 0-based, end-exclusive mapping coordinates inclusively, so adjacent contigs such as
+`ABC` and `DEF` were drawn on two tracks, and a contig that contained one already on a track was drawn on top of it
+([#62](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/62)). It now uses the same half-open overlap
+test as the other plotting functions. Only the figure layout changes.
