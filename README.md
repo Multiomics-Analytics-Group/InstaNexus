@@ -252,15 +252,16 @@ within the given number of residues, counted after removing modifications. Both 
 
 Every preprocessing run writes `<output stem>_filters.json` next to the cleaned CSV, so a run without a length
 filter is recorded too. Preprocessing applies its filters in this order: cleaning, length, contaminants, `conf`,
-FDR. The record holds:
+FDR, then the read-support and rank filters below. The record holds:
 
 | Key | Meaning |
 |---|---|
 | `input_csv` | File name of the input CSV (without its directory) |
 | `min_length`, `max_length` | Length bounds, or `null` when not set |
 | `conf`, `fdr` | Confidence and FDR thresholds, or `null` when not set |
+| `top_fraction`, `min_reads` | Rank cutoff and read support (below), or `null` when not set |
 | `contaminants_fasta` | Contaminants FASTA as passed, or `null` |
-| `steps` | One entry per filter, in the order above: `name` (`cleaning`, `length`, `contaminants`, `conf`, `fdr`), `applied` (whether the filter ran), `rows_in` and `rows_out` |
+| `steps` | One entry per filter, in the order above: `name` (`cleaning`, `length`, `contaminants`, `conf`, `fdr`, `min_reads`, `top_fraction`), `applied` (whether the filter ran), `rows_in` and `rows_out` |
 | `rows_output` | Rows written to the cleaned CSV |
 
 `summary.tsv` gains `min_length` and `max_length` as its last two columns.
@@ -269,6 +270,27 @@ The published assemblies on Zenodo ([10.5281/zenodo.16417501](https://doi.org/10
 without a length filter: their `cleaned.csv` files hold peptides of 5 to 28 residues. The 7-20 residue filter appears
 in the case-study notebooks in `docs/source/tutorials/case_studies/` (for example `_panel_bsa_filtering.ipynb`), which
 apply it before assembling or plotting. To reproduce those, pass `--min-length 7 --max-length 20`.
+
+### Rank cutoff and read support
+
+Two more filters (on `instanexus` and `python -m instanexus.preprocessing`) are meant for inputs where a fixed
+`--conf` or `--fdr` keeps too many PSMs, such as Winnow-rescored predictions. Both are off by default.
+
+- **`--top-fraction F`** keeps the most confident fraction `F` (greater than 0, at most 1) of the sample's PSMs:
+  `floor(F * n)` of the `n` PSMs with a confidence, ties in row order. It needs a `conf` column; without one it
+  is skipped with a warning and recorded as not applied.
+- **`--min-reads K`** keeps PSMs whose peptide, with modifications removed and I = L, is read at least `K` times in
+  the input CSV.
+
+Both are counted over the PSMs left after `--conf` and `--fdr`, so together they keep the PSMs that pass each, in
+either order. The input CSV is the sample: to filter per run, preprocess each run's CSV on its own.
+
+Read support favours abundant peptides: on a cell lysate it can remove every peptide of low-abundance proteins,
+where a rank cutoff that keeps a similar number of PSMs does not
+([#67](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/67)).
+
+`summary.tsv` gains `top_fraction` and `min_reads` after `min_length` and `max_length`, and the auto-generated output
+folder gains `reads<K>` and `top<F>` parts when they are set.
 
 ---
 

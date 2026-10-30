@@ -125,3 +125,13 @@ not change unless they are set. Preprocessing now also writes `<output stem>_fil
 recording the length bounds, `--conf`, `--fdr`, the contaminants FASTA and the rows the length filter removed;
 `summary.tsv` gains `min_length` and `max_length`, and the auto-generated output folder gains a `len<min>-<max>` part
 when a bound is set. The README states which published results used a length filter.
+
+### Added: opt-in rank cutoff and read-support filter
+
+`--top-fraction F` and `--min-reads K` on `instanexus` and `python -m instanexus.preprocessing`
+([#67](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/67)). `--top-fraction` keeps the most
+confident fraction `F` of the sample's PSMs; `--min-reads` keeps PSMs whose peptide, with modifications removed and
+I = L, is read at least `K` times in the sample. Both are counted over the PSMs left after `--conf` and `--fdr`, and
+both are off by default, so results do not change unless they are set. They are recorded in
+`<output stem>_filters.json` (`top_fraction`, `min_reads` and a `steps` entry each), as the last two columns of
+`summary.tsv`, and as `reads<K>` and `top<F>` parts of the auto-generated output folder.
