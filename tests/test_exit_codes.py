@@ -90,6 +90,8 @@ def test_every_step_failure_raises(step: str, tmp_path: Path, monkeypatch: pytes
         fdr=None,
         min_length=None,
         max_length=None,
+        top_fraction=None,
+        min_reads=None,
         assembly_mode="greedy",
         kmer_size=7,
         min_overlap=3,

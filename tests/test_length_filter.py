@@ -147,11 +147,13 @@ def test_record_lists_rows_after_every_filter_in_order(tmp_path: Path) -> None:
         ("contaminants", False, 4, 4),
         ("conf", True, 4, 2),
         ("fdr", False, 2, 2),
+        ("min_reads", False, 2, 2),
+        ("top_fraction", False, 2, 2),
     ]
     assert record["rows_output"] == 2
 
 
-def test_length_bounds_are_the_last_summary_columns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_length_bounds_are_in_the_summary_columns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     input_csv = tmp_path / "sample.csv"
     pd.DataFrame({"preds": ["PEPTIDEKAAGLR", "AAGLRSTWYK"], "conf": [0.9, 0.9]}).to_csv(input_csv, index=False)
     output_dir = tmp_path / "out"
@@ -177,6 +179,8 @@ def test_length_bounds_are_the_last_summary_columns(tmp_path: Path, monkeypatch:
         fdr=None,
         min_length=7,
         max_length=20,
+        top_fraction=None,
+        min_reads=None,
         assembly_mode="greedy",
         kmer_size=7,
         min_overlap=3,
@@ -194,6 +198,6 @@ def test_length_bounds_are_the_last_summary_columns(tmp_path: Path, monkeypatch:
     main.run_pipeline(args)
 
     summary = pd.read_csv(output_dir / "summary.tsv", sep="\t")
-    assert list(summary.columns)[-2:] == ["min_length", "max_length"]
+    assert list(summary.columns)[-4:-2] == ["min_length", "max_length"]
     assert "n_consensus_files" in summary.columns
     assert (summary["min_length"][0], summary["max_length"][0]) == (7, 20)

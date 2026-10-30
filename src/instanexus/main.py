@@ -132,6 +132,7 @@ def cli():
         help="False Discovery Rate threshold for filtering (e.g. 0.01).",
     )
     preprocessing.add_length_filter_arguments(parser)
+    preprocessing.add_rank_and_support_arguments(parser)
     parser.add_argument(
         "--assembly-mode",
         type=str,
@@ -250,6 +251,10 @@ def run_pipeline(args):
             folder_name_parts.append(f"c{args.conf}")
         if args.min_length is not None or args.max_length is not None:
             folder_name_parts.append(f"len{args.min_length or ''}-{args.max_length or ''}")
+        if args.min_reads is not None:
+            folder_name_parts.append(f"reads{args.min_reads}")
+        if args.top_fraction is not None:
+            folder_name_parts.append(f"top{args.top_fraction}")
         if "dbg" in args.assembly_mode:
             folder_name_parts.append(f"ks{args.kmer_size}")
 
@@ -288,6 +293,8 @@ def run_pipeline(args):
             output_csv_path=str(cleaned_csv_path),  # Pass explicit path
             min_length=args.min_length,
             max_length=args.max_length,
+            top_fraction=args.top_fraction,
+            min_reads=args.min_reads,
         )
     except Exception as e:
         logger.error(f"Preprocessing failed: {e}")
@@ -405,6 +412,8 @@ def run_pipeline(args):
         # added last so that the columns of earlier versions keep their positions
         summary_data["min_length"] = args.min_length
         summary_data["max_length"] = args.max_length
+        summary_data["top_fraction"] = args.top_fraction
+        summary_data["min_reads"] = args.min_reads
 
         summary_df = pd.DataFrame([summary_data])
         summary_df.to_csv(summary_path, sep="\t", index=False)

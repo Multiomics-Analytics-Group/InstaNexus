@@ -367,11 +367,46 @@ def filter_by_length(df: pd.DataFrame, min_length: Optional[int], max_length: Op
     return df[keep]
 
 
+def read_support(df: pd.DataFrame) -> pd.Series:
+    """Count how often each PSM's peptide is read in the sample.
+
+    Peptides are compared after removing modifications and with I and L treated as one residue, so the count
+    is taken over `cleaned_preds`.
+
+    Args:
+        df: PSMs with a `cleaned_preds` column.
+
+    Returns:
+        For each row, the number of rows with the same peptide.
+    """
+    return df.groupby("cleaned_preds")["cleaned_preds"].transform("size")
+
+
+def top_fraction_mask(df: pd.DataFrame, fraction: float) -> pd.Series:
+    """Select the most confident fraction of the PSMs.
+
+    PSMs are ranked by `conf`, ties in the order of the rows, and the first `floor(fraction * n)` are kept,
+    where `n` counts the PSMs with a confidence. PSMs without a confidence are not kept.
+
+    Args:
+        df: PSMs with a `conf` column.
+        fraction: Share of the PSMs to keep, in (0, 1].
+
+    Returns:
+        True for the rows to keep.
+    """
+    if not 0 < fraction <= 1:
+        raise ValueError(f"fraction ({fraction}) must be in (0, 1].")
+    rank = df["conf"].rank(ascending=False, method="first", pct=True)
+
+    return rank <= fraction
+
+
 def _filter_step(name: str, applied: bool, rows_in: int, rows_out: int) -> dict:
     """One entry of the `steps` list in `<output stem>_filters.json`.
 
     Args:
-        name: Filter name: cleaning, length, contaminants, conf or fdr.
+        name: Filter name: cleaning, length, contaminants, conf, fdr, min_reads or top_fraction.
         applied: Whether the filter was requested and could run.
         rows_in: Rows before the filter.
         rows_out: Rows after the filter.
@@ -430,6 +465,64 @@ def add_length_filter_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _top_fraction(value: str) -> float:
+    """Parse --top-fraction: a number in (0, 1].
+
+    Args:
+        value: Command-line value.
+
+    Returns:
+        The fraction.
+    """
+    fraction = float(value)
+    if not 0 < fraction <= 1:
+        raise argparse.ArgumentTypeError("must be greater than 0 and at most 1")
+
+    return fraction
+
+
+def _min_reads(value: str) -> int:
+    """Parse --min-reads: a positive integer.
+
+    Args:
+        value: Command-line value.
+
+    Returns:
+        The number of reads.
+    """
+    reads = int(value)
+    if reads < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+
+    return reads
+
+
+def add_rank_and_support_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add --top-fraction and --min-reads to a command-line parser.
+
+    Args:
+        parser: Parser to extend.
+    """
+    parser.add_argument(
+        "--top-fraction",
+        type=_top_fraction,
+        default=None,
+        help=(
+            "Keep only this fraction of the sample's PSMs, the most confident, ranked after the conf and FDR "
+            "filters (default: keep all)."
+        ),
+    )
+    parser.add_argument(
+        "--min-reads",
+        type=_min_reads,
+        default=None,
+        help=(
+            "Keep only PSMs whose peptide, with modifications removed and I = L, is read at least this many "
+            "times in the sample, counted after the conf and FDR filters (default: no minimum)."
+        ),
+    )
+
+
 def check_length_bounds(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """Fail with a usage error when --min-length is greater than --max-length.
 
@@ -452,12 +545,15 @@ def main(
     output_csv_path: str,
     min_length: Optional[int] = None,
     max_length: Optional[int] = None,
+    top_fraction: Optional[float] = None,
+    min_reads: Optional[int] = None,
 ):
     """Main function to run the preprocessing script.
 
     Besides the cleaned CSV, writes `<output stem>_filters.json` next to it, recording the filters applied
     and, in `steps`, the rows before and after each of them, in the order they run: cleaning, length,
-    contaminants, conf, FDR.
+    contaminants, conf, FDR, min_reads, top_fraction. The read counts and the confidence rank are both taken
+    over the PSMs left after FDR, so with both set a PSM is kept when it passes each of them.
     """
     input_csv_path = Path(input_csv)
 
@@ -531,6 +627,24 @@ def main(
     if conf is None and fdr is None:
         logger.info("No filters (Conf/FDR) applied.")
 
+    # counted over the same PSMs, so the order of these two filters does not change the result
+    after_fdr = df
+    rows_in = len(df)
+    if min_reads is not None:
+        logger.info(f"Applying read support: peptides read at least {min_reads} times")
+        df = df[read_support(after_fdr) >= min_reads]
+    steps.append(_filter_step("min_reads", min_reads is not None, rows_in, len(df)))
+
+    rows_in = len(df)
+    top_fraction_applied = top_fraction is not None and "conf" in df.columns
+    if top_fraction is not None:
+        logger.info(f"Applying rank cutoff: the most confident {top_fraction} of PSMs")
+        if "conf" in df.columns:
+            df = df[top_fraction_mask(after_fdr, top_fraction).loc[df.index]]
+        else:
+            logger.warning("Top-fraction filter requested but 'conf' column not found.")
+    steps.append(_filter_step("top_fraction", top_fraction_applied, rows_in, len(df)))
+
     input_dir = input_csv_path.parent
     df = add_quantification_data(df, run, inputs_folder=input_dir)
 
@@ -549,6 +663,8 @@ def main(
         "max_length": max_length,
         "conf": conf,
         "fdr": fdr,
+        "top_fraction": top_fraction,
+        "min_reads": min_reads,
         "contaminants_fasta": contaminants_fasta,
         "steps": steps,
         "rows_output": len(df),
@@ -608,6 +724,7 @@ def cli():
         help="Path to the output CSV file.",
     )
     add_length_filter_arguments(parser)
+    add_rank_and_support_arguments(parser)
 
     args = parser.parse_args()
     check_length_bounds(parser, args)
