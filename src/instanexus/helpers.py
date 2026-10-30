@@ -25,6 +25,8 @@ import json
 import os
 from pathlib import Path
 
+from instanexus.mass_alignment import DIFFERENCE_KINDS
+
 #: Assembly modes :class:`~instanexus.assembly.Assembler` can dispatch. Both entry points
 #: validate against this, so a mode added to the dispatch is offered by each of them rather
 #: than needing to be remembered in three places.
@@ -115,8 +117,10 @@ def compute_isoleucine_statistics(mapped_sequences, reported_by_normalized, refe
     Args:
         mapped_sequences: (normalized scaffold, (start, end, mismatches, identity)) pairs,
             as ``process_protein_contigs_scaffold`` returns them. ``start`` is a 0-based
-            index into the reference and ``end`` is exclusive -- ``map_to_protein``
-            builds them as ``(i, i + len(seq))``.
+            index into the reference and ``end`` is exclusive. Ungapped, residue ``k``
+            of a scaffold sits at ``start + k``; a mass-aware mapping carries its
+            alignment, which places each residue, and residues outside a one-to-one
+            column (an insertion, an isobaric or a shuffled block) are left out.
         reported_by_normalized: the reported spelling of each normalized scaffold.
         reference: the reference protein as written, isoleucines intact.
 
@@ -132,9 +136,13 @@ def compute_isoleucine_statistics(mapped_sequences, reported_by_normalized, refe
     for normalized, mapping in mapped_sequences:
         reported = reported_by_normalized.get(normalized, normalized)
         start, identity = mapping[0], mapping[3]
-        for offset, residue in enumerate(reported):
-            position = start + offset
-            if position < 0 or position >= len(reference):
+        alignment = getattr(mapping, "alignment", None)
+        if alignment is not None:
+            positions = alignment.residue_positions
+        else:
+            positions = [start + offset for offset in range(len(reported))]
+        for residue, position in zip(reported, positions, strict=True):
+            if position is None or position < 0 or position >= len(reference):
                 continue
             if reference[position] not in ("I", "L"):
                 continue
@@ -160,7 +168,9 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     """Statistics for contigs and scaffolds
 
     Reference positions are 0-based and end-exclusive, as returned by visualization.map_to_protein.
-    Per-reference-position metrics count each position once, however many sequences cover it:
+    Lengths are those of the reference regions the sequences map to, which is the sequence length for
+    an ungapped mapping. Per-reference-position metrics count each position once, however many sequences
+    cover it:
 
     - coverage: fraction of reference positions covered by at least one mapped sequence.
     - mismatched_positions: number of reference positions with a mismatch in at least one mapped
@@ -170,7 +180,10 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
 
     - perfect_matches: number of sequences without mismatches.
     - total_mismatches: total number of mismatches over all mapped sequences; a reference position
-      covered by several sequences with the same error counts once per sequence.
+      covered by several sequences with the same error counts once per sequence. For a mass-aware
+      mapping, every alignment column that is not an exact match is a mismatch.
+    - substitutions, insertions, deletions, isobaric_blocks, shuffled_blocks: for mass-aware mappings
+      only, the kinds of difference behind the mismatches, summed over the mapped sequences.
 
     Args:
         df: DataFrame with mapped values
@@ -209,7 +222,7 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     statistics["median_identity"] = float(df["identity_score"].median())
     # statistics['std_identity'] = float(df['identity_score'].std())
 
-    # mismatch statistics; mismatches_pos holds 0-based offsets within each sequence
+    # mismatch statistics; mismatches_pos holds 0-based offsets in the reference from start
     statistics["perfect_matches"] = int(sum(df["mismatches_pos"].apply(len) == 0))  # sequences with no mismatches
     statistics["total_mismatches"] = int(df["mismatches_pos"].apply(len).sum())
     # same reference coordinates as coverage: start (0-based) + offset
@@ -217,6 +230,10 @@ def compute_assembly_statistics(df, sequence_type, output_folder, reference, **p
     for start, mismatches in zip(df["start"], df["mismatches_pos"], strict=False):
         mismatched_positions.update(start + offset for offset in mismatches)
     statistics["mismatched_positions"] = int(len(mismatched_positions))
+    # columns that create_dataframe_from_mapped_sequences adds for mass-aware mappings
+    for kind in DIFFERENCE_KINDS:
+        if kind in df.columns:
+            statistics[kind] = int(df[kind].sum())
 
     # N50 and N90 calculations
     lengths = sorted(df["sequence_length"], reverse=True)

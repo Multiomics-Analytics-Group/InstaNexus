@@ -115,3 +115,36 @@ test as the other plotting functions. Only the figure layout changes.
 `python -m instanexus` now runs the same pipeline as `instanexus`, and both accept `--version`, which reads the
 version from the package metadata. The `dbg` and `greedy` subcommands of `python -m instanexus` are gone; use
 `--assembly-mode`.
+
+### Added: opt-in mass-aware alignment for the reference statistics
+
+`--reference-alignment mass-aware` (on `instanexus` and `python -m instanexus.assembly`) maps peptides, contigs and
+scaffolds to the reference with a semi-global alignment that allows for indels, isobaric blocks (N = GG, Q = AG) and
+shuffled residues, instead of the ungapped residue-by-residue comparison
+([#70](https://github.com/Multiomics-Analytics-Group/InstaNexus/issues/70)). The scoring reimplements the peptide
+similarity alignment (PSA) of Saylan, Suleymaniniya and Wilhelm (HUPO poster PS02.146, not yet published).
+
+The default stays `ungapped`, so results do not change unless the option is set. **With it, the statistics are not
+comparable with ungapped ones**, including the published results:
+
+| Metric | Mass-aware | Direction |
+|---|---|---|
+| mapped sequences, `coverage` | Sequences with an indel, an isobaric block or a swap map instead of being left out, and so do sequences that run past either end of the reference | usually higher; coverage can be lower where mismatched residues at a sequence end align as insertions |
+| `start`, `end`, lengths, `N50`, `N90` | Of the aligned reference region, which can differ from the sequence length | either |
+| `total_mismatches`, `mismatched_positions` | Every alignment column that is not an exact match, an indel or a block included | either: more sequences map, each with fewer mismatches |
+| identity | Share of alignment columns that are exact matches | either |
+| `substitutions`, `insertions`, `deletions`, `isobaric_blocks`, `shuffled_blocks` | New: what the mismatches are | new |
+
+On the 40 published scaffold sets on Zenodo ([10.5281/zenodo.18414969](https://doi.org/10.5281/zenodo.18414969)),
+with the default `--min-identity 0.8 --max-mismatches 10`:
+
+- **More scaffolds map:** 424 instead of 396, and in none of the 40 do fewer map.
+- **Coverage is higher in 14 assemblies:** by up to 0.327 (bind1 greedy, 0.132 to 0.459) and 0.151 (ma2 greedy light
+  chain, 0.817 to 0.968, mostly scaffolds that run past the start of the reference).
+- **Coverage is lower in 1:** bind3 greedy, 0.515 to 0.503. The first five residues of one scaffold match poorly: they
+  align as one match, two insertions and two substitutions instead of five substitutions, so the region it maps to
+  starts two residues later.
+- **The mismatches found:** 220 substitutions, 47 insertions, 19 deletions, 18 isobaric blocks and 16 shuffled blocks.
+
+`peptide_stats.json`, `contig_stats.json` and `scaffolds_stats.json` now record `reference_alignment`, with either
+alignment; it is the only change to the default output.
