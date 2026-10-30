@@ -200,6 +200,7 @@ def cli():
     )
     assembly.add_max_scaffold_overlaps_argument(parser)
     assembly.add_isoleucine_restoration_argument(parser)
+    assembly.add_reference_alignment_argument(parser)
 
     args = parser.parse_args()
 
@@ -307,6 +308,7 @@ def run_pipeline(args):
                             target_protein=protein_norm,
                             max_mismatches=args.max_mismatches,
                             min_identity=args.min_identity,
+                            alignment=args.reference_alignment,
                         )
                         df_contigs_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped_contigs)
 
@@ -316,6 +318,7 @@ def run_pipeline(args):
                                 sequence_type="peptide",
                                 output_folder=str(statistics_folder),
                                 reference=protein_norm,
+                                reference_alignment=args.reference_alignment,
                             )
                             logger.info("[Statistics] Saved: peptide_stats.json")
         except Exception as e:
@@ -338,6 +341,7 @@ def run_pipeline(args):
             refine_rounds=current_refine_rounds,
             max_scaffold_overlaps=args.max_scaffold_overlaps,
             isoleucine_restoration=args.isoleucine_restoration,
+            reference_alignment=args.reference_alignment,
         )
     except assembly.ScaffoldingLimitExceeded:
         raise  # handled in cli() with a dedicated exit code

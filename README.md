@@ -245,6 +245,44 @@ The step modules (`python -m instanexus.preprocessing`, `instanexus.assembly`, `
 `instanexus.assembly` exits with `3`, when the scaffolding limit is hit. On any other failure the step
 modules exit with `1` through an unhandled exception, with a traceback, rather than with a logged message.
 
+### Mass-aware reference statistics
+
+With `--reference`, every peptide, contig and scaffold is mapped to the reference to compute coverage, identity
+and mismatches. By default the mapping is **ungapped**: the sequence slides along the reference and is compared
+residue by residue. One inserted or deleted residue then shifts every residue after it, and so does an isobaric
+block, such as N read as GG or Q as AG; a swap of two neighbours costs two mismatches. A scaffold with one such
+error falls below `--min-identity` and is reported as unmapped, and so is a sequence that runs past either end of
+the reference.
+
+`--reference-alignment mass-aware` (on `instanexus` and `python -m instanexus.assembly`) maps sequences with a
+semi-global alignment that allows for these errors, and maps residues past either end of the reference as
+insertions. It uses the peptide similarity alignment (PSA) scoring of
+Saylan, Suleymaniniya and Wilhelm (reference 4 below), reimplemented from their poster:
+
+| Step | Score |
+|---|---|
+| match / mismatch / gap | +2 / -1 / -2 |
+| shuffle: a block of 2-4 residues in a different order | +1.0 per residue |
+| isobaric: blocks of up to two residues each, with different residues but masses within 0.01 Da | +1.5 per residue of the longer block |
+
+At 0.01 Da, N = GG and Q = AG are isobaric, but R and GV (0.011 Da apart) are not. Residue masses are monoisotopic
+and unmodified, since preprocessing removes modifications.
+
+With the mass-aware alignment, the statistics mean:
+
+| Metric | Mass-aware meaning |
+|---|---|
+| `start`, `end`, lengths, `N50`, `N90`, `coverage` | The reference region the sequence aligns to, which can be longer or shorter than the sequence |
+| `total_mismatches` | Alignment columns that are not exact matches: substitutions, inserted and deleted residues, and the columns of isobaric and shuffled blocks (a block takes as many columns as its longer side) |
+| `mismatched_positions` | Reference positions under those columns; an inserted residue counts at the reference residue after it, or at the last one at the end |
+| identity (`--min-identity`, `mean_identity`) | Share of the alignment columns that are exact matches |
+| `substitutions`, `insertions`, `deletions`, `isobaric_blocks`, `shuffled_blocks` | New: what the mismatches are, summed over the mapped sequences |
+| `il_*` | Only residues in a one-to-one column (a match or a substitution) are compared |
+
+Every statistics file records `reference_alignment`. **Statistics from the two alignments are not comparable**, so
+compare runs made with the same one. The default is unchanged, and so are the results made with it, published ones
+included.
+
 ---
 
 ## Hyperparameter Optimization
@@ -310,6 +348,7 @@ Special thanks to the users and developers of:
 1. Hauser, M., et al. **MMseqs2: ultra fast and sensitive sequence searching**. *Nature Biotechnology* 35, 1026–1028 (2016). https://doi.org/10.1038/nbt.3988  
 2. Sievers, F., et al. **Fast, scalable generation of high-quality protein multiple sequence alignments using Clustal Omega**. *Molecular Systems Biology* 7, 539 (2011). https://doi.org/10.1038/msb.2011.75
 3. Eloff, K., Kalogeropoulos, K., Mabona, A., Morell, O., Catzel, R., Rivera-de-Torre, E., ... & Jenkins, T. P. (2025). **InstaNovo enables diffusion-powered de novo peptide sequencing in large-scale proteomics experiments.** Nature Machine Intelligence, 1-15.
+4. Saylan, C. C., Suleymaniniya, A., & Wilhelm, M. **Beyond Best Guesses: A Multi-Level Confidence Assessment Framework for De Novo Peptide Sequencing Results.** HUPO poster PS02.146, Computational Mass Spectrometry, TUM School of Life Sciences, Technical University of Munich. Not yet published; the mass-aware alignment (`--reference-alignment mass-aware`) reimplements its peptide similarity alignment scoring.
 
 ---
 
