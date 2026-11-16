@@ -289,6 +289,10 @@ Results can be summarized and visualized with `scripts/optimization/analyze_opti
 
 This project is licensed under the [MIT License](LICENSE).
 
+The InstaNexus publication states that the source code is released under the GNU General
+Public License v3.0 (GPLv3). This is incorrect: InstaNexus has been released under the MIT
+License since its first commit, and every release on PyPI and Bioconda is MIT-licensed.
+
 ---
 
 ## Acknowledgments

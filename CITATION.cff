@@ -1,6 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
 title: "Generalizable direct protein sequencing with InstaNexus"
+license: MIT
 authors:
   - family-names: "Reverenna"
     given-names: "Marco"
