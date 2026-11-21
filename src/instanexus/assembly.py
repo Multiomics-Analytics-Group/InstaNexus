@@ -994,6 +994,7 @@ class Assembler:
         reference_protein: Optional[str] = None,
         stats_output_folder: Optional[str] = None,
         max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
+        reference_alignment: str = "ungapped",
     ):
         if mode not in ASSEMBLY_MODES:
             raise ValueError(f"mode must be one of {', '.join(ASSEMBLY_MODES)}")
@@ -1013,6 +1014,7 @@ class Assembler:
         self.reference_protein = reference_protein
         self.stats_output_folder = stats_output_folder
         self.max_scaffold_overlaps = max_scaffold_overlaps
+        self.reference_alignment = reference_alignment
 
     def _compute_intermediate_stats(self, contigs, label):
         """Internal wrapper for statistics."""
@@ -1024,6 +1026,7 @@ class Assembler:
                     target_protein=self.reference_protein,
                     max_mismatches=self.max_mismatches,
                     min_identity=self.min_identity,
+                    alignment=self.reference_alignment,
                 )
                 df_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped)
                 if not df_mapped.empty:
@@ -1032,6 +1035,7 @@ class Assembler:
                         sequence_type=label,
                         output_folder=self.stats_output_folder,
                         reference=self.reference_protein,
+                        reference_alignment=self.reference_alignment,
                     )
             except Exception as e:
                 logger.warning(f"Could not compute intermediate stats: {e}")
@@ -1509,6 +1513,7 @@ def main(
     refine_rounds: int = 0,
     max_scaffold_overlaps: Optional[int] = MAX_SCAFFOLD_OVERLAPS,
     isoleucine_restoration: bool = True,
+    reference_alignment: str = "ungapped",
 ):
     """Main function for standalone assembly."""
     output_path = Path(output_scaffolds_path)
@@ -1563,6 +1568,7 @@ def main(
         max_mismatches=max_mismatches,
         refine_rounds=refine_rounds,
         max_scaffold_overlaps=max_scaffold_overlaps,
+        reference_alignment=reference_alignment,
         reference_protein=protein_norm,
         stats_output_folder=str(stats_folder) if protein_norm else None,
     )
@@ -1640,6 +1646,7 @@ def main(
             target_protein=protein_norm,
             max_mismatches=max_mismatches,
             min_identity=min_identity,
+            alignment=reference_alignment,
         )
         df_scaffolds_mapped = viz.create_dataframe_from_mapped_sequences(data=mapped_scaffolds)
 
@@ -1668,6 +1675,7 @@ def main(
             sequence_type="scaffolds",
             output_folder=str(stats_path),
             reference=protein_norm,
+            reference_alignment=reference_alignment,
             **il_statistics,
         )
         logger.info(f"Reference mode: Statistics saved to {stats_path}")
@@ -1717,6 +1725,23 @@ def add_isoleucine_restoration_argument(parser: argparse.ArgumentParser) -> None
         action="store_false",
         help="Report scaffolds in the normalized spelling, with every I/L position as L, as earlier versions did, "
         "instead of restoring isoleucine by a vote among the reads.",
+    )
+
+
+def add_reference_alignment_argument(parser: argparse.ArgumentParser) -> None:
+    """Add --reference-alignment to a command-line parser.
+
+    Args:
+        parser: Parser to extend.
+    """
+    parser.add_argument(
+        "--reference-alignment",
+        choices=viz.REFERENCE_ALIGNMENTS,
+        default="ungapped",
+        help="How --reference statistics map sequences to the reference: 'ungapped' (default) compares them "
+        "residue by residue; 'mass-aware' aligns them through indels, isobaric blocks (N = GG, Q = AG) and "
+        "swapped residues, with the PSA scoring of Saylan, Suleymaniniya and Wilhelm. Statistics from the two "
+        "are not comparable.",
     )
 
 
@@ -1807,6 +1832,7 @@ def cli():
     )
     add_max_scaffold_overlaps_argument(parser)
     add_isoleucine_restoration_argument(parser)
+    add_reference_alignment_argument(parser)
 
     args = parser.parse_args()
 

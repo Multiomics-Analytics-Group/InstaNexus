@@ -36,7 +36,7 @@ import seaborn as sns
 
 from tqdm import tqdm
 from pathlib import Path
-from instanexus import helpers
+from instanexus import helpers, mass_alignment
 
 
 def set_publication_style():
@@ -1037,7 +1037,25 @@ def plot_protease_distribution(protease_counts, folder_figures):
     fig.write_image(f"{folder_figures}/proteases_distribution.svg")
 
 
-def map_to_protein(seq, protein, max_mismatches, min_identity):
+# how map_to_protein compares a sequence with the reference: "ungapped" is the default
+REFERENCE_ALIGNMENTS = ("ungapped", "mass-aware")
+
+
+class AlignedMapping(tuple):
+    """A mass-aware ``map_to_protein`` result: the same ``(start, end, mismatch_positions, identity)``, which
+    also holds the alignment it came from, in ``alignment``."""
+
+    alignment: mass_alignment.Alignment
+
+    def __new__(cls, alignment: mass_alignment.Alignment) -> "AlignedMapping":
+        mapping = super().__new__(
+            cls, (alignment.start, alignment.end, alignment.difference_offsets, alignment.identity)
+        )
+        mapping.alignment = alignment
+        return mapping
+
+
+def map_to_protein(seq, protein, max_mismatches, min_identity, alignment="ungapped"):
     """Maps a sequence (`seq`) to a target protein sequence, allowing for mismatches,
     and identifies the best match based on the maximum mismatches and minimum identity threshold.
 
@@ -1046,13 +1064,28 @@ def map_to_protein(seq, protein, max_mismatches, min_identity):
         protein: Reference protein sequence.
         max_mismatches: Maximum number of mismatches allowed.
         min_identity: Minimum identity (fraction of matching residues) required.
+        alignment: "ungapped" slides `seq` along the protein and keeps the window with the highest identity.
+            "mass-aware" aligns it with gaps, isobaric blocks and shuffled blocks (see
+            ``instanexus.mass_alignment``) and keeps the best-scoring alignment; a mismatch is then any
+            alignment column that is not an exact match, and the identity is the share of columns that are.
 
     Returns:
         ``(start, end, mismatch_positions, identity)`` for the best match, or None if there is no match.
         ``start`` is 0-based and ``end`` is exclusive, like a Python slice: ``protein[start:end]`` is the
-        aligned region and ``end - start == len(seq)``. ``mismatch_positions`` are 0-based offsets within
-        ``seq``, not positions in ``protein``.
+        aligned region. ``mismatch_positions`` are 0-based offsets in ``protein`` from ``start``. Ungapped,
+        ``end - start == len(seq)`` and these are also the offsets within ``seq``. Mass-aware, ``end - start``
+        can differ from ``len(seq)``, and the result is an ``AlignedMapping`` holding the alignment.
     """
+    if alignment == "mass-aware":
+        aligned = mass_alignment.align(seq, protein)
+        if aligned is None:
+            return None
+        mapping = AlignedMapping(aligned)
+        if len(mapping[2]) <= max_mismatches and mapping[3] >= min_identity:
+            return mapping
+        return None
+    if alignment != "ungapped":
+        raise ValueError(f"alignment must be one of {', '.join(REFERENCE_ALIGNMENTS)}, not {alignment!r}.")
 
     best_match = None
     best_identity = 0
@@ -1089,9 +1122,12 @@ def map_to_protein(seq, protein, max_mismatches, min_identity):
     return best_match
 
 
-def process_protein_contigs_scaffold(assembled_contigs, target_protein, max_mismatches, min_identity):
+def process_protein_contigs_scaffold(
+    assembled_contigs, target_protein, max_mismatches, min_identity, alignment="ungapped"
+):
     """Maps each contig in `assembled_contigs` to a target protein sequence (`target_protein`)
     and identifies which contigs match based on specified mismatch and identity thresholds.
+    `alignment` is passed to ``map_to_protein``.
     """
     mapped_sequences = []
 
@@ -1103,6 +1139,7 @@ def process_protein_contigs_scaffold(assembled_contigs, target_protein, max_mism
             target_protein,
             max_mismatches=max_mismatches,
             min_identity=min_identity,
+            alignment=alignment,
         )
 
         if target_mapping:
@@ -1135,7 +1172,7 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
     tracks = {}
     ind = 0
 
-    for _, (contig, mapping) in tqdm(enumerate(mapped_contigs), desc="Plotting contigs"):
+    for _, (_contig, mapping) in tqdm(enumerate(mapped_contigs), desc="Plotting contigs"):
         start_index, end_index, mismatches, _ = mapping
 
         ind += 1
@@ -1147,7 +1184,7 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
                 ax.add_patch(
                     patches.Rectangle(
                         (start_index, 0.3 + 0.1 * track_num),
-                        len(contig),
+                        end_index - start_index,
                         0.075,
                         facecolor="#007EA7",
                         edgecolor="#007EA7",
@@ -1163,7 +1200,7 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
             ax.add_patch(
                 patches.Rectangle(
                     (start_index, 0.3 + 0.1 * track_num),
-                    len(contig),
+                    end_index - start_index,
                     0.075,
                     facecolor="#007EA7",
                     edgecolor="#007EA7",
@@ -1210,12 +1247,19 @@ def plot_contigs(mapped_contigs, prot_seq, title, output_file):
 
 
 def create_dataframe_from_mapped_sequences(data):
-    """Takes a list of tuples containing sequence data and returns a structured DataFrame."""
+    """Takes a list of tuples containing sequence data and returns a structured DataFrame.
+
+    Mass-aware mappings (``AlignedMapping``) also give a column per kind of difference in
+    ``mass_alignment.DIFFERENCE_KINDS``.
+    """
     # Create the initial DataFrame
     df = pd.DataFrame(data, columns=["Sequence", "Details"])
 
     # Expand the 'Details' column into separate columns
     df[["start", "end", "mismatches_pos", "identity_score"]] = pd.DataFrame(df["Details"].tolist(), index=df.index)
+    if len(df) and all(isinstance(details, AlignedMapping) for details in df["Details"]):
+        for kind in mass_alignment.DIFFERENCE_KINDS:
+            df[kind] = [details.alignment.differences[kind] for details in df["Details"]]
 
     df.drop(columns=["Details"], inplace=True)
     df.rename(columns={"Sequence": "sequence"}, inplace=True)

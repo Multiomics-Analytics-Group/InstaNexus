@@ -102,6 +102,7 @@ def test_every_step_failure_raises(step: str, tmp_path: Path, monkeypatch: pytes
         skip_plots=True,
         max_scaffold_overlaps=assembly.MAX_SCAFFOLD_OVERLAPS,
         isoleucine_restoration=True,
+        reference_alignment="ungapped",
     )
 
     def fail(**kwargs: object) -> None:
