@@ -87,7 +87,7 @@ This pipeline enables robust reconstruction of critical protein regions, advanci
 
 ## Installation
 
-InstaNexus requires Python 3.10+, **MMseqs2**, and **Clustal Omega**. You can manage the
+InstaNexus requires Python 3.11+, **MMseqs2**, and **Clustal Omega**. You can manage the
 environment with either [uv](https://docs.astral.sh/uv/) or [conda](https://docs.conda.io/)
 (the conda environment bundles MMseqs2 and Clustal Omega for you).
 
